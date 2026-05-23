@@ -26,7 +26,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@vibecc/paykit": "workspace:*"
+    "@vibecc/paykit": "workspace:*",
+    "zod": "^4.4.3"
   },
   "peerDependencies": {
     "drizzle-orm": "^0.36.0",
