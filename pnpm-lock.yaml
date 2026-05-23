@@ -116,6 +116,12 @@ importers:
         specifier: ^18.0.0
         version: 18.5.0(@types/node@22.19.19)
 
+  packages/vnpay-adapter:
+    dependencies:
+      '@vibecc/paykit':
+        specifier: workspace:*
+        version: link:../core
+
   packages/workers:
     dependencies:
       '@vibecc/paykit':
