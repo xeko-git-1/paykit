@@ -40,5 +40,26 @@ export {
 // Secrets
 export { EnvSecretProvider } from "./secrets/provider.js";
 export type { SecretProvider } from "./secrets/provider.js";
+export {
+  defaultRotationConfig,
+  type RotationCacheEntry,
+  type RotationGraceConfig,
+  resolveSecretsForVerify,
+} from "./secrets/rotation.js";
+
+// Observability (Phase 13)
+export {
+  getMetricsText,
+  incrementCounter,
+  PAYKIT_METRICS,
+  resetMetrics,
+} from "./observability/metrics.js";
+export { redactObject, redactString } from "./observability/redaction.js";
+export {
+  type SloConfig,
+  type SloSample,
+  type SloSnapshot,
+  SloTracker,
+} from "./observability/slo.js";
 
 export const PAYKIT_CORE_VERSION = "0.1.0-alpha.1";
