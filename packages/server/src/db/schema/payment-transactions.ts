@@ -1,5 +1,7 @@
 /**
  * Drizzle schema for paykit.payment_transactions. Mirrors 001_init.up.sql.
+ * V1.5: extended with `internal_id` UUID for cross-provider ID mapping
+ * (ZaloPay app_trans_id format `YYMMDD_<id>` ≠ paykit UUID).
  */
 import { jsonb, numeric, pgSchema, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
@@ -7,6 +9,7 @@ export const paykitSchema = pgSchema("paykit");
 
 export const paymentTransactions = paykitSchema.table("payment_transactions", {
   transactionId: uuid("transaction_id").primaryKey().defaultRandom(),
+  internalId: uuid("internal_id").notNull().defaultRandom(),
   tenantId: uuid("tenant_id").notNull(),
   ownerId: uuid("owner_id").notNull(),
   provider: text("provider").notNull(),

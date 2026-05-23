@@ -9,6 +9,20 @@
       "up": "001_init.up.sql",
       "down": "001_init.down.sql",
       "description": "Initial paykit schema: payment_transactions, ledger_entries, balance_projections (multi-wallet PK), webhook_events, reconciliation_runs"
+    },
+    {
+      "id": "002",
+      "slug": "internal_id",
+      "up": "002_internal_id.up.sql",
+      "down": "002_internal_id.down.sql",
+      "description": "V1.5 — Add internal_id UUID column for cross-provider ID mapping (ZaloPay app_trans_id format vs paykit UUID)"
+    },
+    {
+      "id": "003",
+      "slug": "pending_refunds",
+      "up": "003_pending_refunds.up.sql",
+      "down": "003_pending_refunds.down.sql",
+      "description": "V1.5 — pending_refunds table for ZaloPay 2-step refund (PROCESSING state); reconciler polls until completed/failed/timed_out"
     }
   ]
 }

@@ -78,8 +78,8 @@ describe("manifest.json", () => {
     expect(manifest.advisoryLockKey).toBe("paykit.migrate");
   });
 
-  it("registers 001_init migration", () => {
-    expect(manifest.migrations).toHaveLength(1);
+  it("registers 001_init migration as first entry", () => {
+    expect(manifest.migrations.length).toBeGreaterThanOrEqual(1);
     expect(manifest.migrations[0].id).toBe("001");
     expect(manifest.migrations[0].slug).toBe("init");
     expect(manifest.migrations[0].up).toBe("001_init.up.sql");

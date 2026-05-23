@@ -12,11 +12,15 @@ export {
   type NewBalanceProjection,
   type NewLedgerEntry,
   type NewPaymentTransaction,
+  type NewPendingRefund,
   type NewReconciliationRun,
   type NewWebhookEvent,
   paykitSchema,
   paymentTransactions,
   type PaymentTransaction,
+  type PendingRefund,
+  pendingRefunds,
+  pendingRefundState,
   reconciliationRuns,
   type ReconciliationRun,
   type WebhookEvent,
@@ -27,6 +31,7 @@ export {
 export * as balanceRepo from "./db/repos/balance.repo.js";
 export * as ledgerRepo from "./db/repos/ledger.repo.js";
 export * as paymentRepo from "./db/repos/payment.repo.js";
+export * as pendingRefundRepo from "./db/repos/pending-refund.repo.js";
 export * as reconciliationRepo from "./db/repos/reconciliation.repo.js";
 export * as webhookEventRepo from "./db/repos/webhook-event.repo.js";
 
@@ -44,4 +49,4 @@ export {
   type StripeConfig,
 } from "./providers/index.js";
 
-export const PAYKIT_SERVER_VERSION = "0.1.0-alpha.1";
+export const PAYKIT_SERVER_VERSION = "0.1.5-alpha.1";

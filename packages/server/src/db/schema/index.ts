@@ -15,6 +15,12 @@ export {
   type PaymentTransaction,
 } from "./payment-transactions.js";
 export {
+  type NewPendingRefund,
+  type PendingRefund,
+  pendingRefunds,
+  pendingRefundState,
+} from "./pending-refunds.js";
+export {
   type NewReconciliationRun,
   reconciliationRuns,
   type ReconciliationRun,
