@@ -1,0 +1,26 @@
+{
+  "name": "paykit-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Paykit — drop-in payment kit for TS+Hono+Postgres apps",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "lint": "biome check packages",
+    "lint:fix": "biome check --write packages",
+    "typecheck": "pnpm -r typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "publish:packages": "pnpm -r --filter './packages/*' publish --no-git-checks"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4",
+    "@types/node": "^22.9.0"
+  },
+  "packageManager": "pnpm@10.0.0"
+}

@@ -1,0 +1,37 @@
+{
+  "name": "@vibecc/paykit-workers",
+  "version": "0.0.0",
+  "description": "Paykit workers: reconciliation engine (Stripe + SePay match)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xeko-git-1/paykit.git",
+    "directory": "packages/workers"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@vibecc/paykit": "workspace:*"
+  },
+  "peerDependencies": {
+    "drizzle-orm": "^0.36.0",
+    "stripe": "^18.0.0",
+    "pg": "^8.13.0"
+  },
+  "engines": { "node": ">=20" }
+}

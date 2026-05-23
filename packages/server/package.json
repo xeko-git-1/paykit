@@ -1,0 +1,38 @@
+{
+  "name": "@vibecc/paykit-server",
+  "version": "0.0.0",
+  "description": "Paykit server: Hono routes (checkout, webhooks, billing, admin), DB schema, repos, provider clients",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xeko-git-1/paykit.git",
+    "directory": "packages/server"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@vibecc/paykit": "workspace:*"
+  },
+  "peerDependencies": {
+    "drizzle-orm": "^0.36.0",
+    "hono": "^4.6.0",
+    "stripe": "^18.0.0",
+    "pg": "^8.13.0"
+  },
+  "engines": { "node": ">=20" }
+}

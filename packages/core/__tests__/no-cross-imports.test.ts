@@ -1,0 +1,57 @@
+import { execSync } from "node:child_process";
+import { resolve } from "node:path";
+import { describe, expect, it } from "vitest";
+
+/**
+ * Enforce package boundary rules:
+ * - react/src/** must NEVER import from server/src/** (admin UI is API-driven via fetch only)
+ * - cli/src/** must NEVER import from server/src/** (CLI must not bundle the HTTP layer)
+ * - core/src/** must NEVER import from any other workspace package (zero deps invariant)
+ */
+
+const ROOT = resolve(__dirname, "..", "..", "..");
+
+function grepImports(searchPath: string, forbiddenPattern: string): string[] {
+  try {
+    const out = execSync(`grep -rEn "from ['\\"]${forbiddenPattern}" ${searchPath} || true`, {
+      cwd: ROOT,
+      encoding: "utf8",
+    });
+    return out.split("\n").filter((line) => line.length > 0 && !line.includes("/__tests__/"));
+  } catch {
+    return [];
+  }
+}
+
+describe("no cross-package forbidden imports", () => {
+  it("react does not import from server", () => {
+    const matches = grepImports("packages/react/src", "@vibecc/paykit-server");
+    expect(matches, matches.join("\n")).toEqual([]);
+  });
+
+  it("cli does not import from server", () => {
+    const matches = grepImports("packages/cli/src", "@vibecc/paykit-server");
+    expect(matches, matches.join("\n")).toEqual([]);
+  });
+
+  it("core does not import from server, workers, react, or cli", () => {
+    const targets = [
+      "@vibecc/paykit-server",
+      "@vibecc/paykit-workers",
+      "@vibecc/paykit-react",
+      "@vibecc/paykit-cli",
+    ];
+    for (const target of targets) {
+      const matches = grepImports("packages/core/src", target);
+      expect(matches, `${target}: ${matches.join("\n")}`).toEqual([]);
+    }
+  });
+
+  it("workers does not import from server, react, or cli", () => {
+    const targets = ["@vibecc/paykit-server", "@vibecc/paykit-react", "@vibecc/paykit-cli"];
+    for (const target of targets) {
+      const matches = grepImports("packages/workers/src", target);
+      expect(matches, `${target}: ${matches.join("\n")}`).toEqual([]);
+    }
+  });
+});

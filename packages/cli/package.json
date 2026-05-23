@@ -1,0 +1,32 @@
+{
+  "name": "@vibecc/paykit-cli",
+  "version": "0.0.0",
+  "description": "Paykit CLI: paykit migrate (advisory-locked), paykit doctor, paykit --version",
+  "type": "module",
+  "main": "./dist/bin/paykit.js",
+  "types": "./dist/bin/paykit.d.ts",
+  "bin": {
+    "paykit": "./dist/bin/paykit.js"
+  },
+  "files": ["dist", "migrations"],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xeko-git-1/paykit.git",
+    "directory": "packages/cli"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && pnpm copy:migrations",
+    "copy:migrations": "node -e \"require('node:fs').cpSync('../../migrations','./migrations',{recursive:true,force:true})\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@vibecc/paykit": "workspace:*",
+    "cac": "^6.7.14",
+    "pg": "^8.13.0"
+  },
+  "engines": { "node": ">=20" }
+}
