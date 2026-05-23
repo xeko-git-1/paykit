@@ -114,6 +114,27 @@ cli
     process.exit(result.exitCode);
   });
 
+cli.command("reconcile-now", "Print reconciler invocation guide (V1.5)").action(() => {
+  console.log("paykit reconcile-now — invocation guide");
+  console.log("");
+  console.log("The reconciler runs in your app's process so it has access to your");
+  console.log("registered adapters (Stripe, SePay, VNPay, Momo, ZaloPay).");
+  console.log("");
+  console.log("Wire it in your app:");
+  console.log("");
+  console.log("  import { reconcileV15 } from '@vibecc/paykit-workers';");
+  console.log("  import { createPaykit } from '@vibecc/paykit-server';");
+  console.log("");
+  console.log("  const paykit = await createPaykit({ ... });");
+  console.log("  const result = await reconcileV15(");
+  console.log("    { db: paykitDb, registry: paykit.registry },");
+  console.log("    { since: new Date(Date.now() - 24*60*60*1000) },");
+  console.log("  );");
+  console.log("  console.log(result.status, result.summary);");
+  console.log("");
+  console.log("Schedule via cron, BullMQ, or Cloudflare Cron — paykit is library, not daemon.");
+});
+
 cli.help();
 cli.version(loadVersion());
 cli.parse();

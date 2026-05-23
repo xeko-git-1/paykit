@@ -13,10 +13,15 @@ const ROOT = resolve(__dirname, "..", "..", "..");
 
 function grepImports(searchPath: string, forbiddenPattern: string): string[] {
   try {
-    const out = execSync(`grep -rEn "from ['\\"]${forbiddenPattern}" ${searchPath} || true`, {
-      cwd: ROOT,
-      encoding: "utf8",
-    });
+    // Match real import statements only (line starts with `import` keyword), not
+    // string literals inside console.log or comments.
+    const out = execSync(
+      `grep -rEn "^[[:space:]]*(import|export)[[:space:]].*from[[:space:]]+['\\"]${forbiddenPattern}['\\"]" ${searchPath} || true`,
+      {
+        cwd: ROOT,
+        encoding: "utf8",
+      },
+    );
     return out.split("\n").filter((line) => line.length > 0 && !line.includes("/__tests__/"));
   } catch {
     return [];

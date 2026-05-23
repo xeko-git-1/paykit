@@ -36,5 +36,11 @@ export {
   type ReconcileOptions,
   type ReconcileResult,
 } from "./reconcile/orchestrator.js";
+export {
+  reconcileV15,
+  type ReconcileV15Deps,
+  type ReconcileV15Options,
+  type ReconcileV15Result,
+} from "./reconcile/v15-orchestrator.js";
 
-export const PAYKIT_WORKERS_VERSION = "0.1.0-alpha.1";
+export const PAYKIT_WORKERS_VERSION = "0.1.5-alpha.1";
