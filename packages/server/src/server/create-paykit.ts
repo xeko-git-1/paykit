@@ -1,26 +1,30 @@
 /**
- * createPaykit — main factory wiring all deps into a coherent Hono router.
+ * createPaykit — V1.5 main factory.
  *
- * Usage:
- *   const paykit = createPaykit({ db, tenantResolver, providers, ... });
- *   app.route('/billing',  paykit.routes());        // checkout + balance + ledger
- *   app.route('/webhooks', paykit.webhookRoutes()); // sepay + stripe
- *   app.route('/admin/billing', paykit.adminRoutes()); // Phase 07
+ * Accepts EITHER:
+ *   - V1.5 array shape: providers: PaymentProviderAdapter[]
+ *   - V1 legacy shape:  providers: { stripe?: StripeConfig, sepay?: SePayConfig }
+ *
+ * Legacy shape is converted via lazy-import of @vibecc/paykit-stripe and
+ * @vibecc/paykit-sepay packages. Consumer must `pnpm add` them; missing
+ * package surfaces clear migration error.
+ *
+ * Webhook URLs become `/webhooks/{adapterId}` (V1: /webhooks/stripe stays
+ * compatible because adapter id='stripe').
  */
-import type { AdminGuard, DiscountResolver, PaykitError, TenantResolver } from "@vibecc/paykit";
+import {
+  type AdminGuard,
+  type DiscountResolver,
+  type PaykitError,
+  type PaymentProviderAdapter,
+  ProviderRegistry,
+  type TenantResolver,
+} from "@vibecc/paykit";
 import { Hono } from "hono";
 import type { DbClient } from "../db/client.js";
 import type { PaykitEventHandlers } from "../events/emitter.js";
-import {
-  type SePayClient,
-  type SePayConfig,
-  createSePayClient,
-} from "../providers/sepay/client.js";
-import {
-  type StripeClient,
-  type StripeConfig,
-  createStripeClient,
-} from "../providers/stripe/client.js";
+import type { SePayConfig } from "../providers/sepay/client.js";
+import type { StripeConfig } from "../providers/stripe/client.js";
 import {
   type AdminAuditAction,
   buildAdminLedgerAdjustRoute,
@@ -30,24 +34,26 @@ import { buildAdminWebhookEventsRoute } from "../routes/admin/webhook-events-rou
 import { buildBalanceRoute } from "../routes/billing/balance-route.js";
 import { buildLedgerRoute } from "../routes/billing/ledger-route.js";
 import { buildPaymentHistoryRoute } from "../routes/billing/payment-history-route.js";
-import { buildSepayCheckoutRoute } from "../routes/checkout/sepay-route.js";
-import { buildStripeCheckoutRoute } from "../routes/checkout/stripe-route.js";
-import { buildSepayWebhookRoute } from "../routes/webhooks/sepay-handler.js";
-import { buildStripeWebhookRoute } from "../routes/webhooks/stripe-handler.js";
+import { buildCheckoutRouter } from "../routes/checkout/checkout-router.js";
+import { buildWebhookRouter } from "../routes/webhooks/webhook-router.js";
+import { resolveProvidersToAdapters } from "./adapter-shim.js";
 
 export interface PaykitLogger {
   warn(message: string, details?: Record<string, unknown>): void;
 }
+
+export type LegacyProvidersConfig = {
+  readonly stripe?: StripeConfig;
+  readonly sepay?: SePayConfig;
+};
 
 export interface PaykitConfig {
   readonly db: DbClient;
   readonly tenantResolver: TenantResolver;
   readonly discountResolver?: DiscountResolver;
   readonly adminGuard?: AdminGuard;
-  readonly providers: {
-    readonly sepay: SePayConfig;
-    readonly stripe: StripeConfig;
-  };
+  /** V1.5: array of registered adapters. V1 legacy: object with stripe + sepay configs. */
+  readonly providers: readonly PaymentProviderAdapter[] | LegacyProvidersConfig;
   readonly events?: PaykitEventHandlers;
   readonly onAdminAction?: (action: AdminAuditAction) => void | Promise<void>;
   readonly logger?: PaykitLogger;
@@ -55,53 +61,42 @@ export interface PaykitConfig {
 
 export interface Paykit {
   readonly db: DbClient;
-  readonly clients: {
-    readonly sepay: SePayClient;
-    readonly stripe: StripeClient;
-  };
+  readonly registry: ProviderRegistry;
   routes(): Hono;
   webhookRoutes(): Hono;
   adminRoutes(): Hono;
 }
 
-export function createPaykit(config: PaykitConfig): Paykit {
-  const sepayClient = createSePayClient(config.providers.sepay);
-  const stripeClient = createStripeClient(config.providers.stripe);
+export async function createPaykit(config: PaykitConfig): Promise<Paykit> {
   const events: PaykitEventHandlers = config.events ?? {};
   const logger = config.logger;
 
+  // Resolve adapters from either shape (legacy → adapter array via lazy import)
+  const adapters = await resolveProvidersToAdapters(config.providers);
+
+  const registry = new ProviderRegistry();
+  for (const adapter of adapters) {
+    registry.register(adapter);
+  }
+
   return {
     db: config.db,
-    clients: { sepay: sepayClient, stripe: stripeClient },
+    registry,
+
     routes() {
       const app = new Hono();
-      const checkout = new Hono();
-      checkout.route(
-        "/",
-        buildSepayCheckoutRoute({
+      app.route(
+        "/checkout",
+        buildCheckoutRouter({
           db: config.db,
+          registry,
           tenantResolver: config.tenantResolver,
           ...(config.discountResolver !== undefined
             ? { discountResolver: config.discountResolver }
             : {}),
-          sepayClient,
           ...(logger !== undefined ? { logger } : {}),
         }),
       );
-      checkout.route(
-        "/",
-        buildStripeCheckoutRoute({
-          db: config.db,
-          tenantResolver: config.tenantResolver,
-          ...(config.discountResolver !== undefined
-            ? { discountResolver: config.discountResolver }
-            : {}),
-          stripeClient,
-          ...(logger !== undefined ? { logger } : {}),
-        }),
-      );
-      app.route("/checkout", checkout);
-      // Billing read routes mount at /balance, /ledger, /payments.
       app.route("/", buildBalanceRoute({ db: config.db, tenantResolver: config.tenantResolver }));
       app.route("/", buildLedgerRoute({ db: config.db, tenantResolver: config.tenantResolver }));
       app.route(
@@ -110,28 +105,16 @@ export function createPaykit(config: PaykitConfig): Paykit {
       );
       return app;
     },
+
     webhookRoutes() {
-      const app = new Hono();
-      app.route(
-        "/",
-        buildSepayWebhookRoute({
-          db: config.db,
-          sepayClient,
-          events,
-          ...(logger !== undefined ? { logger } : {}),
-        }),
-      );
-      app.route(
-        "/",
-        buildStripeWebhookRoute({
-          db: config.db,
-          stripeClient,
-          events,
-          ...(logger !== undefined ? { logger } : {}),
-        }),
-      );
-      return app;
+      return buildWebhookRouter({
+        db: config.db,
+        registry,
+        events,
+        ...(logger !== undefined ? { logger } : {}),
+      });
     },
+
     adminRoutes() {
       if (!config.adminGuard) {
         throw new Error(

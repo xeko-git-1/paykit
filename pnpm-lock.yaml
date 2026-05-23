@@ -78,6 +78,12 @@ importers:
       '@vibecc/paykit':
         specifier: workspace:*
         version: link:../core
+      '@vibecc/paykit-sepay':
+        specifier: workspace:^
+        version: link:../sepay-adapter
+      '@vibecc/paykit-stripe':
+        specifier: workspace:^
+        version: link:../stripe-adapter
       drizzle-orm:
         specifier: ^0.36.4
         version: 0.36.4(@types/pg@8.20.0)(@types/react@18.3.29)(pg@8.21.0)(react@19.2.6)

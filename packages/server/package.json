@@ -30,10 +30,17 @@
     "zod": "^4.4.3"
   },
   "peerDependencies": {
+    "@vibecc/paykit-sepay": "workspace:^",
+    "@vibecc/paykit-stripe": "workspace:^",
     "drizzle-orm": "^0.36.0",
     "hono": "^4.6.0",
     "pg": "^8.13.0",
     "stripe": "^18.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@vibecc/paykit-stripe": { "optional": true },
+    "@vibecc/paykit-sepay": { "optional": true },
+    "stripe": { "optional": true }
   },
   "engines": {
     "node": ">=20"
