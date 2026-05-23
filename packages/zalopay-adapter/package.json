@@ -1,0 +1,32 @@
+{
+  "name": "@vibecc/paykit-zalopay",
+  "version": "0.0.0",
+  "description": "Paykit adapter for ZaloPay — 2-key HMAC, mobile deeplink, 2-step refund (with pending_refunds for PROCESSING state)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xeko-git-1/paykit.git",
+    "directory": "packages/zalopay-adapter"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@vibecc/paykit": "workspace:*"
+  },
+  "engines": { "node": ">=20" }
+}
