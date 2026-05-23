@@ -62,4 +62,19 @@ export {
   SloTracker,
 } from "./observability/slo.js";
 
-export const PAYKIT_CORE_VERSION = "0.1.0-alpha.1";
+// Adapter contract (V1.5)
+export type {
+  CheckoutMode,
+  CheckoutResult,
+  CreateCheckoutInput,
+  NormalizedWebhookEvent,
+  PaymentProviderAdapter,
+  ProviderTxnRecord,
+  RefundInput,
+  RefundResult,
+  RefundState,
+  WebhookEventType,
+} from "./adapters/index.js";
+export { ProviderRegistry } from "./adapters/index.js";
+
+export const PAYKIT_CORE_VERSION = "0.1.5-alpha.1";
