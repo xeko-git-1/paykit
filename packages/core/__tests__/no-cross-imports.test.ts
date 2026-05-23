@@ -47,8 +47,10 @@ describe("no cross-package forbidden imports", () => {
     }
   });
 
-  it("workers does not import from server, react, or cli", () => {
-    const targets = ["@vibecc/paykit-server", "@vibecc/paykit-react", "@vibecc/paykit-cli"];
+  it("workers does not import from react or cli", () => {
+    // workers IS allowed to import DbClient + schema types from server (it's a peer of server,
+    // not a layer above). Forbidden: react (DOM-only) and cli (process-level).
+    const targets = ["@vibecc/paykit-react", "@vibecc/paykit-cli"];
     for (const target of targets) {
       const matches = grepImports("packages/workers/src", target);
       expect(matches, `${target}: ${matches.join("\n")}`).toEqual([]);
