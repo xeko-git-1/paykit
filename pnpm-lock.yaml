@@ -42,6 +42,12 @@ importers:
 
   packages/core: {}
 
+  packages/momo-adapter:
+    dependencies:
+      '@vibecc/paykit':
+        specifier: workspace:*
+        version: link:../core
+
   packages/react:
     dependencies:
       '@tanstack/react-query':
