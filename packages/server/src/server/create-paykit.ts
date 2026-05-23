@@ -21,6 +21,9 @@ import {
   type StripeConfig,
   createStripeClient,
 } from "../providers/stripe/client.js";
+import { buildBalanceRoute } from "../routes/billing/balance-route.js";
+import { buildLedgerRoute } from "../routes/billing/ledger-route.js";
+import { buildPaymentHistoryRoute } from "../routes/billing/payment-history-route.js";
 import { buildSepayCheckoutRoute } from "../routes/checkout/sepay-route.js";
 import { buildStripeCheckoutRoute } from "../routes/checkout/stripe-route.js";
 import { buildSepayWebhookRoute } from "../routes/webhooks/sepay-handler.js";
@@ -90,7 +93,13 @@ export function createPaykit(config: PaykitConfig): Paykit {
         }),
       );
       app.route("/checkout", checkout);
-      // Phase 06 will mount /balance, /ledger, /payments here.
+      // Billing read routes mount at /balance, /ledger, /payments.
+      app.route("/", buildBalanceRoute({ db: config.db, tenantResolver: config.tenantResolver }));
+      app.route("/", buildLedgerRoute({ db: config.db, tenantResolver: config.tenantResolver }));
+      app.route(
+        "/",
+        buildPaymentHistoryRoute({ db: config.db, tenantResolver: config.tenantResolver }),
+      );
       return app;
     },
     webhookRoutes() {
