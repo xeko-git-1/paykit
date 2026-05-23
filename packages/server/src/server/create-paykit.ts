@@ -29,6 +29,7 @@ import {
   type AdminAuditAction,
   buildAdminLedgerAdjustRoute,
 } from "../routes/admin/ledger-adjust-route.js";
+import { buildAdminRefundRoute } from "../routes/admin/refund-route.js";
 import { buildAdminTransactionsRoute } from "../routes/admin/transactions-route.js";
 import { buildAdminWebhookEventsRoute } from "../routes/admin/webhook-events-route.js";
 import { buildBalanceRoute } from "../routes/billing/balance-route.js";
@@ -130,6 +131,16 @@ export async function createPaykit(config: PaykitConfig): Promise<Paykit> {
         buildAdminLedgerAdjustRoute({
           db: config.db,
           adminGuard: guard,
+          ...(config.onAdminAction !== undefined ? { onAdminAction: config.onAdminAction } : {}),
+          ...(logger !== undefined ? { logger } : {}),
+        }),
+      );
+      app.route(
+        "/",
+        buildAdminRefundRoute({
+          db: config.db,
+          adminGuard: guard,
+          registry,
           ...(config.onAdminAction !== undefined ? { onAdminAction: config.onAdminAction } : {}),
           ...(logger !== undefined ? { logger } : {}),
         }),

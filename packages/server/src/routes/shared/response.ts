@@ -10,8 +10,9 @@ export function errorJson(
   status: ContentfulStatusCode,
   code: string,
   message: string,
+  extra?: Record<string, unknown>,
 ): Response {
-  return c.json({ error: { code, message } }, status);
+  return c.json({ error: { code, message, ...(extra ?? {}) } }, status);
 }
 
 export function dataJson<T>(c: Context, data: T, status: ContentfulStatusCode = 200): Response {
