@@ -21,6 +21,12 @@ import {
   type StripeConfig,
   createStripeClient,
 } from "../providers/stripe/client.js";
+import {
+  type AdminAuditAction,
+  buildAdminLedgerAdjustRoute,
+} from "../routes/admin/ledger-adjust-route.js";
+import { buildAdminTransactionsRoute } from "../routes/admin/transactions-route.js";
+import { buildAdminWebhookEventsRoute } from "../routes/admin/webhook-events-route.js";
 import { buildBalanceRoute } from "../routes/billing/balance-route.js";
 import { buildLedgerRoute } from "../routes/billing/ledger-route.js";
 import { buildPaymentHistoryRoute } from "../routes/billing/payment-history-route.js";
@@ -43,6 +49,7 @@ export interface PaykitConfig {
     readonly stripe: StripeConfig;
   };
   readonly events?: PaykitEventHandlers;
+  readonly onAdminAction?: (action: AdminAuditAction) => void | Promise<void>;
   readonly logger?: PaykitLogger;
 }
 
@@ -54,6 +61,7 @@ export interface Paykit {
   };
   routes(): Hono;
   webhookRoutes(): Hono;
+  adminRoutes(): Hono;
 }
 
 export function createPaykit(config: PaykitConfig): Paykit {
@@ -119,6 +127,27 @@ export function createPaykit(config: PaykitConfig): Paykit {
           db: config.db,
           stripeClient,
           events,
+          ...(logger !== undefined ? { logger } : {}),
+        }),
+      );
+      return app;
+    },
+    adminRoutes() {
+      if (!config.adminGuard) {
+        throw new Error(
+          "createPaykit.adminRoutes() requires `adminGuard` in config. Pass an AdminGuard returning {allowed, adminUserId?, role?}.",
+        );
+      }
+      const guard = config.adminGuard;
+      const app = new Hono();
+      app.route("/", buildAdminTransactionsRoute({ db: config.db, adminGuard: guard }));
+      app.route("/", buildAdminWebhookEventsRoute({ db: config.db, adminGuard: guard }));
+      app.route(
+        "/",
+        buildAdminLedgerAdjustRoute({
+          db: config.db,
+          adminGuard: guard,
+          ...(config.onAdminAction !== undefined ? { onAdminAction: config.onAdminAction } : {}),
           ...(logger !== undefined ? { logger } : {}),
         }),
       );
