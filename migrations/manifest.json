@@ -1,0 +1,14 @@
+{
+  "$schema": "./manifest.schema.json",
+  "schema": "paykit",
+  "advisoryLockKey": "paykit.migrate",
+  "migrations": [
+    {
+      "id": "001",
+      "slug": "init",
+      "up": "001_init.up.sql",
+      "down": "001_init.down.sql",
+      "description": "Initial paykit schema: payment_transactions, ledger_entries, balance_projections (multi-wallet PK), webhook_events, reconciliation_runs"
+    }
+  ]
+}
