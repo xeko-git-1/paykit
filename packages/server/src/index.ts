@@ -30,4 +30,18 @@ export * as paymentRepo from "./db/repos/payment.repo.js";
 export * as reconciliationRepo from "./db/repos/reconciliation.repo.js";
 export * as webhookEventRepo from "./db/repos/webhook-event.repo.js";
 
+// Provider clients
+export {
+  createSePayClient,
+  type SePayCheckoutResult,
+  SePayClient,
+  type SePayConfig,
+  type SePayWebhookPayload,
+  type CreateTopUpSessionInput,
+  createStripeClient,
+  type StripeCheckoutResult,
+  StripeClient,
+  type StripeConfig,
+} from "./providers/index.js";
+
 export const PAYKIT_SERVER_VERSION = "0.1.0-alpha.1";
