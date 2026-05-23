@@ -35,6 +35,10 @@ importers:
       pg:
         specifier: ^8.13.0
         version: 8.21.0
+    devDependencies:
+      '@types/pg':
+        specifier: ^8.20.0
+        version: 8.20.0
 
   packages/core: {}
 

@@ -28,5 +28,10 @@
     "cac": "^6.7.14",
     "pg": "^8.13.0"
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.20.0"
+  }
 }
