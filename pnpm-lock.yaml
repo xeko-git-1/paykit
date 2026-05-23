@@ -95,6 +95,15 @@ importers:
         specifier: ^0.31.10
         version: 0.31.10
 
+  packages/stripe-adapter:
+    dependencies:
+      '@vibecc/paykit':
+        specifier: workspace:*
+        version: link:../core
+      stripe:
+        specifier: ^18.0.0
+        version: 18.5.0(@types/node@22.19.19)
+
   packages/workers:
     dependencies:
       '@vibecc/paykit':
