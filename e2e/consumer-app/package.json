@@ -1,0 +1,23 @@
+{
+  "name": "@paykit-e2e/consumer-app",
+  "version": "0.0.0",
+  "private": true,
+  "description": "V3 e2e harness — drives V1.5/V2/V3 adapters end-to-end via createPaykit factory. Phase 04+ specs land here.",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@vibecc/paykit": "workspace:*",
+    "@vibecc/paykit-server": "workspace:*",
+    "hono": "^4.6.0"
+  },
+  "devDependencies": {
+    "vitest": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

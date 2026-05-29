@@ -10,6 +10,21 @@ export {
   type PaykitBalanceWidgetProps,
 } from "./components/balance-widget/PaykitBalanceWidget.js";
 export {
+  CancelButton,
+  type CancelButtonProps,
+  RefundModal,
+  type RefundModalProps,
+  SubscriptionPanel,
+  type SubscriptionPanelFetchClient,
+  type SubscriptionPanelProps,
+  type SubscriptionRow,
+  type SubscriptionStatusFilter,
+  SubscriptionTable,
+  type SubscriptionTableProps,
+  UpgradeModal,
+  type UpgradeModalProps,
+} from "./components/subscriptions/index.js";
+export {
   PAYKIT_I18N_KEYS,
   type PaykitI18nKey,
   defaultTranslator,
@@ -17,4 +32,4 @@ export {
 } from "./i18n/keys.js";
 export { formatMicros } from "./lib/format-money.js";
 
-export const PAYKIT_REACT_VERSION = "0.1.0-alpha.1";
+export const PAYKIT_REACT_VERSION = "0.2.0-alpha.1";

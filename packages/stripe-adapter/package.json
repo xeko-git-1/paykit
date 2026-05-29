@@ -1,6 +1,6 @@
 {
   "name": "@vibecc/paykit-stripe",
-  "version": "0.0.0",
+  "version": "0.1.5",
   "description": "Paykit adapter for Stripe — Checkout (one-time), webhook events (completed/refunded/expired), refund, reconciliation",
   "type": "module",
   "main": "./dist/index.js",
@@ -25,11 +25,12 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
-  "dependencies": {
-    "@vibecc/paykit": "workspace:*"
-  },
   "peerDependencies": {
+    "@vibecc/paykit": ">=0.1.5 <0.4.0",
     "stripe": "^18.0.0"
+  },
+  "devDependencies": {
+    "@vibecc/paykit": "workspace:*"
   },
   "engines": { "node": ">=20" }
 }

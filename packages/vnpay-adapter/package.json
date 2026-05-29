@@ -1,6 +1,6 @@
 {
   "name": "@vibecc/paykit-vnpay",
-  "version": "0.0.0",
+  "version": "0.1.5",
   "description": "Paykit adapter for VNPay — redirect-based bank/QR payments, HMAC-SHA512 IPN, full+partial refund",
   "type": "module",
   "main": "./dist/index.js",
@@ -25,7 +25,11 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
-  "dependencies": {
+  "dependencies": {},
+  "peerDependencies": {
+    "@vibecc/paykit": ">=0.1.5 <0.4.0"
+  },
+  "devDependencies": {
     "@vibecc/paykit": "workspace:*"
   },
   "engines": { "node": ">=20" }

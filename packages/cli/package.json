@@ -1,6 +1,6 @@
 {
   "name": "@vibecc/paykit-cli",
-  "version": "0.0.0",
+  "version": "0.1.5",
   "description": "Paykit CLI: paykit migrate (advisory-locked), paykit doctor, paykit --version",
   "type": "module",
   "main": "./dist/bin/paykit.js",
@@ -24,14 +24,17 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@vibecc/paykit": "workspace:*",
     "cac": "^6.7.14",
     "pg": "^8.13.0"
+  },
+  "peerDependencies": {
+    "@vibecc/paykit": ">=0.1.5 <0.4.0"
   },
   "engines": {
     "node": ">=20"
   },
   "devDependencies": {
-    "@types/pg": "^8.20.0"
+    "@types/pg": "^8.20.0",
+    "@vibecc/paykit": "workspace:*"
   }
 }

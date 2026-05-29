@@ -77,4 +77,16 @@ export type {
 } from "./adapters/index.js";
 export { ProviderRegistry } from "./adapters/index.js";
 
-export const PAYKIT_CORE_VERSION = "0.1.5-alpha.1";
+// Subscription contract (V2)
+export type {
+  CancelSubscriptionInput,
+  CreateSubscriptionInput,
+  NormalizedSubscriptionEvent,
+  SubscriptionAdapter,
+  SubscriptionEventType,
+  SubscriptionResult,
+  SubscriptionStatus,
+  UpgradeSubscriptionInput,
+} from "./subscriptions/index.js";
+
+export const PAYKIT_CORE_VERSION = "0.2.0-alpha.1";

@@ -43,4 +43,43 @@ export {
   type ReconcileV15Result,
 } from "./reconcile/v15-orchestrator.js";
 
-export const PAYKIT_WORKERS_VERSION = "0.1.5-alpha.1";
+// V2 subscription reconciler (Phase 07)
+export {
+  CANARY_KEY,
+  evaluateDriftGate,
+  reconcileSubscriptionsV2,
+  runCachePassForCustomer,
+  runLedgerPassForTenant,
+  sweepIdempotencyExpired,
+  type CacheDiscrepancy,
+  type CacheDiscrepancyType,
+  type CachePassOutcome,
+  type CachePassStats,
+  type CacheRepoPort,
+  type CacheRow,
+  type DriftGateAdapter,
+  type DriftGateOutcome,
+  type IdempotencySweepStats,
+  type LedgerDrift,
+  type LedgerPassOutcome,
+  type LedgerPassStats,
+  type PaykitLedgerPort,
+  type PaykitLedgerWindow,
+  type QuarantineEntry,
+  type ReconcileV2Deps,
+  type ReconcilerTenantTarget,
+  type StripeAdapterPort,
+  type StripeFinancePort,
+  type StripeFinanceWindow,
+  type SweepIdempotencyResult,
+  type V2ReconcilerSummary,
+} from "./reconcile-subscriptions/index.js";
+
+// V2 customer backfill (Phase 09, RT F13)
+export {
+  backfillCustomers,
+  type BackfillCustomersInput,
+  type BackfillCustomersResult,
+} from "./backfill/backfill-customers.js";
+
+export const PAYKIT_WORKERS_VERSION = "0.2.0-alpha.1";

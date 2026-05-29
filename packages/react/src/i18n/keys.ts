@@ -24,6 +24,18 @@ export const PAYKIT_I18N_KEYS = {
   "paykit.admin.tab.ledger": "Ledger",
   "paykit.admin.tab.webhooks": "Webhook events",
   "paykit.admin.tab.reconciliation": "Reconciliation",
+
+  // Subscription panel (V2 Phase 08)
+  "paykit.subscriptions.title": "Subscriptions",
+  "paykit.subscriptions.filter.all": "All",
+  "paykit.subscriptions.filter.statusLabel": "Status",
+  "paykit.subscriptions.action.cancel": "Cancel",
+  "paykit.subscriptions.action.upgrade": "Upgrade",
+  "paykit.subscriptions.action.refund": "Refund",
+  "paykit.subscriptions.cancel.atPeriodEndLabel": "At period end",
+  "paykit.subscriptions.upgrade.priceIdLabel": "New price id",
+  "paykit.subscriptions.refund.title": "Refund invoice",
+  "paykit.subscriptions.refund.confirm": "Confirm refund",
 } as const;
 
 export type PaykitI18nKey = keyof typeof PAYKIT_I18N_KEYS;

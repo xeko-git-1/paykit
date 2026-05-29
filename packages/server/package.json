@@ -1,6 +1,6 @@
 {
   "name": "@vibecc/paykit-server",
-  "version": "0.0.0",
+  "version": "0.3.0-rc.0",
   "description": "Paykit server: Hono routes (checkout, webhooks, billing, admin), DB schema, repos, provider clients",
   "type": "module",
   "main": "./dist/index.js",

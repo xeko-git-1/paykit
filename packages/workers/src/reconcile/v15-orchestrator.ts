@@ -98,7 +98,7 @@ export async function reconcileV15(
 
       try {
         const records = await adapter.fetchTransactions({ since, until });
-        const result = diffPaykitVsProvider(adapter.id as "stripe" | "sepay", snapshot, records);
+        const result = diffPaykitVsProvider(adapter.id, snapshot, records);
         perProvider[adapter.id] = result.stats;
         allDiscrepancies.push(...result.discrepancies);
       } catch (err) {
@@ -125,10 +125,7 @@ export async function reconcileV15(
       completedAt: new Date(),
       status: "completed",
       window: { since, until },
-      perProvider: {
-        stripe: perProvider.stripe ?? EMPTY_PER_PROVIDER,
-        sepay: perProvider.sepay ?? EMPTY_PER_PROVIDER,
-      },
+      perProvider,
       discrepancies: allDiscrepancies,
     };
 

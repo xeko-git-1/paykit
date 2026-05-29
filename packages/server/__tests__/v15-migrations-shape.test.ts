@@ -54,8 +54,8 @@ describe("V1.5 migration 003_pending_refunds", () => {
 });
 
 describe("V1.5 manifest", () => {
-  it("registers migrations 001, 002, 003 in order", () => {
-    expect(manifest.migrations).toHaveLength(3);
+  it("registers migrations 001, 002, 003 in order (later versions append)", () => {
+    expect(manifest.migrations.length).toBeGreaterThanOrEqual(3);
     expect(manifest.migrations[0]?.id).toBe("001");
     expect(manifest.migrations[1]?.id).toBe("002");
     expect(manifest.migrations[2]?.id).toBe("003");

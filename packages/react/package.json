@@ -1,6 +1,6 @@
 {
   "name": "@vibecc/paykit-react",
-  "version": "0.0.0",
+  "version": "0.2.1",
   "description": "Paykit React admin UI components: PaykitAdminPanel, PaykitBalanceWidget, tables. i18n via t(key) prop.",
   "type": "module",
   "main": "./dist/index.js",

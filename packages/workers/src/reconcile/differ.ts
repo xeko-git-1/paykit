@@ -25,7 +25,7 @@ export interface ProviderTxnRecord {
 }
 
 export function diffPaykitVsProvider(
-  provider: "stripe" | "sepay",
+  provider: string,
   paykitTxns: readonly PaykitTxnSnapshot[],
   providerTxns: readonly ProviderTxnRecord[],
 ): { stats: PerProviderStats; discrepancies: Discrepancy[] } {

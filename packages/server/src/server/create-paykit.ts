@@ -15,6 +15,7 @@
 import {
   type AdminGuard,
   type DiscountResolver,
+  type NormalizedWebhookEvent,
   type PaykitError,
   type PaymentProviderAdapter,
   ProviderRegistry,
@@ -58,6 +59,18 @@ export interface PaykitConfig {
   readonly events?: PaykitEventHandlers;
   readonly onAdminAction?: (action: AdminAuditAction) => void | Promise<void>;
   readonly logger?: PaykitLogger;
+  /**
+   * V3 (Val Session 2 D7) — BYOC OFAC/sanctions screening hook for crypto
+   * webhooks. Fires before credit; throwing quarantines the transaction.
+   * Default no-op. See docs/compliance-onbeforecredit.md.
+   */
+  readonly onBeforeCredit?: (evt: NormalizedWebhookEvent) => Promise<void>;
+  /** Optional metrics emitter — see paykit_credit_blocked_total etc. */
+  readonly emitMetric?: (
+    name: string,
+    labels: Record<string, string>,
+    value?: number,
+  ) => void;
 }
 
 export interface Paykit {
@@ -113,6 +126,10 @@ export async function createPaykit(config: PaykitConfig): Promise<Paykit> {
         registry,
         events,
         ...(logger !== undefined ? { logger } : {}),
+        ...(config.onBeforeCredit !== undefined
+          ? { onBeforeCredit: config.onBeforeCredit }
+          : {}),
+        ...(config.emitMetric !== undefined ? { emitMetric: config.emitMetric } : {}),
       });
     },
 

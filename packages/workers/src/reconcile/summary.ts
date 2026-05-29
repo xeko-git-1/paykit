@@ -15,7 +15,7 @@ export type DiscrepancyType =
 
 export interface Discrepancy {
   readonly type: DiscrepancyType;
-  readonly provider: "stripe" | "sepay";
+  readonly provider: string;
   readonly transactionId: string | null;
   readonly providerRef: string | null;
   readonly paykitAmountMicros: string | null;
@@ -37,10 +37,7 @@ export interface ReconciliationSummary {
   readonly completedAt: Date | null;
   readonly status: "running" | "completed" | "failed";
   readonly window: { readonly since: Date; readonly until: Date };
-  readonly perProvider: {
-    readonly stripe: PerProviderStats;
-    readonly sepay: PerProviderStats;
-  };
+  readonly perProvider: Record<string, PerProviderStats>;
   readonly discrepancies: readonly Discrepancy[];
 }
 
