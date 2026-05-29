@@ -11,10 +11,13 @@
  *   4. Lookup adapter from registry by tx.provider
  *   5. Call adapter.refund({ transactionId, amountMicros, idempotencyKey, reason, providerRef })
  *   6. Branch on result.state:
- *        - 'completed': append ledger entry (negative) + applyDelta atomically
- *        - 'pending':   write pending_refunds row (ZaloPay 2-step), no ledger
- *        - 'failed':    return 502 with provider code, NO ledger write
- *        - 'unsupported': return 501 with pointer to /admin/billing/ledger/adjust
+ *        - 'completed':       append ledger entry (negative) + applyDelta atomically
+ *        - 'pending':         write pending_refunds row (ZaloPay 2-step), no ledger
+ *        - 'pending_webhook': set tx.status='refund_pending_webhook' (Val Session 2 D8 —
+ *                             NowPayments / BitPay async refund); 202 Accepted; no ledger
+ *                             (will be written when webhook fires payment.refunded)
+ *        - 'failed':          return 502 with provider code, NO ledger write
+ *        - 'unsupported':     return 501 with pointer to /admin/billing/ledger/adjust
  *   7. Audit emit (post-tx, fire-and-forget)
  */
 import type { AdminGuard, AdminGuardResult, ProviderRegistry, RefundResult } from "@vibecc/paykit";
@@ -24,7 +27,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { DbClient } from "../../db/client.js";
 import { applyDelta } from "../../db/repos/balance.repo.js";
-import { appendLedgerEntry, listLedgerEntries } from "../../db/repos/ledger.repo.js";
+import { appendLedgerEntryIdempotent, listLedgerEntries } from "../../db/repos/ledger.repo.js";
 import { createPendingRefund } from "../../db/repos/pending-refund.repo.js";
 import { paymentTransactions } from "../../db/schema/payment-transactions.js";
 import { dataJson, errorJson } from "../shared/response.js";
@@ -180,9 +183,69 @@ export function buildAdminRefundRoute(deps: AdminRefundRouteDeps): Hono {
         message: "Refund submitted; awaiting provider confirmation. Reconciler will poll status.",
       });
     }
+    if (refundResult.state === "pending_webhook") {
+      // V3 — NowPayments / BitPay async refund (Val Session 2 D8). The
+      // provider REST call did NOT confirm completion; refund will arrive via
+      // webhook payment.refunded ≤24h later. Ledger write is deferred to the
+      // webhook path via Phase 0a's appendLedgerEntryIdempotent UNIQUE.
+      await db.transaction(async (tx) => {
+        await tx
+          .update(paymentTransactions)
+          .set({ status: "refund_pending_webhook", updatedAt: new Date() })
+          .where(eq(paymentTransactions.transactionId, txRow.transactionId));
+      });
+      if (onAdminAction) {
+        try {
+          await onAdminAction({
+            action: "refund",
+            adminUserId: adminCtx.adminUserId,
+            role: adminCtx.role,
+            payload: {
+              state: "pending_webhook",
+              transactionId: txRow.transactionId,
+              provider: txRow.provider,
+              amountMicros: refundAmountMicros.toString(),
+              currencyCode: txRow.currencyCode,
+              idempotencyKey,
+              reason: parsed.reason,
+              providerCode: refundResult.error?.providerCode,
+              providerMessage: refundResult.error?.message,
+            },
+          });
+        } catch (err) {
+          logger?.warn("onAdminAction threw — swallowed", {
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+      c.status(202);
+      return c.json({
+        data: {
+          state: "pending_webhook",
+          transactionId: txRow.transactionId,
+          message:
+            "Refund accepted by provider asynchronously; ledger entry written when webhook fires payment.refunded.",
+          providerCode: refundResult.error?.providerCode ?? null,
+        },
+      });
+    }
 
-    // 6. state === 'completed' — write ledger entry + applyDelta atomically
-    const ledgerEntry = await db.transaction(async (tx) => {
+    // 6. state === 'completed' — write ledger entry + applyDelta atomically.
+    //
+    // RT F10 race protection: use appendLedgerEntryIdempotent with
+    // (provider, source_id, entry_type='refund'). The corresponding webhook
+    // path in webhook-router.ts:182 uses the SAME UNIQUE coordinates, so when
+    // an admin sync-success refund and a provider webhook payment.refunded
+    // both fire for the same providerRef, the second writer collapses to the
+    // existing row and applyDelta runs exactly once.
+    //
+    // Trade-off (documented carry-over from Phase 0a): adapters that emit
+    // multiple refund webhooks under the same providerRef (Stripe partial
+    // refunds keyed by charge.id) already collapse on the webhook side. Until
+    // those adapters are widened to disambiguate (e.g., providerRef =
+    // refund.id), partial-refund accumulation via this admin path inherits
+    // the same per-charge-id collapse.
+    const ledgerWrite = await db.transaction(async (tx) => {
       // Re-lock the row in case of concurrent refund (red-team CC concurrency)
       await tx
         .select({ id: paymentTransactions.transactionId })
@@ -191,12 +254,15 @@ export function buildAdminRefundRoute(deps: AdminRefundRouteDeps): Hono {
         .for("update")
         .limit(1);
 
-      const entry = await appendLedgerEntry(tx, {
+      const sourceId = txRow.providerRef ?? `tx:${txRow.transactionId}`;
+      const { row: entry, inserted } = await appendLedgerEntryIdempotent(tx, {
         tenantId: txRow.tenantId,
         ownerId: txRow.ownerId,
         entryType: "refund",
         amountMicros: (-refundAmountMicros).toString(),
         currencyCode: txRow.currencyCode,
+        provider: txRow.provider,
+        sourceId,
         metadataJson: {
           source: "admin_refund",
           provider: txRow.provider,
@@ -208,18 +274,21 @@ export function buildAdminRefundRoute(deps: AdminRefundRouteDeps): Hono {
           providerRefundId: refundResult.providerRefundId,
         },
       });
-      await applyDelta(tx, txRow.tenantId, txRow.currencyCode, -refundAmountMicros);
+      if (inserted) {
+        await applyDelta(tx, txRow.tenantId, txRow.currencyCode, -refundAmountMicros);
 
-      // If full refund (cumulative + new = original), mark tx status='refunded'
-      const newCumulative = -cumulativeRefundedMicros + refundAmountMicros;
-      if (newCumulative >= originalMicros) {
-        await tx
-          .update(paymentTransactions)
-          .set({ status: "refunded", updatedAt: new Date() })
-          .where(eq(paymentTransactions.transactionId, txRow.transactionId));
+        // If full refund (cumulative + new = original), mark tx status='refunded'
+        const newCumulative = -cumulativeRefundedMicros + refundAmountMicros;
+        if (newCumulative >= originalMicros) {
+          await tx
+            .update(paymentTransactions)
+            .set({ status: "refunded", updatedAt: new Date() })
+            .where(eq(paymentTransactions.transactionId, txRow.transactionId));
+        }
       }
-      return entry;
+      return { entry, inserted };
     });
+    const ledgerEntry = ledgerWrite.entry;
 
     // 7. Fire-and-forget audit
     if (onAdminAction) {
@@ -247,7 +316,7 @@ export function buildAdminRefundRoute(deps: AdminRefundRouteDeps): Hono {
     }
 
     return dataJson(c, {
-      state: "completed",
+      state: ledgerWrite.inserted ? "completed" : "duplicate",
       entryId: ledgerEntry.entryId,
       providerRefundId: refundResult.providerRefundId,
       refundedAmountMicros: refundAmountMicros.toString(),

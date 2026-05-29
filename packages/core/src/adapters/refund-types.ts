@@ -2,13 +2,24 @@
  * Refund types — cross-provider refund contract.
  *
  * RefundState:
- * - 'completed': provider confirmed refund finalized; ledger entry written
- * - 'pending':   provider returned PROCESSING (ZaloPay 2-step); paykit writes
- *                pending_refunds row, reconciler polls until completed/failed
- * - 'failed':    provider rejected (over-window, already-refunded, etc.); no ledger write
- * - 'unsupported': adapter cannot refund (SePay one-way bank transfers); admin uses /admin/billing/ledger/adjust
+ * - 'completed':       provider confirmed refund finalized; ledger entry written
+ * - 'pending':         provider returned PROCESSING (ZaloPay 2-step); paykit writes
+ *                      pending_refunds row, reconciler polls until completed/failed
+ * - 'pending_webhook': adapter REST returned a transient/async error but the
+ *                      refund may still complete via async webhook (NowPayments
+ *                      4xx/5xx, BitPay async). Server writes
+ *                      payment_transactions.status='refund_pending_webhook' (Val
+ *                      Session 2 D8); ledger write happens when webhook arrives
+ *                      via appendLedgerEntryIdempotent UNIQUE protection.
+ * - 'failed':          provider rejected (over-window, already-refunded, etc.); no ledger write
+ * - 'unsupported':     adapter cannot refund (SePay one-way bank transfers); admin uses /admin/billing/ledger/adjust
  */
-export type RefundState = "completed" | "pending" | "failed" | "unsupported";
+export type RefundState =
+  | "completed"
+  | "pending"
+  | "pending_webhook"
+  | "failed"
+  | "unsupported";
 
 export interface RefundInput {
   readonly transactionId: string;

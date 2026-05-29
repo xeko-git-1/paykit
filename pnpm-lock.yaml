@@ -64,6 +64,12 @@ importers:
         specifier: workspace:*
         version: link:../core
 
+  packages/nowpayments-adapter:
+    devDependencies:
+      '@vibecc/paykit':
+        specifier: workspace:*
+        version: link:../core
+
   packages/react:
     dependencies:
       '@tanstack/react-query':
