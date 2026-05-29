@@ -40,6 +40,12 @@ importers:
         specifier: ^2.0.0
         version: 2.1.9(@types/node@22.19.19)(jsdom@25.0.1)
 
+  packages/bitpay-adapter:
+    devDependencies:
+      '@vibecc/paykit':
+        specifier: workspace:*
+        version: link:../core
+
   packages/cli:
     dependencies:
       cac:

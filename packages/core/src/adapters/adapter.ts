@@ -7,6 +7,13 @@
  * - createCheckout: pure (no DB writes by adapter; server creates payment_transactions row)
  * - verifyWebhookSignature: pure
  * - parseWebhookPayload: pure (returns null to skip)
+ * - resolveWebhook (optional): async authoritative resolution for providers that
+ *   do NOT sign their webhooks (e.g. BitPay). The provider's IPN is only a
+ *   trigger; the adapter calls back to the provider API to fetch the real status
+ *   ("fetch-back" verification). When present, the server uses this INSTEAD of the
+ *   sync verifyWebhookSignature + parseWebhookPayload pair. Returns null to skip
+ *   (unrecognised/unauthentic/non-crediting event). Adapters whose webhooks ARE
+ *   signed leave this undefined and keep the sync path.
  * - refund: may call provider HTTP API; idempotent via input.idempotencyKey
  * - fetchTransactions: read-only paginated provider list
  * - verifyReturnUrl (optional): pure read-only for browser-side return handler
@@ -31,6 +38,18 @@ export interface PaymentProviderAdapter {
     rawBody: string,
     headers: Record<string, string>,
   ): NormalizedWebhookEvent | null;
+
+  /**
+   * Optional async webhook resolution for unsigned-webhook providers (BitPay).
+   * When defined, the server awaits this and ignores verifyWebhookSignature +
+   * parseWebhookPayload. The adapter is responsible for authenticating the event
+   * itself (typically by re-fetching authoritative status from the provider API).
+   * Resolve to null to skip (unauthentic / non-crediting / unrecognised).
+   */
+  resolveWebhook?(
+    rawBody: string,
+    headers: Record<string, string>,
+  ): Promise<NormalizedWebhookEvent | null>;
 
   refund(input: RefundInput): Promise<RefundResult>;
 

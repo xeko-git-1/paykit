@@ -228,6 +228,10 @@ describe("refund webhook arrives → parseWebhookPayload yields payment.refunded
     const evt = adapter.parseWebhookPayload(rawBody, { [NP_SIGNATURE_HEADER]: sig });
     expect(evt?.type).toBe("payment.refunded");
     expect(evt?.providerRef).toBe("tx-uuid-1");
+    // Without refundAmountMicros the webhook-router payment.refunded case
+    // early-returns and never writes the ledger debit.
+    expect(evt?.refundAmountMicros).toBe("50000000");
+    expect(evt?.currencyCode).toBe("USD");
   });
 });
 

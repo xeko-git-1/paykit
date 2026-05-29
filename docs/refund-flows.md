@@ -21,6 +21,28 @@ V1.5 cross-provider refund endpoint: `POST /admin/billing/refund` with required 
 | `failed` | Provider rejected (over-window, already-refunded, etc.) | NO | 502 with provider code |
 | `unsupported` | SePay (no API) | NO | 501 with `alternativeAction: '/admin/billing/ledger/adjust'` |
 
+## Pending-webhook refunds (V3 — NowPayments, BitPay)
+
+Some crypto providers process refunds asynchronously: the adapter POSTs a refund request, but confirmation arrives later via webhook rather than in the HTTP response.
+
+| State | Trigger | Ledger entry written? | Admin response |
+|---|---|---|---|
+| `pending_webhook` | Adapter returns `state: 'pending_webhook'` (NP 4xx/5xx or accepted-but-not-yet-processed) | NO — deferred until webhook | 202 Accepted with `pendingId`, "Refund processing — awaiting confirmation" |
+
+**Flow:**
+
+1. Admin calls `POST /admin/billing/refund` → adapter returns `{state: 'pending_webhook'}`
+2. Server writes `payment_transactions.status = 'refund_pending_webhook'` (migration 011 enum extension) — NOT `failed`
+3. Provider webhook fires `payment.refunded` (≤24h) → `appendLedgerEntryIdempotent` writes exactly one `refund` debit entry (UNIQUE on `provider` + `sourceId` + `entry_type`); status flips to `refunded`
+4. If webhook never arrives within 24h → manual reconcile via `/admin/billing/ledger/adjust` (auto-timeout deferred to V3.1)
+
+**Race protection (RT F10):** Both the admin sync-success path and the webhook `refunded` path use `appendLedgerEntryIdempotent`. Whichever fires second gets `{inserted: false}` and skips `applyDelta` — exactly one ledger entry regardless of timing.
+
+**Providers using this state:**
+
+- **NowPayments** (`@vibecc/paykit-nowpayments`) — signed IPN (HMAC-SHA512); refund IPN resolves the ledger debit + flips status to `refunded`.
+- **BitPay** (`@vibecc/paykit-bitpay`) — adapter shipped. BitPay does NOT sign webhooks, so authentication is **fetch-back** (`GET /invoices/:id`) via the adapter's async `resolveWebhook` hook rather than a signature check. Refund requires an injected merchant ECDSA signer (`BitpayMerchantSigner`); the refund returns `pending_webhook`, but the refund-confirmation webhook shape is not yet sandbox-verified, so refunds resolve via **manual reconcile** until that wiring lands.
+
 ## Cumulative refund logic
 
 Paykit tracks total refunded per transaction = SUM of `refund` ledger entries on that tx. Refund call rejected if `requested + already_refunded > original`.

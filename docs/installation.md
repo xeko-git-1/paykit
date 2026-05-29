@@ -29,6 +29,13 @@ pnpm add @vibecc/paykit @vibecc/paykit-server @vibecc/paykit-react
 pnpm add -D @vibecc/paykit-cli
 ```
 
+**V3 crypto adapters** (install only the providers you need):
+
+```bash
+pnpm add @vibecc/paykit-nowpayments   # NowPayments — 200+ crypto assets, USD settlement, async refund via webhook
+pnpm add @vibecc/paykit-bitpay        # BitPay — fiat-priced crypto invoices, USD settlement, unsigned-webhook fetch-back verification
+```
+
 ## Step 3 — Provision the paykit Postgres database
 
 ```bash

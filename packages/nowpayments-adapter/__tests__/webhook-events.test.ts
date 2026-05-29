@@ -77,6 +77,37 @@ describe("parseNpIpn — payment.underpaid", () => {
   });
 });
 
+describe("parseNpIpn — payment.refunded", () => {
+  it("emits payment.refunded with refundAmountMicros matching the credited amount", () => {
+    const evt = parseNpIpn({
+      payment_id: 5524759814,
+      payment_status: "refunded",
+      order_id: "tx-refund-1",
+      price_amount: 50,
+      price_currency: "usd",
+      actually_paid: 50,
+      pay_currency: "usdcmatic",
+    });
+    expect(evt?.type).toBe("payment.refunded");
+    // Refund debit must reverse exactly what payment.completed credited
+    // (evt.amountMicros = actually_paid), so the tx nets to zero.
+    expect(evt?.refundAmountMicros).toBe("50000000");
+    expect(evt?.currencyCode).toBe("USD");
+  });
+
+  it("falls back to price_amount for refundAmountMicros when actually_paid absent", () => {
+    const evt = parseNpIpn({
+      payment_id: 1,
+      payment_status: "refunded",
+      order_id: "tx-refund-2",
+      price_amount: 25,
+      price_currency: "usd",
+    });
+    expect(evt?.type).toBe("payment.refunded");
+    expect(evt?.refundAmountMicros).toBe("25000000");
+  });
+});
+
 describe("parseNpIpn — in-flight skip", () => {
   it("returns null for confirming (skip — wait for finished)", () => {
     const evt = parseNpIpn({

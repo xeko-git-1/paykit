@@ -1,0 +1,331 @@
+/**
+ * BitPay PaymentProviderAdapter — V3.
+ *
+ * Endpoints:
+ *   POST /invoices          — create checkout (POS-facade token; no signing)
+ *   GET  /invoices/:id      — fetch-back authoritative status (POS token)
+ *   POST /refunds           — request refund (MERCHANT facade — ECDSA signed)
+ *   GET  /invoices?dateStart=&dateEnd=&limit=&offset=  — list (MERCHANT facade)
+ *
+ * Webhook trust model (CRITICAL): BitPay does NOT sign its IPNs. The POSTed
+ * body is an untrusted trigger only. Authentication is "fetch-back": the
+ * adapter re-fetches GET /invoices/:id from BitPay and trusts that response.
+ * This is why the adapter implements the async `resolveWebhook` hook instead of
+ * the sync verify+parse pair (verifyWebhookSignature/parseWebhookPayload are
+ * implemented fail-closed so the sync path can never credit on unverified data).
+ *
+ * Facade split: invoice create + fetch-back use the POS token (zero crypto).
+ * Refunds and reconciliation listing require BitPay's MERCHANT facade, which
+ * signs each request with ECDSA secp256k1. That signer is INJECTED via
+ * `merchantSigner` (consumer wires BitPay's official SDK / a KMS-backed signer)
+ * so this package keeps zero runtime deps and ships no unverified crypto. With
+ * no signer, refund returns state='failed' and fetchTransactions returns [].
+ */
+import {
+  type CheckoutResult,
+  type CreateCheckoutInput,
+  type NormalizedWebhookEvent,
+  type PaymentProviderAdapter,
+  type ProviderTxnRecord,
+  type RefundInput,
+  type RefundResult,
+  UnsupportedCurrencyError,
+} from "@vibecc/paykit";
+import { type BitpayInvoice, invoiceToEvent } from "./webhook-events.js";
+
+/**
+ * Merchant-facade request signer (BitPay ECDSA secp256k1). Injected so this
+ * package carries no crypto implementation it cannot verify against the live
+ * API. Implementations return BitPay's `x-identity` + `x-signature` headers for
+ * the given full URL + JSON body.
+ */
+export interface BitpayMerchantSigner {
+  sign(
+    fullUrl: string,
+    body: string,
+  ):
+    | { identity: string; signature: string }
+    | Promise<{ identity: string; signature: string }>;
+}
+
+export interface BitpayAdapterConfig {
+  readonly id?: string;
+  /** POS-facade token — invoice create + fetch-back GET /invoices/:id. */
+  readonly apiToken: string;
+  /** Merchant-facade ECDSA signer — required for refund + fetchTransactions. */
+  readonly merchantSigner?: BitpayMerchantSigner;
+  readonly notificationUrl?: string;
+  readonly redirectUrl?: string;
+  readonly environment?: "sandbox" | "production";
+  /** Optional fetch override for testing. Defaults to global fetch. */
+  readonly fetcher?: typeof fetch;
+}
+
+const PRODUCTION_BASE = "https://bitpay.com";
+const SANDBOX_BASE = "https://test.bitpay.com";
+const API_VERSION = "2.0.0";
+const FETCH_PAGE_LIMIT = 100;
+
+interface BitpayEnvelope<T> {
+  readonly data?: T;
+}
+
+function microsToUsd(amountMicros: bigint): string {
+  const cents = amountMicros / 10_000n;
+  const whole = cents / 100n;
+  const fractional = cents % 100n;
+  return `${whole}.${fractional.toString().padStart(2, "0")}`;
+}
+
+function readErrorMessage(body: string): string {
+  try {
+    const json = JSON.parse(body) as { error?: string; message?: string };
+    const msg = json.error ?? json.message;
+    if (typeof msg === "string" && msg.length > 0) return msg;
+  } catch {
+    // fall through
+  }
+  return body.length > 200 ? `${body.slice(0, 200)}…` : body;
+}
+
+/** BitPay IPN trigger → invoice id. New flow nests under data.id; legacy is flat. */
+function extractInvoiceId(trigger: unknown): string | undefined {
+  if (typeof trigger !== "object" || trigger === null) return undefined;
+  const t = trigger as { id?: unknown; data?: { id?: unknown } };
+  const nested = t.data?.id;
+  if (typeof nested === "string" && nested !== "") return nested;
+  if (typeof nested === "number") return String(nested);
+  if (typeof t.id === "string" && t.id !== "") return t.id;
+  if (typeof t.id === "number") return String(t.id);
+  return undefined;
+}
+
+export function createBitpayAdapter(config: BitpayAdapterConfig): PaymentProviderAdapter {
+  const id = config.id ?? "bitpay";
+  const env = config.environment ?? "sandbox";
+  const baseUrl = env === "production" ? PRODUCTION_BASE : SANDBOX_BASE;
+  const fetcher = config.fetcher ?? fetch;
+
+  return {
+    id,
+    displayName: "BitPay",
+    supportedCurrencies: ["USD"],
+    checkoutMode: "redirect",
+
+    async createCheckout(input: CreateCheckoutInput): Promise<CheckoutResult> {
+      if (input.currencyCode !== "USD") {
+        throw new UnsupportedCurrencyError(
+          `BitPay adapter requires USD; received '${input.currencyCode}'`,
+        );
+      }
+
+      const body = JSON.stringify({
+        token: config.apiToken,
+        price: Number(microsToUsd(input.amountMicros)),
+        currency: "USD",
+        orderId: input.transactionId,
+        itemDesc: input.orderInfo ?? `Payment ${input.transactionId}`,
+        notificationURL: input.ipnUrl ?? config.notificationUrl,
+        redirectURL: input.returnUrl ?? config.redirectUrl,
+      });
+
+      const res = await fetcher(`${baseUrl}/invoices`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Accept-Version": API_VERSION,
+        },
+        body,
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(
+          `BitPay invoice creation failed: HTTP ${res.status} ${readErrorMessage(text)}`,
+        );
+      }
+      const json = (await res.json()) as BitpayEnvelope<BitpayInvoice & { url?: string; expirationTime?: number }>;
+      const invoice = json.data ?? (json as unknown as BitpayInvoice & { url?: string; expirationTime?: number });
+
+      return {
+        webUrl: invoice.url ?? "",
+        qrUrl: invoice.url ?? "",
+        expiresAt:
+          typeof invoice.expirationTime === "number"
+            ? new Date(invoice.expirationTime)
+            : new Date(Date.now() + 15 * 60 * 1000),
+        providerSessionId: String(invoice.id ?? ""),
+      };
+    },
+
+    // BitPay webhooks are unsigned — the sync path must never trust them.
+    // Fail closed: signature invalid, payload unparseable. Real resolution
+    // happens in resolveWebhook (fetch-back). These exist only to satisfy the
+    // interface and to fail safely if ever invoked directly.
+    verifyWebhookSignature(): boolean {
+      return false;
+    },
+
+    parseWebhookPayload(): NormalizedWebhookEvent | null {
+      return null;
+    },
+
+    async resolveWebhook(
+      rawBody: string,
+      _headers: Record<string, string>,
+    ): Promise<NormalizedWebhookEvent | null> {
+      let trigger: unknown;
+      try {
+        trigger = JSON.parse(rawBody);
+      } catch {
+        return null;
+      }
+      const invoiceId = extractInvoiceId(trigger);
+      if (!invoiceId) return null;
+
+      // Fetch-back: trust BitPay's API response, not the IPN body.
+      const res = await fetcher(
+        `${baseUrl}/invoices/${encodeURIComponent(invoiceId)}?token=${encodeURIComponent(config.apiToken)}`,
+        { method: "GET", headers: { "X-Accept-Version": API_VERSION } },
+      );
+      if (!res.ok) return null; // can't authenticate the event → skip (BitPay retries)
+
+      const json = (await res.json()) as BitpayEnvelope<BitpayInvoice>;
+      const invoice = json.data ?? (json as unknown as BitpayInvoice);
+      return invoiceToEvent(invoice);
+    },
+
+    async refund(input: RefundInput): Promise<RefundResult> {
+      const invoiceId = input.providerRef ?? "";
+      if (!invoiceId) {
+        return {
+          state: "failed",
+          error: {
+            providerCode: "MISSING_INVOICE_ID",
+            message: "BitPay refund requires the invoice id via providerRef on the transaction",
+          },
+        };
+      }
+      if (!config.merchantSigner) {
+        return {
+          state: "failed",
+          error: {
+            providerCode: "NO_MERCHANT_SIGNER",
+            message:
+              "BitPay refunds require the merchant facade (ECDSA). Inject `merchantSigner` to enable refunds.",
+          },
+        };
+      }
+
+      const url = `${baseUrl}/refunds`;
+      const body = JSON.stringify({
+        token: config.apiToken,
+        invoiceId,
+        amount: Number(microsToUsd(input.amountMicros)),
+      });
+
+      let signed: { identity: string; signature: string };
+      try {
+        signed = await config.merchantSigner.sign(url, body);
+      } catch (err) {
+        return {
+          state: "failed",
+          error: {
+            providerCode: "SIGNER_ERROR",
+            message: `BitPay merchantSigner threw: ${err instanceof Error ? err.message : String(err)}`,
+          },
+        };
+      }
+
+      let res: Response;
+      try {
+        res = await fetcher(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Accept-Version": API_VERSION,
+            "x-identity": signed.identity,
+            "x-signature": signed.signature,
+          },
+          body,
+        });
+      } catch (err) {
+        return {
+          state: "pending_webhook",
+          error: {
+            providerCode: "NETWORK_ERROR",
+            message: `BitPay refund call failed; awaiting webhook. ${err instanceof Error ? err.message : String(err)}`,
+          },
+        };
+      }
+
+      if (!res.ok) {
+        const text = await res.text();
+        return {
+          state: "pending_webhook",
+          error: {
+            providerCode: `HTTP_${res.status}`,
+            message: `BitPay refund returned HTTP ${res.status}; awaiting confirmation. ${readErrorMessage(text)}`,
+          },
+        };
+      }
+
+      // BitPay creates refunds in status 'pending' and confirms asynchronously.
+      // Resolution to a ledger debit is via manual reconcile until the refund
+      // webhook shape is sandbox-verified (see package README open items).
+      return {
+        state: "pending_webhook",
+        error: {
+          providerCode: "REFUND_PENDING",
+          message: "BitPay refund accepted in 'pending'; confirm via reconcile until refund-webhook wiring lands",
+        },
+      };
+    },
+
+    async fetchTransactions(window: {
+      since: Date;
+      until?: Date;
+    }): Promise<readonly ProviderTxnRecord[]> {
+      if (!config.merchantSigner) return []; // listing needs merchant facade; skip gracefully
+
+      const dateStart = window.since.toISOString().slice(0, 10);
+      const dateEnd = (window.until ?? new Date()).toISOString().slice(0, 10);
+      const params = new URLSearchParams({
+        token: config.apiToken,
+        dateStart,
+        dateEnd,
+        limit: String(FETCH_PAGE_LIMIT),
+      });
+      const url = `${baseUrl}/invoices?${params.toString()}`;
+
+      const signed = await config.merchantSigner.sign(url, "");
+      const res = await fetcher(url, {
+        method: "GET",
+        headers: {
+          "X-Accept-Version": API_VERSION,
+          "x-identity": signed.identity,
+          "x-signature": signed.signature,
+        },
+      });
+      if (!res.ok) {
+        throw new Error(`BitPay list invoices failed: HTTP ${res.status}`);
+      }
+      const json = (await res.json()) as BitpayEnvelope<readonly BitpayInvoice[]>;
+      const data = json.data ?? [];
+
+      const records: ProviderTxnRecord[] = [];
+      for (const invoice of data) {
+        if (invoice.status !== "complete" && invoice.status !== "confirmed") continue;
+        if (!invoice.orderId) continue;
+        const n = typeof invoice.price === "number" ? invoice.price : Number(invoice.price);
+        if (!Number.isFinite(n) || n < 0) continue;
+        records.push({
+          providerRef: invoice.orderId,
+          amountMicros: BigInt(Math.round(n * 1_000_000)).toString(),
+          currencyCode:
+            typeof invoice.currency === "string" ? invoice.currency.toUpperCase() : "USD",
+        });
+      }
+      return records;
+    },
+  };
+}

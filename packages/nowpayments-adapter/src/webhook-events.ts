@@ -99,12 +99,19 @@ export function parseNpIpn(payload: NpIpnPayload): NormalizedWebhookEvent | null
   const currencyCode =
     typeof payload.price_currency === "string" ? payload.price_currency.toUpperCase() : "USD";
 
+  // payment.refunded must carry refundAmountMicros or the webhook-router refund
+  // case early-returns and the ledger debit is never written. Reverse exactly
+  // the credited amount (actually_paid, same source as payment.completed),
+  // falling back to price_amount. Full-refund only; partial-refund IPNs deferred.
+  const refundAmountMicros = type === "payment.refunded" ? (actually ?? expected) : undefined;
+
   return {
     eventId,
     type,
     providerRef: payload.order_id,
     ...(actually !== undefined ? { amountMicros: actually } : {}),
     ...(expected !== undefined ? { expectedAmountMicros: expected } : {}),
+    ...(refundAmountMicros !== undefined ? { refundAmountMicros } : {}),
     currencyCode,
     metadata: {
       paymentId: payload.payment_id,

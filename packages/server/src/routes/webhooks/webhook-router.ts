@@ -78,20 +78,36 @@ async function handleWebhook(
     headers[key] = value;
   });
 
-  // 1. Signature verify
-  if (!adapter.verifyWebhookSignature(rawBody, headers)) {
-    return errorJson(c, 401, "WEBHOOK_SIGNATURE_INVALID", "Invalid webhook signature");
-  }
-
-  // 2. Parse → NormalizedWebhookEvent | null
   let event: NormalizedWebhookEvent | null;
-  try {
-    event = adapter.parseWebhookPayload(rawBody, headers);
-  } catch (err) {
-    deps.logger?.warn(`adapter '${adapter.id}' parseWebhookPayload threw`, {
-      error: err instanceof Error ? err.message : String(err),
-    });
-    return errorJson(c, 400, "WEBHOOK_PARSE_ERROR", "Adapter could not parse payload");
+
+  if (adapter.resolveWebhook) {
+    // Unsigned-webhook providers (BitPay): the IPN is an untrusted trigger.
+    // The adapter authenticates by fetching authoritative status from the
+    // provider API. A null/throw here means unauthentic or non-crediting —
+    // ACK 200 so the provider stops retrying a request we deliberately ignore.
+    try {
+      event = await adapter.resolveWebhook(rawBody, headers);
+    } catch (err) {
+      deps.logger?.warn(`adapter '${adapter.id}' resolveWebhook threw`, {
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return errorJson(c, 502, "WEBHOOK_RESOLVE_ERROR", "Adapter could not resolve webhook");
+    }
+  } else {
+    // 1. Signature verify (signed-webhook providers)
+    if (!adapter.verifyWebhookSignature(rawBody, headers)) {
+      return errorJson(c, 401, "WEBHOOK_SIGNATURE_INVALID", "Invalid webhook signature");
+    }
+
+    // 2. Parse → NormalizedWebhookEvent | null
+    try {
+      event = adapter.parseWebhookPayload(rawBody, headers);
+    } catch (err) {
+      deps.logger?.warn(`adapter '${adapter.id}' parseWebhookPayload threw`, {
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return errorJson(c, 400, "WEBHOOK_PARSE_ERROR", "Adapter could not parse payload");
+    }
   }
   if (!event) {
     return c.json({ received: true, skipped: "adapter_returned_null" });

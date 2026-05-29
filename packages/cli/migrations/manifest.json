@@ -72,6 +72,13 @@
       "up": "010_v3_payment_status_quarantine.up.sql",
       "down": "010_v3_payment_status_quarantine.down.sql",
       "description": "v0.2.1 hotfix — extend payment_transactions.status enum with 'quarantine' for V3 amount_mismatch path (Val Session 1 D3)"
+    },
+    {
+      "id": "011",
+      "slug": "v3_payment_status_refund_pending_webhook",
+      "up": "011_v3_payment_status_refund_pending_webhook.up.sql",
+      "down": "011_v3_payment_status_refund_pending_webhook.down.sql",
+      "description": "V3 Phase 03 — extend payment_transactions.status enum with 'refund_pending_webhook' for NowPayments / BitPay async refund UX (Val Session 2 D8)"
     }
   ]
 }
