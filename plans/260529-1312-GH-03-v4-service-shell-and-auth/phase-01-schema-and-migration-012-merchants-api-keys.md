@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Schema and migration 012 (merchants + api_keys)"
-status: pending
+status: completed
 priority: P1
 effort: "3h"
 dependencies: []

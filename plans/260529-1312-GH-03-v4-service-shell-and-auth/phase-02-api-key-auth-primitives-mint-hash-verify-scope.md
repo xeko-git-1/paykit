@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "API-key auth primitives — mint/hash/verify/scope"
-status: pending
+status: completed
 priority: P1
 effort: "3h"
 dependencies: [1]

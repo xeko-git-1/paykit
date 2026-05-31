@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Service shell — standalone entrypoint + Docker"
-status: pending
+status: completed
 priority: P1
 effort: "5-6h"
 dependencies: [3]

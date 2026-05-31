@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Public /v1 API surface + OpenAPI + rate-limit"
-status: pending
+status: completed
 priority: P1
 effort: "6-8h"
 dependencies: [4]

@@ -60,11 +60,11 @@ TRƯỚC**, V4.0 sau. Plan này khóa định hướng trong khi V3 ship. `block
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Schema and migration 012 (merchants + api_keys)](./phase-01-schema-and-migration-012-merchants-api-keys.md) | Pending |
-| 2 | [API-key auth primitives — mint/hash/verify/scope](./phase-02-api-key-auth-primitives-mint-hash-verify-scope.md) | Pending |
-| 3 | [Auth middleware — API-key + JWT planes replacing TenantResolver](./phase-03-auth-middleware-api-key-jwt-planes-replacing-tenantresolver.md) | Pending |
-| 4 | [Service shell — standalone entrypoint + Docker](./phase-04-service-shell-standalone-entrypoint-docker.md) | Pending |
-| 5 | [Public /v1 API surface + OpenAPI + rate-limit](./phase-05-public-v1-api-surface-openapi-rate-limit.md) | Pending |
+| 1 | [Schema and migration 012 (merchants + api_keys)](./phase-01-schema-and-migration-012-merchants-api-keys.md) | Completed |
+| 2 | [API-key auth primitives — mint/hash/verify/scope](./phase-02-api-key-auth-primitives-mint-hash-verify-scope.md) | Completed |
+| 3 | [Auth middleware — API-key + JWT planes replacing TenantResolver](./phase-03-auth-middleware-api-key-jwt-planes-replacing-tenantresolver.md) | Completed |
+| 4 | [Service shell — standalone entrypoint + Docker](./phase-04-service-shell-standalone-entrypoint-docker.md) | Completed |
+| 5 | [Public /v1 API surface + OpenAPI + rate-limit](./phase-05-public-v1-api-surface-openapi-rate-limit.md) | Completed |
 
 ## Sequencing rationale
 
