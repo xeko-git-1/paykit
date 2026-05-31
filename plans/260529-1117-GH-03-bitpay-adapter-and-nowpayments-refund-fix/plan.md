@@ -7,6 +7,7 @@ effort: 9h
 branch: feat/v3-phase-03-nowpayments-adapter
 tags: [v3, crypto, refund, nowpayments, bitpay, bugfix, docs]
 created: 2026-05-29
+blocks: [260529-1312-GH-03-v4-service-shell-and-auth]
 ---
 
 # V3 — NowPayments refund-resolution fix + BitPay adapter + docs sync
