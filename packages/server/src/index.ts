@@ -5,6 +5,8 @@ export type { DbClient, DbOrTx, DbTransactionHandle } from "./db/client.js";
 
 // Schema
 export {
+  type ApiKey,
+  apiKeys,
   type BalanceProjection,
   balanceProjections,
   type Customer,
@@ -13,10 +15,14 @@ export {
   idempotencyRecords,
   type LedgerEntry,
   ledgerEntries,
+  type Merchant,
+  merchants,
+  type NewApiKey,
   type NewBalanceProjection,
   type NewCustomer,
   type NewIdempotencyRecord,
   type NewLedgerEntry,
+  type NewMerchant,
   type NewPaymentTransaction,
   type NewPendingRefund,
   type NewReconciliationRun,
@@ -42,7 +48,50 @@ export {
   webhookEvents,
 } from "./db/schema/index.js";
 
+// Auth primitives
+export {
+  hashApiKey,
+  mintApiKey,
+  verifyApiKey,
+  type ApiKeyLookup,
+  type MintApiKeyOpts,
+  type MintApiKeyResult,
+  type VerifyResult,
+} from "./auth/api-key.js";
+export {
+  hasScope,
+  isScopeSubset,
+  SCOPES,
+  type ApiKeyScope,
+} from "./auth/scope.js";
+
+// Auth middleware (V4 Phase 3)
+export {
+  type PaykitAuthContext,
+  type AuthPlane,
+  getAuthTenant,
+  authTenant,
+  isAuthError,
+} from "./auth/auth-context.js";
+export {
+  apiKeyAuthMiddleware,
+  type ApiKeyAuthDeps,
+} from "./auth/api-key-middleware.js";
+export {
+  jwtAuthMiddleware,
+  createJwtSecretLoader,
+  type JwtAuthDeps,
+  type JwtSecretLoader,
+  type SecretLoaderDeps,
+} from "./auth/jwt-middleware.js";
+export {
+  requireScope,
+  requirePlane,
+  type RequireScopeOpts,
+} from "./auth/require-scope.js";
+
 // Repos
+export * as apiKeyRepo from "./db/repos/api-key.repo.js";
 export * as balanceRepo from "./db/repos/balance.repo.js";
 export * as customerRepo from "./db/repos/customer.repo.js";
 export * as idempotencyRepo from "./db/repos/idempotency.repo.js";
@@ -106,5 +155,17 @@ export {
   type PaykitLogger,
   type LegacyProvidersConfig,
 } from "./server/create-paykit.js";
+
+// Response helpers
+export { errorJson, dataJson } from "./routes/shared/response.js";
+
+// Refund core (guard-agnostic shared logic for admin + merchant planes)
+export {
+  executeRefund,
+  type RefundActor,
+  type RefundCoreInput,
+  type RefundCoreDeps,
+  type RefundCoreResult,
+} from "./services/refund-core.js";
 
 export const PAYKIT_SERVER_VERSION = "0.2.0-alpha.1";

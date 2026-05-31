@@ -2,6 +2,8 @@
  * GET /ledger — paginated ledger entries scoped to current tenant.
  *
  * Query params: entryType, currencyCode, since, until, limit (max 200), offset.
+ *
+ * Tenant resolved via paykitAuth context (service mode) or TenantResolver (embedded).
  */
 import { TenantResolutionError } from "@vibecc/paykit";
 import type { TenantResolver } from "@vibecc/paykit";
@@ -9,6 +11,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { DbClient } from "../../db/client.js";
 import { listLedgerEntries } from "../../db/repos/ledger.repo.js";
+import { getAuthTenant } from "../../auth/auth-context.js";
 import { dataJson, errorJson } from "../shared/response.js";
 
 const ledgerQuerySchema = z.object({
@@ -22,7 +25,7 @@ const ledgerQuerySchema = z.object({
 
 export interface LedgerRouteDeps {
   readonly db: DbClient;
-  readonly tenantResolver: TenantResolver;
+  readonly tenantResolver?: TenantResolver;
 }
 
 export function buildLedgerRoute(deps: LedgerRouteDeps): Hono {
@@ -31,13 +34,22 @@ export function buildLedgerRoute(deps: LedgerRouteDeps): Hono {
 
   app.get("/ledger", async (c) => {
     let tenant: { tenantId: string; ownerId: string };
-    try {
-      tenant = await tenantResolver(c.req.raw);
-    } catch (err) {
-      if (err instanceof TenantResolutionError) {
-        return errorJson(c, 401, err.code, err.message);
+
+    const authTenant = getAuthTenant(c);
+    if (authTenant) {
+      tenant = authTenant;
+    } else if (tenantResolver) {
+      try {
+        tenant = await tenantResolver(c.req.raw);
+      } catch (err) {
+        if (err instanceof TenantResolutionError) {
+          return errorJson(c, 401, err.code, err.message);
+        }
+        return errorJson(c, 401, "TENANT_RESOLUTION_ERROR", "tenant required");
       }
-      return errorJson(c, 401, "TENANT_RESOLUTION_ERROR", "tenant required");
+    } else {
+      // Service mode with no auth context — fail closed
+      return errorJson(c, 401, "AUTH_REQUIRED", "authentication required");
     }
 
     let q: z.infer<typeof ledgerQuerySchema>;

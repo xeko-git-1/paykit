@@ -1,3 +1,4 @@
+export { type ApiKey, apiKeys, type NewApiKey } from "./api-keys.js";
 export {
   type BalanceProjection,
   balanceProjections,
@@ -14,6 +15,7 @@ export {
   type LedgerEntry,
   type NewLedgerEntry,
 } from "./ledger-entries.js";
+export { type Merchant, merchants, type NewMerchant } from "./merchants.js";
 export {
   type NewPaymentTransaction,
   paykitSchema,

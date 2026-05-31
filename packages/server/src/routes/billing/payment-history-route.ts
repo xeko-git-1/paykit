@@ -3,6 +3,8 @@
  *
  * Query: from, to, status, page (1-based), limit (max 100).
  * Summary covers date range only (NOT filtered by status), matching VibeCC parity.
+ *
+ * Tenant resolved via paykitAuth context (service mode) or TenantResolver (embedded).
  */
 import { TenantResolutionError } from "@vibecc/paykit";
 import type { TenantResolver } from "@vibecc/paykit";
@@ -11,6 +13,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { DbClient } from "../../db/client.js";
 import { paymentTransactions } from "../../db/schema/payment-transactions.js";
+import { getAuthTenant } from "../../auth/auth-context.js";
 import { dataJson, errorJson } from "../shared/response.js";
 
 const paymentQuerySchema = z.object({
@@ -23,7 +26,7 @@ const paymentQuerySchema = z.object({
 
 export interface PaymentHistoryRouteDeps {
   readonly db: DbClient;
-  readonly tenantResolver: TenantResolver;
+  readonly tenantResolver?: TenantResolver;
 }
 
 export function buildPaymentHistoryRoute(deps: PaymentHistoryRouteDeps): Hono {
@@ -32,13 +35,22 @@ export function buildPaymentHistoryRoute(deps: PaymentHistoryRouteDeps): Hono {
 
   app.get("/payments", async (c) => {
     let tenant: { tenantId: string; ownerId: string };
-    try {
-      tenant = await tenantResolver(c.req.raw);
-    } catch (err) {
-      if (err instanceof TenantResolutionError) {
-        return errorJson(c, 401, err.code, err.message);
+
+    const authTenant = getAuthTenant(c);
+    if (authTenant) {
+      tenant = authTenant;
+    } else if (tenantResolver) {
+      try {
+        tenant = await tenantResolver(c.req.raw);
+      } catch (err) {
+        if (err instanceof TenantResolutionError) {
+          return errorJson(c, 401, err.code, err.message);
+        }
+        return errorJson(c, 401, "TENANT_RESOLUTION_ERROR", "tenant required");
       }
-      return errorJson(c, 401, "TENANT_RESOLUTION_ERROR", "tenant required");
+    } else {
+      // Service mode with no auth context — fail closed
+      return errorJson(c, 401, "AUTH_REQUIRED", "authentication required");
     }
 
     let q: z.infer<typeof paymentQuerySchema>;

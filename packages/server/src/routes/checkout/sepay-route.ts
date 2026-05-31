@@ -21,6 +21,7 @@ import type { DbClient } from "../../db/client.js";
 import { createTransaction, findByIdempotencyKey } from "../../db/repos/payment.repo.js";
 import { paymentTransactions } from "../../db/schema/payment-transactions.js";
 import type { SePayClient } from "../../providers/sepay/client.js";
+import { getAuthTenant } from "../../auth/auth-context.js";
 import { dataJson, errorJson } from "../shared/response.js";
 import { applyDiscountInTx, resolveDiscount } from "./apply-discount.js";
 
@@ -31,7 +32,7 @@ const sepayBodySchema = z.object({
 
 export interface SepayRouteDeps {
   readonly db: DbClient;
-  readonly tenantResolver: TenantResolver;
+  readonly tenantResolver?: TenantResolver;
   readonly discountResolver?: DiscountResolver;
   readonly sepayClient: SePayClient;
   readonly logger?: { warn: (msg: string, details?: Record<string, unknown>) => void };
@@ -53,13 +54,21 @@ export function buildSepayCheckoutRoute(deps: SepayRouteDeps): Hono {
     }
 
     let tenant: { tenantId: string; ownerId: string };
-    try {
-      tenant = await tenantResolver(c.req.raw);
-    } catch (err) {
-      if (err instanceof TenantResolutionError) {
-        return errorJson(c, 401, err.code, err.message);
+
+    const authTenantResult = getAuthTenant(c);
+    if (authTenantResult) {
+      tenant = authTenantResult;
+    } else if (tenantResolver) {
+      try {
+        tenant = await tenantResolver(c.req.raw);
+      } catch (err) {
+        if (err instanceof TenantResolutionError) {
+          return errorJson(c, 401, err.code, err.message);
+        }
+        return errorJson(c, 401, "TENANT_RESOLUTION_ERROR", "tenant required");
       }
-      return errorJson(c, 401, "TENANT_RESOLUTION_ERROR", "tenant required");
+    } else {
+      return errorJson(c, 401, "AUTH_REQUIRED", "authentication required");
     }
 
     const idempotencyKey = c.req.header("Idempotency-Key") ?? undefined;

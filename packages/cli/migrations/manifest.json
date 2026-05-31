@@ -79,6 +79,13 @@
       "up": "011_v3_payment_status_refund_pending_webhook.up.sql",
       "down": "011_v3_payment_status_refund_pending_webhook.down.sql",
       "description": "V3 Phase 03 — extend payment_transactions.status enum with 'refund_pending_webhook' for NowPayments / BitPay async refund UX (Val Session 2 D8)"
+    },
+    {
+      "id": "012",
+      "slug": "merchants_and_api_keys",
+      "up": "012_merchants_and_api_keys.up.sql",
+      "down": "012_merchants_and_api_keys.down.sql",
+      "description": "V4 — merchants + api_keys tables for API-key authentication; merchant_id is root tenant entity"
     }
   ]
 }

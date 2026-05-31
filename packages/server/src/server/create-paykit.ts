@@ -51,7 +51,12 @@ export type LegacyProvidersConfig = {
 
 export interface PaykitConfig {
   readonly db: DbClient;
-  readonly tenantResolver: TenantResolver;
+  /**
+   * Tenant resolver for embedded mode. Optional in service mode where
+   * auth middleware sets paykitAuth on the context instead.
+   * Exactly one of {tenantResolver, auth middleware} must be wired.
+   */
+  readonly tenantResolver?: TenantResolver;
   readonly discountResolver?: DiscountResolver;
   readonly adminGuard?: AdminGuard;
   /** V1.5: array of registered adapters. V1 legacy: object with stripe + sepay configs. */
@@ -77,6 +82,8 @@ export interface Paykit {
   readonly db: DbClient;
   readonly registry: ProviderRegistry;
   routes(): Hono;
+  /** Service-mode routes — tenant resolved from paykitAuth (auth middleware upstream). */
+  serviceRoutes(): Hono;
   webhookRoutes(): Hono;
   adminRoutes(): Hono;
 }
@@ -104,19 +111,54 @@ export async function createPaykit(config: PaykitConfig): Promise<Paykit> {
         buildCheckoutRouter({
           db: config.db,
           registry,
-          tenantResolver: config.tenantResolver,
+          ...(config.tenantResolver !== undefined
+            ? { tenantResolver: config.tenantResolver }
+            : {}),
           ...(config.discountResolver !== undefined
             ? { discountResolver: config.discountResolver }
             : {}),
           ...(logger !== undefined ? { logger } : {}),
         }),
       );
-      app.route("/", buildBalanceRoute({ db: config.db, tenantResolver: config.tenantResolver }));
-      app.route("/", buildLedgerRoute({ db: config.db, tenantResolver: config.tenantResolver }));
+      app.route("/", buildBalanceRoute({
+        db: config.db,
+        ...(config.tenantResolver !== undefined ? { tenantResolver: config.tenantResolver } : {}),
+      }));
+      app.route("/", buildLedgerRoute({
+        db: config.db,
+        ...(config.tenantResolver !== undefined ? { tenantResolver: config.tenantResolver } : {}),
+      }));
       app.route(
         "/",
-        buildPaymentHistoryRoute({ db: config.db, tenantResolver: config.tenantResolver }),
+        buildPaymentHistoryRoute({
+          db: config.db,
+          ...(config.tenantResolver !== undefined ? { tenantResolver: config.tenantResolver } : {}),
+        }),
       );
+      return app;
+    },
+
+    /**
+     * Service-mode routes — identical to routes() but without tenantResolver.
+     * Auth middleware must be mounted upstream to set paykitAuth on context.
+     * Used by the standalone V4 service shell (Phase 4).
+     */
+    serviceRoutes() {
+      const app = new Hono();
+      app.route(
+        "/checkout",
+        buildCheckoutRouter({
+          db: config.db,
+          registry,
+          ...(config.discountResolver !== undefined
+            ? { discountResolver: config.discountResolver }
+            : {}),
+          ...(logger !== undefined ? { logger } : {}),
+        }),
+      );
+      app.route("/", buildBalanceRoute({ db: config.db }));
+      app.route("/", buildLedgerRoute({ db: config.db }));
+      app.route("/", buildPaymentHistoryRoute({ db: config.db }));
       return app;
     },
 

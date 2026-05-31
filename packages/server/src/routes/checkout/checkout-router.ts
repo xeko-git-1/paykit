@@ -33,6 +33,7 @@ import { z } from "zod";
 import type { DbClient } from "../../db/client.js";
 import { createTransaction, findByIdempotencyKey } from "../../db/repos/payment.repo.js";
 import { paymentTransactions } from "../../db/schema/payment-transactions.js";
+import { getAuthTenant } from "../../auth/auth-context.js";
 import { dataJson, errorJson } from "../shared/response.js";
 import { applyDiscountInTx, resolveDiscount } from "./apply-discount.js";
 
@@ -45,7 +46,7 @@ const checkoutBodySchema = z.object({
 export interface CheckoutRouterDeps {
   readonly db: DbClient;
   readonly registry: ProviderRegistry;
-  readonly tenantResolver: TenantResolver;
+  readonly tenantResolver?: TenantResolver;
   readonly discountResolver?: DiscountResolver;
   readonly logger?: { warn: (msg: string, details?: Record<string, unknown>) => void };
 }
@@ -76,11 +77,22 @@ async function handleCheckout(
   }
 
   let tenant: { tenantId: string; ownerId: string };
-  try {
-    tenant = await tenantResolver(c.req.raw);
-  } catch (err) {
-    if (err instanceof TenantResolutionError) return errorJson(c, 401, err.code, err.message);
-    return errorJson(c, 401, "TENANT_RESOLUTION_ERROR", "tenant required");
+
+  // Service mode: read from auth context (fail-closed — no header fallback)
+  const authTenantResult = getAuthTenant(c);
+  if (authTenantResult) {
+    tenant = authTenantResult;
+  } else if (tenantResolver) {
+    // Embedded mode: use consumer-provided resolver
+    try {
+      tenant = await tenantResolver(c.req.raw);
+    } catch (err) {
+      if (err instanceof TenantResolutionError) return errorJson(c, 401, err.code, err.message);
+      return errorJson(c, 401, "TENANT_RESOLUTION_ERROR", "tenant required");
+    }
+  } else {
+    // Service mode with no auth context — fail closed
+    return errorJson(c, 401, "AUTH_REQUIRED", "authentication required");
   }
 
   // Currency dispatch: USD→Stripe-style, VND→SePay-style

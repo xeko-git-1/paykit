@@ -6,33 +6,23 @@
  *
  * Flow:
  *   1. adminGuard middleware
- *   2. Validate body + Idempotency-Key required (red-team F3)
- *   3. SELECT FOR UPDATE the payment_transactions row
- *   4. Lookup adapter from registry by tx.provider
- *   5. Call adapter.refund({ transactionId, amountMicros, idempotencyKey, reason, providerRef })
- *   6. Branch on result.state:
- *        - 'completed':       append ledger entry (negative) + applyDelta atomically
- *        - 'pending':         write pending_refunds row (ZaloPay 2-step), no ledger
- *        - 'pending_webhook': set tx.status='refund_pending_webhook' (Val Session 2 D8 —
- *                             NowPayments / BitPay async refund); 202 Accepted; no ledger
- *                             (will be written when webhook fires payment.refunded)
- *        - 'failed':          return 502 with provider code, NO ledger write
- *        - 'unsupported':     return 501 with pointer to /admin/billing/ledger/adjust
- *   7. Audit emit (post-tx, fire-and-forget)
+ *   2. Validate body + Idempotency-Key required
+ *   3. SELECT the payment_transactions row
+ *   4. Delegate to refund-core (guard-agnostic shared logic)
+ *   5. Map core result to HTTP response
+ *   6. Audit emit (post-tx, fire-and-forget)
  */
-import type { AdminGuard, AdminGuardResult, ProviderRegistry, RefundResult } from "@vibecc/paykit";
-import { and, eq, sql } from "drizzle-orm";
+import type { AdminGuard, AdminGuardResult, ProviderRegistry } from "@vibecc/paykit";
+import { eq } from "drizzle-orm";
 import type { Context } from "hono";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { DbClient } from "../../db/client.js";
-import { applyDelta } from "../../db/repos/balance.repo.js";
-import { appendLedgerEntryIdempotent, listLedgerEntries } from "../../db/repos/ledger.repo.js";
-import { createPendingRefund } from "../../db/repos/pending-refund.repo.js";
 import { paymentTransactions } from "../../db/schema/payment-transactions.js";
 import { dataJson, errorJson } from "../shared/response.js";
 import { adminGuardMiddleware } from "./admin-guard.js";
 import type { AdminAuditAction } from "./ledger-adjust-route.js";
+import { executeRefund } from "../../services/refund-core.js";
 
 const refundBodySchema = z.object({
   transactionId: z.string().uuid(),
@@ -77,7 +67,7 @@ export function buildAdminRefundRoute(deps: AdminRefundRouteDeps): Hono {
     const refundAmountMicros = BigInt(parsed.amountMicros);
     const adminCtx = c.get("adminContext") as AdminGuardResult;
 
-    // 1. Locate transaction row + lock for refund-amount math
+    // Locate transaction row (admin route does NOT filter by tenant — trusted operator plane)
     const [txRow] = await db
       .select()
       .from(paymentTransactions)
@@ -85,115 +75,52 @@ export function buildAdminRefundRoute(deps: AdminRefundRouteDeps): Hono {
       .limit(1);
     if (!txRow) return errorJson(c, 404, "NOT_FOUND", "transaction not found");
 
-    // 2. Compute remaining refundable: original - SUM(prior refund ledger entries on this tx)
-    const priorRefunds = await listLedgerEntries(db, {
-      tenantId: txRow.tenantId,
-      entryType: "refund",
-      currencyCode: txRow.currencyCode,
-      limit: 200,
-    });
-    const priorOnThisTx = priorRefunds.filter(
-      (e) =>
-        (e.metadataJson as { originalTransactionId?: string }).originalTransactionId ===
-        txRow.transactionId,
+    // Delegate to guard-agnostic refund core
+    const actor = {
+      kind: "admin" as const,
+      adminUserId: adminCtx.adminUserId ?? "unknown",
+      role: adminCtx.role ?? "unknown",
+    };
+    const result = await executeRefund(
+      { db, registry, logger },
+      actor,
+      { txRow, amountMicros: refundAmountMicros, idempotencyKey, reason: parsed.reason },
     );
-    const cumulativeRefundedMicros = priorOnThisTx.reduce(
-      (acc, e) => acc + BigInt(e.amountMicros.split(".")[0] ?? "0"),
-      0n,
-    );
-    const originalMicros = BigInt(txRow.amountMicros.split(".")[0] ?? "0");
-    const remaining = originalMicros + cumulativeRefundedMicros; // refunds are negative entries
-    if (refundAmountMicros > remaining) {
+
+    // Map core result to HTTP response
+    if (result.state === "exceeds_remaining") {
       return errorJson(
         c,
         400,
         "REFUND_EXCEEDS_REMAINING",
-        `requested ${refundAmountMicros} > remaining ${remaining} (original ${originalMicros}, refunded ${-cumulativeRefundedMicros})`,
+        `requested ${result.requested} > remaining ${result.remaining}`,
       );
     }
-
-    // 3. Look up adapter from registry
-    const adapter = registry.get(txRow.provider);
-    if (!adapter) {
+    if (result.state === "provider_unknown") {
       return errorJson(
         c,
         500,
         "ADMIN_REFUND_PROVIDER_UNKNOWN",
-        `transaction.provider='${txRow.provider}' has no registered adapter`,
+        `transaction.provider='${result.provider}' has no registered adapter`,
       );
     }
-
-    // 4. Call adapter.refund
-    let refundResult: RefundResult;
-    try {
-      refundResult = await adapter.refund({
-        transactionId: txRow.transactionId,
-        amountMicros: refundAmountMicros,
-        idempotencyKey,
-        reason: parsed.reason,
-        ...(txRow.providerRef !== null ? { providerRef: txRow.providerRef } : {}),
+    if (result.state === "unsupported") {
+      return errorJson(c, 501, result.code, result.message, {
+        alternativeAction: "POST /admin/billing/ledger/adjust",
       });
-    } catch (err) {
-      logger?.warn("adapter.refund threw", {
-        provider: txRow.provider,
-        error: err instanceof Error ? err.message : String(err),
-      });
-      return errorJson(c, 502, "PROVIDER_REFUND_ERROR", "Provider refund call failed");
     }
-
-    // 5. Branch on RefundResult.state
-    if (refundResult.state === "unsupported") {
-      return errorJson(
-        c,
-        501,
-        "PROVIDER_REFUND_UNSUPPORTED",
-        refundResult.error?.message ?? "Provider does not support refund via API",
-        { alternativeAction: "POST /admin/billing/ledger/adjust" },
-      );
+    if (result.state === "failed") {
+      return errorJson(c, 502, result.code, result.message);
     }
-    if (refundResult.state === "failed") {
-      return errorJson(
-        c,
-        502,
-        "PROVIDER_REFUND_FAILED",
-        refundResult.error?.message ?? "Provider rejected refund",
-        { providerCode: refundResult.error?.providerCode },
-      );
-    }
-    if (refundResult.state === "pending") {
-      // Write pending_refunds row; reconciler polls until terminal
-      const pending = await db.transaction(async (tx) =>
-        createPendingRefund(tx, {
-          transactionId: txRow.transactionId,
-          provider: txRow.provider,
-          idempotencyKey,
-          amountMicros: refundAmountMicros.toString(),
-          currencyCode: txRow.currencyCode,
-          reason: parsed.reason,
-          metadataJson: {
-            adminUserId: adminCtx.adminUserId,
-            adminRole: adminCtx.role,
-            providerRefundId: refundResult.providerRefundId,
-          },
-        }),
-      );
+    if (result.state === "pending") {
       return dataJson(c, {
         state: "pending",
-        pendingId: pending.pendingId,
+        pendingId: result.pendingId,
         message: "Refund submitted; awaiting provider confirmation. Reconciler will poll status.",
       });
     }
-    if (refundResult.state === "pending_webhook") {
-      // V3 — NowPayments / BitPay async refund (Val Session 2 D8). The
-      // provider REST call did NOT confirm completion; refund will arrive via
-      // webhook payment.refunded ≤24h later. Ledger write is deferred to the
-      // webhook path via Phase 0a's appendLedgerEntryIdempotent UNIQUE.
-      await db.transaction(async (tx) => {
-        await tx
-          .update(paymentTransactions)
-          .set({ status: "refund_pending_webhook", updatedAt: new Date() })
-          .where(eq(paymentTransactions.transactionId, txRow.transactionId));
-      });
+    if (result.state === "pending_webhook") {
+      // Fire-and-forget audit for async refund
       if (onAdminAction) {
         try {
           await onAdminAction({
@@ -208,8 +135,7 @@ export function buildAdminRefundRoute(deps: AdminRefundRouteDeps): Hono {
               currencyCode: txRow.currencyCode,
               idempotencyKey,
               reason: parsed.reason,
-              providerCode: refundResult.error?.providerCode,
-              providerMessage: refundResult.error?.message,
+              providerCode: result.providerCode,
             },
           });
         } catch (err) {
@@ -222,75 +148,16 @@ export function buildAdminRefundRoute(deps: AdminRefundRouteDeps): Hono {
       return c.json({
         data: {
           state: "pending_webhook",
-          transactionId: txRow.transactionId,
+          transactionId: result.transactionId,
           message:
             "Refund accepted by provider asynchronously; ledger entry written when webhook fires payment.refunded.",
-          providerCode: refundResult.error?.providerCode ?? null,
+          providerCode: result.providerCode ?? null,
         },
       });
     }
 
-    // 6. state === 'completed' — write ledger entry + applyDelta atomically.
-    //
-    // RT F10 race protection: use appendLedgerEntryIdempotent with
-    // (provider, source_id, entry_type='refund'). The corresponding webhook
-    // path in webhook-router.ts:182 uses the SAME UNIQUE coordinates, so when
-    // an admin sync-success refund and a provider webhook payment.refunded
-    // both fire for the same providerRef, the second writer collapses to the
-    // existing row and applyDelta runs exactly once.
-    //
-    // Trade-off (documented carry-over from Phase 0a): adapters that emit
-    // multiple refund webhooks under the same providerRef (Stripe partial
-    // refunds keyed by charge.id) already collapse on the webhook side. Until
-    // those adapters are widened to disambiguate (e.g., providerRef =
-    // refund.id), partial-refund accumulation via this admin path inherits
-    // the same per-charge-id collapse.
-    const ledgerWrite = await db.transaction(async (tx) => {
-      // Re-lock the row in case of concurrent refund (red-team CC concurrency)
-      await tx
-        .select({ id: paymentTransactions.transactionId })
-        .from(paymentTransactions)
-        .where(eq(paymentTransactions.transactionId, txRow.transactionId))
-        .for("update")
-        .limit(1);
-
-      const sourceId = txRow.providerRef ?? `tx:${txRow.transactionId}`;
-      const { row: entry, inserted } = await appendLedgerEntryIdempotent(tx, {
-        tenantId: txRow.tenantId,
-        ownerId: txRow.ownerId,
-        entryType: "refund",
-        amountMicros: (-refundAmountMicros).toString(),
-        currencyCode: txRow.currencyCode,
-        provider: txRow.provider,
-        sourceId,
-        metadataJson: {
-          source: "admin_refund",
-          provider: txRow.provider,
-          originalTransactionId: txRow.transactionId,
-          reason: parsed.reason,
-          idempotencyKey,
-          adminUserId: adminCtx.adminUserId ?? null,
-          adminRole: adminCtx.role ?? null,
-          providerRefundId: refundResult.providerRefundId,
-        },
-      });
-      if (inserted) {
-        await applyDelta(tx, txRow.tenantId, txRow.currencyCode, -refundAmountMicros);
-
-        // If full refund (cumulative + new = original), mark tx status='refunded'
-        const newCumulative = -cumulativeRefundedMicros + refundAmountMicros;
-        if (newCumulative >= originalMicros) {
-          await tx
-            .update(paymentTransactions)
-            .set({ status: "refunded", updatedAt: new Date() })
-            .where(eq(paymentTransactions.transactionId, txRow.transactionId));
-        }
-      }
-      return { entry, inserted };
-    });
-    const ledgerEntry = ledgerWrite.entry;
-
-    // 7. Fire-and-forget audit
+    // state === 'completed'
+    // Fire-and-forget audit
     if (onAdminAction) {
       try {
         await onAdminAction({
@@ -298,14 +165,14 @@ export function buildAdminRefundRoute(deps: AdminRefundRouteDeps): Hono {
           adminUserId: adminCtx.adminUserId,
           role: adminCtx.role,
           payload: {
-            entryId: ledgerEntry.entryId,
+            entryId: result.entryId,
             transactionId: txRow.transactionId,
             provider: txRow.provider,
             amountMicros: refundAmountMicros.toString(),
             currencyCode: txRow.currencyCode,
             idempotencyKey,
             reason: parsed.reason,
-            providerRefundId: refundResult.providerRefundId,
+            providerRefundId: result.providerRefundId,
           },
         });
       } catch (err) {
@@ -316,16 +183,12 @@ export function buildAdminRefundRoute(deps: AdminRefundRouteDeps): Hono {
     }
 
     return dataJson(c, {
-      state: ledgerWrite.inserted ? "completed" : "duplicate",
-      entryId: ledgerEntry.entryId,
-      providerRefundId: refundResult.providerRefundId,
+      state: result.inserted ? "completed" : "duplicate",
+      entryId: result.entryId,
+      providerRefundId: result.providerRefundId,
       refundedAmountMicros: refundAmountMicros.toString(),
     });
   });
-
-  // Avoid unused import warning in some bundlers
-  void sql;
-  void and;
 
   return app;
 }
