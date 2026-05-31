@@ -1,0 +1,52 @@
+{
+  "name": "@vibecc/paykit-service",
+  "version": "0.4.0-rc.0",
+  "description": "Paykit standalone service shell — Hono + Node HTTP server, auth middleware, health checks, Docker-ready",
+  "type": "module",
+  "main": "./dist/main.js",
+  "types": "./dist/main.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/main.d.ts",
+      "import": "./dist/main.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xeko-git-1/paykit.git",
+    "directory": "packages/service"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "node dist/main.js serve",
+    "dev": "tsx src/main.ts serve"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.8",
+    "@hono/zod-openapi": "^1.4.0",
+    "@vibecc/paykit": "workspace:*",
+    "@vibecc/paykit-cli": "workspace:*",
+    "@vibecc/paykit-nowpayments": "workspace:*",
+    "@vibecc/paykit-sepay": "workspace:*",
+    "@vibecc/paykit-server": "workspace:*",
+    "@vibecc/paykit-stripe": "workspace:*",
+    "drizzle-orm": "^0.36.4",
+    "hono": "^4.6.0",
+    "pg": "^8.13.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.20.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,83 @@
+# Multi-stage build: compile TypeScript → slim Node.js 20 Alpine runtime.
+# Single image serves multiple commands: serve | migrate | doctor
+# via argv dispatch in main.ts.
+
+# --- Stage 1: Build ---
+FROM node:20-alpine AS builder
+
+RUN corepack enable && corepack prepare pnpm@10.0.0 --activate
+
+WORKDIR /app
+
+# Copy workspace root files for dependency resolution
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json tsconfig.base.json ./
+
+# Copy all package.json files for workspace install
+COPY packages/core/package.json packages/core/package.json
+COPY packages/server/package.json packages/server/package.json
+COPY packages/cli/package.json packages/cli/package.json
+COPY packages/service/package.json packages/service/package.json
+COPY packages/stripe-adapter/package.json packages/stripe-adapter/package.json
+COPY packages/sepay-adapter/package.json packages/sepay-adapter/package.json
+COPY packages/nowpayments-adapter/package.json packages/nowpayments-adapter/package.json
+
+# Install all workspace deps (frozen lockfile for reproducibility)
+RUN pnpm install --frozen-lockfile
+
+# Copy source for build
+COPY packages/core/ packages/core/
+COPY packages/server/ packages/server/
+COPY packages/cli/ packages/cli/
+COPY packages/service/ packages/service/
+COPY packages/stripe-adapter/ packages/stripe-adapter/
+COPY packages/sepay-adapter/ packages/sepay-adapter/
+COPY packages/nowpayments-adapter/ packages/nowpayments-adapter/
+COPY migrations/ migrations/
+
+# Build all packages (service depends on server, core, adapters)
+RUN pnpm -r build
+
+# --- Stage 2: Production runtime ---
+FROM node:20-alpine AS runtime
+
+RUN corepack enable && corepack prepare pnpm@10.0.0 --activate
+
+WORKDIR /app
+
+# Copy workspace root for pnpm workspace resolution
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+
+# Copy built packages (dist only) + package.json for each
+COPY --from=builder /app/packages/core/dist packages/core/dist
+COPY --from=builder /app/packages/core/package.json packages/core/package.json
+
+COPY --from=builder /app/packages/server/dist packages/server/dist
+COPY --from=builder /app/packages/server/package.json packages/server/package.json
+
+COPY --from=builder /app/packages/cli/dist packages/cli/dist
+COPY --from=builder /app/packages/cli/migrations packages/cli/migrations
+COPY --from=builder /app/packages/cli/package.json packages/cli/package.json
+
+COPY --from=builder /app/packages/stripe-adapter/dist packages/stripe-adapter/dist
+COPY --from=builder /app/packages/stripe-adapter/package.json packages/stripe-adapter/package.json
+
+COPY --from=builder /app/packages/sepay-adapter/dist packages/sepay-adapter/dist
+COPY --from=builder /app/packages/sepay-adapter/package.json packages/sepay-adapter/package.json
+
+COPY --from=builder /app/packages/nowpayments-adapter/dist packages/nowpayments-adapter/dist
+COPY --from=builder /app/packages/nowpayments-adapter/package.json packages/nowpayments-adapter/package.json
+
+COPY --from=builder /app/packages/service/dist packages/service/dist
+COPY --from=builder /app/packages/service/package.json packages/service/package.json
+
+# Install production deps only
+RUN pnpm install --prod --frozen-lockfile
+
+# Non-root user for security
+USER node
+
+EXPOSE 3000
+
+# Default command: serve. Override with: docker run <image> migrate up
+ENTRYPOINT ["node", "packages/service/dist/main.js"]
+CMD ["serve"]
