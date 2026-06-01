@@ -115,6 +115,14 @@ describe("signature-missing-header", () => {
     const { rawBody } = signed(FIXTURES[0], SECRET);
     expect(verifyNpSignature(rawBody, { [NP_SIGNATURE_HEADER]: "" }, [SECRET])).toBe(false);
   });
+
+  it("rejects a signature forged with a whitespace-only secret (fail closed)", () => {
+    // A blank/whitespace secret must never be used as an HMAC key: otherwise an
+    // attacker who knows the body can forge a signature with that known key.
+    const blank = "   ";
+    const { rawBody, sig } = signed(FIXTURES[0], blank);
+    expect(verifyNpSignature(rawBody, { [NP_SIGNATURE_HEADER]: sig }, [blank])).toBe(false);
+  });
 });
 
 describe("signature-rotation (RT F11 — V1.5 invariant)", () => {

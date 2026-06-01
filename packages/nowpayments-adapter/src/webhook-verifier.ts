@@ -56,7 +56,7 @@ export function verifyNpSignature(
 
   let matched = false;
   for (const secret of secrets) {
-    if (secret === "") continue;
+    if (!secret || secret.trim() === "") continue;
     const expected = computeNpSignature(canonical, secret);
     if (constantTimeStringEqual(expected, received)) matched = true;
   }
