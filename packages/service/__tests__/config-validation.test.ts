@@ -73,14 +73,20 @@ describe("parseServiceConfig", () => {
     expect(config.zalopay?.callbackUrl).toBe("https://app/cb");
   });
 
-  it("leaves a VN provider undefined when any required cred is missing", async () => {
+  it("fails fast when a VN provider has some but not all required creds", async () => {
     const env = {
       DATABASE_URL: "postgres://localhost/paykit",
-      // VNPay missing IPN URL → must not enable
+      // VNPay missing IPN URL → misconfigured, must not silently disable
       VNPAY_TMN_CODE: "TMN1",
       VNPAY_HASH_SECRET: "vnp-secret",
       VNPAY_RETURN_URL: "https://app/return",
     };
+    const { parseServiceConfig } = await import("../src/config.js");
+    expect(() => parseServiceConfig(env)).toThrow(/Incomplete VNPay/i);
+  });
+
+  it("leaves VN providers undefined when none of their creds are set", async () => {
+    const env = { DATABASE_URL: "postgres://localhost/paykit" };
     const { parseServiceConfig } = await import("../src/config.js");
     const config = parseServiceConfig(env);
     expect(config.vnpay).toBeUndefined();
@@ -100,6 +106,43 @@ describe("parseServiceConfig", () => {
     const { parseServiceConfig } = await import("../src/config.js");
     const config = parseServiceConfig(env);
     expect(config.vnpay?.environment).toBe("production");
+  });
+
+  it("fails fast when a provider has some but not all required creds", async () => {
+    const { parseServiceConfig } = await import("../src/config.js");
+    // Stripe secret present, webhook secret missing → misconfigured deploy.
+    const env = {
+      DATABASE_URL: "postgres://localhost/paykit",
+      STRIPE_SECRET_KEY: "sk_test_abc",
+    };
+    expect(() => parseServiceConfig(env)).toThrow(/Incomplete Stripe/i);
+  });
+
+  it("names the missing field(s) but never echoes the present secret value", async () => {
+    const { parseServiceConfig } = await import("../src/config.js");
+    const env = {
+      DATABASE_URL: "postgres://localhost/paykit",
+      SEPAY_API_KEY: "super-secret-value",
+      SEPAY_SECRET_KEY: "another-secret",
+      // missing SEPAY_ACCOUNT_NUMBER, SEPAY_ACCOUNT_NAME, SEPAY_BANK_BIN
+    };
+    try {
+      parseServiceConfig(env);
+      throw new Error("expected throw");
+    } catch (err) {
+      const msg = (err as Error).message;
+      expect(msg).toMatch(/SEPAY_ACCOUNT_NUMBER/);
+      expect(msg).not.toContain("super-secret-value");
+    }
+  });
+
+  it("does NOT throw when a provider has none of its creds (provider just disabled)", async () => {
+    const { parseServiceConfig } = await import("../src/config.js");
+    const env = { DATABASE_URL: "postgres://localhost/paykit" };
+    const config = parseServiceConfig(env);
+    expect(config.stripe).toBeUndefined();
+    expect(config.sepay).toBeUndefined();
+    expect(config.nowpayments).toBeUndefined();
   });
 });
 

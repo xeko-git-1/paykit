@@ -50,17 +50,23 @@ export function buildHealthRoutes(deps: HealthDeps): Hono {
     }
 
     try {
-      // Race the DB ping against a timeout
-      const pingResult = await Promise.race([
-        deps.pool.query("SELECT 1"),
-        new Promise<"timeout">((resolve) =>
-          setTimeout(() => resolve("timeout"), READINESS_TIMEOUT_MS),
-        ),
-      ]);
-
-      const ok = pingResult !== "timeout";
-      readinessCache = { ok, checkedAt: Date.now() };
-      return c.json({ status: ok ? "ready" : "not_ready" }, ok ? 200 : 503);
+      // Race the DB ping against a timeout. The timer is tracked so we can
+      // clear it once the ping resolves — otherwise every probe leaks a pending
+      // timer that keeps the event loop alive. .unref() ensures a still-pending
+      // timer never blocks process shutdown on its own.
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const timeout = new Promise<"timeout">((resolve) => {
+        timer = setTimeout(() => resolve("timeout"), READINESS_TIMEOUT_MS);
+        timer.unref?.();
+      });
+      try {
+        const pingResult = await Promise.race([deps.pool.query("SELECT 1"), timeout]);
+        const ok = pingResult !== "timeout";
+        readinessCache = { ok, checkedAt: Date.now() };
+        return c.json({ status: ok ? "ready" : "not_ready" }, ok ? 200 : 503);
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
     } catch {
       readinessCache = { ok: false, checkedAt: Date.now() };
       return c.json({ status: "not_ready" }, 503);

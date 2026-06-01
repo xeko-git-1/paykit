@@ -94,5 +94,13 @@ export async function buildAdaptersFromConfig(
     );
   }
 
+  if (adapters.length === 0) {
+    // Not fatal — the service can still serve health probes and the OpenAPI
+    // spec — but a deploy with no providers almost certainly forgot its creds.
+    console.warn(
+      "paykit-service: no payment providers configured — checkout/refund routes will reject all requests.",
+    );
+  }
+
   return adapters;
 }

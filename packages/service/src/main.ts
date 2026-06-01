@@ -26,12 +26,25 @@ import {
  *   /v1/*              — apiKeyAuthMiddleware enforced
  *   /v1/admin/*        — adminGuard (env-based for V4.0)
  */
+import { timingSafeEqual } from "node:crypto";
 import { Hono } from "hono";
 import type { Pool } from "pg";
 import { buildHealthRoutes } from "./health.js";
 import { buildV1Router } from "./v1/router.js";
 import { getOpenAPIDocument } from "./v1/openapi.js";
 import { serviceErrorHandler } from "./error-handler.js";
+
+/**
+ * Constant-time string compare for the admin secret. A plain !== leaks the
+ * length of the matching prefix via timing; timingSafeEqual does not. Returns
+ * false fast on length mismatch (which timingSafeEqual itself cannot accept).
+ */
+function secretsMatch(a: string, b: string): boolean {
+  const bufA = Buffer.from(a, "utf8");
+  const bufB = Buffer.from(b, "utf8");
+  if (bufA.length !== bufB.length) return false;
+  return timingSafeEqual(bufA, bufB);
+}
 
 // Re-exported for SDK generation + spec-snapshot tests (public API surface).
 export { getOpenAPIDocument } from "./v1/openapi.js";
@@ -117,7 +130,7 @@ export async function buildServiceApp(deps: BuildServiceAppDeps): Promise<Hono> 
       adminGuard: async (req: unknown) => {
         const request = req as Request;
         const secret = request.headers.get("X-Admin-Secret");
-        if (secret !== adminSecret) {
+        if (!secret || !secretsMatch(secret, adminSecret)) {
           return { allowed: false };
         }
         return { allowed: true, adminUserId: "env-admin", role: "super" };
@@ -136,10 +149,32 @@ export async function buildServiceApp(deps: BuildServiceAppDeps): Promise<Hono> 
 // serve — opens HTTP socket (not used in tests)
 // ---------------------------------------------------------------------------
 
-export async function serve(port: number, app: Hono): Promise<void> {
+export async function serve(
+  port: number,
+  app: Hono,
+): Promise<{ close: () => Promise<void> }> {
   const { serve: honoServe } = await import("@hono/node-server");
-  honoServe({ fetch: app.fetch, port });
+  const server = honoServe({ fetch: app.fetch, port });
+
+  // Surface a bind failure (e.g. EADDRINUSE) as a process exit rather than an
+  // unhandled 'error' event that crashes with no context.
+  server.on("error", (err: NodeJS.ErrnoException) => {
+    if (err.code === "EADDRINUSE") {
+      console.error(`paykit-service: port ${port} is already in use.`);
+    } else {
+      console.error("paykit-service: server error:", err.message);
+    }
+    process.exit(1);
+  });
+
   console.log(`paykit-service listening on :${port}`);
+
+  return {
+    close: () =>
+      new Promise<void>((resolve) => {
+        server.close(() => resolve());
+      }),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -162,6 +197,13 @@ export async function main(): Promise<void> {
     // Connect to Postgres
     const { Pool: PgPool } = await import("pg");
     const pool = new PgPool({ connectionString: config.databaseUrl });
+
+    // An error on an idle pooled client (e.g. DB restart) emits on the pool;
+    // without a listener Node treats it as unhandled and crashes the process.
+    // Log and let the pool recreate the connection on next use.
+    pool.on("error", (err: Error) => {
+      console.error("paykit-service: idle Postgres client error:", err.message);
+    });
 
     // Build Drizzle client WITH schema so the relational query API (db.query.*)
     // works — repos like balance.repo use db.query.balanceProjections.
@@ -193,7 +235,36 @@ export async function main(): Promise<void> {
       adminSecret: config.adminSecret,
     });
 
-    await serve(config.port, app);
+    const server = await serve(config.port, app);
+
+    // Graceful shutdown: stop accepting connections, then close the pool so
+    // in-flight queries finish and the DB sees a clean disconnect. A second
+    // signal (or a 10s timeout) forces exit so a hung request cannot wedge it.
+    let shuttingDown = false;
+    const shutdown = async (signal: string) => {
+      if (shuttingDown) {
+        console.error(`paykit-service: second ${signal} — forcing exit.`);
+        process.exit(1);
+      }
+      shuttingDown = true;
+      console.log(`paykit-service: ${signal} received — draining…`);
+      const forceTimer = setTimeout(() => {
+        console.error("paykit-service: drain timed out — forcing exit.");
+        process.exit(1);
+      }, 10_000);
+      forceTimer.unref?.();
+      try {
+        await server.close();
+        await pool.end();
+        console.log("paykit-service: shutdown complete.");
+        process.exit(0);
+      } catch (err) {
+        console.error("paykit-service: error during shutdown:", err instanceof Error ? err.message : err);
+        process.exit(1);
+      }
+    };
+    process.on("SIGTERM", () => void shutdown("SIGTERM"));
+    process.on("SIGINT", () => void shutdown("SIGINT"));
     return;
   }
 

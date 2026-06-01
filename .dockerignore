@@ -1,0 +1,16 @@
+# Docker build context is the repo root (see docker-compose.yml: context: .).
+# Keep the image small and free of host-only / sensitive files.
+node_modules
+**/node_modules
+dist
+**/dist
+.git
+.github
+.claude
+docs
+plans
+e2e
+*.md
+.env
+.env.*
+*.log

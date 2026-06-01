@@ -125,6 +125,36 @@ export interface ServiceConfig {
  * Parse and validate env vars. Throws on missing critical config.
  * Never echoes secret values in error messages.
  */
+/**
+ * Resolve a provider's credentials with all-or-nothing semantics. If none of
+ * the required vars are set, the provider is simply disabled (returns
+ * undefined). If some — but not all — are set, that is almost always a
+ * misconfigured deploy (a typo'd or forgotten secret), so we fail fast at boot
+ * with the exact missing field names rather than silently starting without the
+ * provider. Never echoes secret values.
+ */
+function resolveProviderCreds<T>(
+  providerName: string,
+  required: Record<string, string | undefined>,
+  build: () => T,
+): T | undefined {
+  const present = Object.entries(required)
+    .filter(([, v]) => v !== undefined && v !== "")
+    .map(([k]) => k);
+  if (present.length === 0) return undefined;
+
+  const missing = Object.entries(required)
+    .filter(([, v]) => v === undefined || v === "")
+    .map(([k]) => k);
+  if (missing.length > 0) {
+    throw new Error(
+      `Incomplete ${providerName} configuration: set [${present.join(", ")}] ` +
+        `but missing [${missing.join(", ")}]. Provide all required vars or none.`,
+    );
+  }
+  return build();
+}
+
 export function parseServiceConfig(env: Record<string, string | undefined>): ServiceConfig {
   const result = envSchema.safeParse(env);
   if (!result.success) {
@@ -135,85 +165,105 @@ export function parseServiceConfig(env: Record<string, string | undefined>): Ser
 
   const parsed = result.data;
 
-  const stripe =
-    parsed.STRIPE_SECRET_KEY && parsed.STRIPE_WEBHOOK_SECRET
-      ? {
-          secretKey: parsed.STRIPE_SECRET_KEY,
-          webhookSecret: parsed.STRIPE_WEBHOOK_SECRET,
-          successUrl: parsed.STRIPE_SUCCESS_URL ?? "http://localhost:3000/success",
-          cancelUrl: parsed.STRIPE_CANCEL_URL ?? "http://localhost:3000/cancel",
-        }
-      : undefined;
+  const stripe = resolveProviderCreds(
+    "Stripe",
+    {
+      STRIPE_SECRET_KEY: parsed.STRIPE_SECRET_KEY,
+      STRIPE_WEBHOOK_SECRET: parsed.STRIPE_WEBHOOK_SECRET,
+    },
+    () => ({
+      secretKey: parsed.STRIPE_SECRET_KEY!,
+      webhookSecret: parsed.STRIPE_WEBHOOK_SECRET!,
+      successUrl: parsed.STRIPE_SUCCESS_URL ?? "http://localhost:3000/success",
+      cancelUrl: parsed.STRIPE_CANCEL_URL ?? "http://localhost:3000/cancel",
+    }),
+  );
 
-  const sepay =
-    parsed.SEPAY_API_KEY &&
-    parsed.SEPAY_SECRET_KEY &&
-    parsed.SEPAY_ACCOUNT_NUMBER &&
-    parsed.SEPAY_ACCOUNT_NAME &&
-    parsed.SEPAY_BANK_BIN
-      ? {
-          apiKey: parsed.SEPAY_API_KEY,
-          secretKey: parsed.SEPAY_SECRET_KEY,
-          accountNumber: parsed.SEPAY_ACCOUNT_NUMBER,
-          accountName: parsed.SEPAY_ACCOUNT_NAME,
-          bankBin: parsed.SEPAY_BANK_BIN,
-        }
-      : undefined;
+  const sepay = resolveProviderCreds(
+    "SePay",
+    {
+      SEPAY_API_KEY: parsed.SEPAY_API_KEY,
+      SEPAY_SECRET_KEY: parsed.SEPAY_SECRET_KEY,
+      SEPAY_ACCOUNT_NUMBER: parsed.SEPAY_ACCOUNT_NUMBER,
+      SEPAY_ACCOUNT_NAME: parsed.SEPAY_ACCOUNT_NAME,
+      SEPAY_BANK_BIN: parsed.SEPAY_BANK_BIN,
+    },
+    () => ({
+      apiKey: parsed.SEPAY_API_KEY!,
+      secretKey: parsed.SEPAY_SECRET_KEY!,
+      accountNumber: parsed.SEPAY_ACCOUNT_NUMBER!,
+      accountName: parsed.SEPAY_ACCOUNT_NAME!,
+      bankBin: parsed.SEPAY_BANK_BIN!,
+    }),
+  );
 
-  const nowpayments =
-    parsed.NOWPAYMENTS_API_KEY && parsed.NOWPAYMENTS_IPN_SECRET
-      ? {
-          apiKey: parsed.NOWPAYMENTS_API_KEY,
-          ipnSecret: parsed.NOWPAYMENTS_IPN_SECRET,
-          environment: parsed.NOWPAYMENTS_ENVIRONMENT ?? ("production" as const),
-        }
-      : undefined;
+  const nowpayments = resolveProviderCreds(
+    "NOWPayments",
+    {
+      NOWPAYMENTS_API_KEY: parsed.NOWPAYMENTS_API_KEY,
+      NOWPAYMENTS_IPN_SECRET: parsed.NOWPAYMENTS_IPN_SECRET,
+    },
+    () => ({
+      apiKey: parsed.NOWPAYMENTS_API_KEY!,
+      ipnSecret: parsed.NOWPAYMENTS_IPN_SECRET!,
+      environment: parsed.NOWPAYMENTS_ENVIRONMENT ?? ("production" as const),
+    }),
+  );
 
-  const vnpay =
-    parsed.VNPAY_TMN_CODE &&
-    parsed.VNPAY_HASH_SECRET &&
-    parsed.VNPAY_RETURN_URL &&
-    parsed.VNPAY_IPN_URL
-      ? {
-          tmnCode: parsed.VNPAY_TMN_CODE,
-          hashSecret: parsed.VNPAY_HASH_SECRET,
-          returnUrl: parsed.VNPAY_RETURN_URL,
-          ipnUrl: parsed.VNPAY_IPN_URL,
-          environment: parsed.VNPAY_ENVIRONMENT ?? ("sandbox" as const),
-        }
-      : undefined;
+  const vnpay = resolveProviderCreds(
+    "VNPay",
+    {
+      VNPAY_TMN_CODE: parsed.VNPAY_TMN_CODE,
+      VNPAY_HASH_SECRET: parsed.VNPAY_HASH_SECRET,
+      VNPAY_RETURN_URL: parsed.VNPAY_RETURN_URL,
+      VNPAY_IPN_URL: parsed.VNPAY_IPN_URL,
+    },
+    () => ({
+      tmnCode: parsed.VNPAY_TMN_CODE!,
+      hashSecret: parsed.VNPAY_HASH_SECRET!,
+      returnUrl: parsed.VNPAY_RETURN_URL!,
+      ipnUrl: parsed.VNPAY_IPN_URL!,
+      environment: parsed.VNPAY_ENVIRONMENT ?? ("sandbox" as const),
+    }),
+  );
 
-  const momo =
-    parsed.MOMO_PARTNER_CODE &&
-    parsed.MOMO_ACCESS_KEY &&
-    parsed.MOMO_SECRET_KEY &&
-    parsed.MOMO_RETURN_URL &&
-    parsed.MOMO_IPN_URL
-      ? {
-          partnerCode: parsed.MOMO_PARTNER_CODE,
-          accessKey: parsed.MOMO_ACCESS_KEY,
-          secretKey: parsed.MOMO_SECRET_KEY,
-          returnUrl: parsed.MOMO_RETURN_URL,
-          ipnUrl: parsed.MOMO_IPN_URL,
-          environment: parsed.MOMO_ENVIRONMENT ?? ("sandbox" as const),
-        }
-      : undefined;
+  const momo = resolveProviderCreds(
+    "Momo",
+    {
+      MOMO_PARTNER_CODE: parsed.MOMO_PARTNER_CODE,
+      MOMO_ACCESS_KEY: parsed.MOMO_ACCESS_KEY,
+      MOMO_SECRET_KEY: parsed.MOMO_SECRET_KEY,
+      MOMO_RETURN_URL: parsed.MOMO_RETURN_URL,
+      MOMO_IPN_URL: parsed.MOMO_IPN_URL,
+    },
+    () => ({
+      partnerCode: parsed.MOMO_PARTNER_CODE!,
+      accessKey: parsed.MOMO_ACCESS_KEY!,
+      secretKey: parsed.MOMO_SECRET_KEY!,
+      returnUrl: parsed.MOMO_RETURN_URL!,
+      ipnUrl: parsed.MOMO_IPN_URL!,
+      environment: parsed.MOMO_ENVIRONMENT ?? ("sandbox" as const),
+    }),
+  );
 
-  const zalopay =
-    parsed.ZALOPAY_APP_ID &&
-    parsed.ZALOPAY_KEY1 &&
-    parsed.ZALOPAY_KEY2 &&
-    parsed.ZALOPAY_RETURN_URL &&
-    parsed.ZALOPAY_CALLBACK_URL
-      ? {
-          appId: parsed.ZALOPAY_APP_ID,
-          key1: parsed.ZALOPAY_KEY1,
-          key2: parsed.ZALOPAY_KEY2,
-          returnUrl: parsed.ZALOPAY_RETURN_URL,
-          callbackUrl: parsed.ZALOPAY_CALLBACK_URL,
-          environment: parsed.ZALOPAY_ENVIRONMENT ?? ("sandbox" as const),
-        }
-      : undefined;
+  const zalopay = resolveProviderCreds(
+    "ZaloPay",
+    {
+      ZALOPAY_APP_ID: parsed.ZALOPAY_APP_ID,
+      ZALOPAY_KEY1: parsed.ZALOPAY_KEY1,
+      ZALOPAY_KEY2: parsed.ZALOPAY_KEY2,
+      ZALOPAY_RETURN_URL: parsed.ZALOPAY_RETURN_URL,
+      ZALOPAY_CALLBACK_URL: parsed.ZALOPAY_CALLBACK_URL,
+    },
+    () => ({
+      appId: parsed.ZALOPAY_APP_ID!,
+      key1: parsed.ZALOPAY_KEY1!,
+      key2: parsed.ZALOPAY_KEY2!,
+      returnUrl: parsed.ZALOPAY_RETURN_URL!,
+      callbackUrl: parsed.ZALOPAY_CALLBACK_URL!,
+      environment: parsed.ZALOPAY_ENVIRONMENT ?? ("sandbox" as const),
+    }),
+  );
 
   return {
     databaseUrl: parsed.DATABASE_URL,
