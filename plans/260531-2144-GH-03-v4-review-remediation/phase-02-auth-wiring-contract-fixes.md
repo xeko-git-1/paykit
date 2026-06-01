@@ -9,6 +9,15 @@ dependencies: []
 
 # Phase 2: Auth wiring + contract fixes
 
+> **⚠️ BLOCKER trước khi register migration (code-review 2026-06-01):** Có 4 file untracked
+> `migrations/013_api_keys_created_by.{up,down}.sql` + bản mirror `packages/cli/migrations/013_*`
+> thuộc phase này (thêm cột `api_keys.created_by` cho mint-attribution). NHƯNG id `013` ĐÃ bị
+> chiếm bởi migration `013_idempotency_key_tenant_scoped` (đã commit `c676315`, đã đăng ký
+> manifest). **MUST renumber `013_api_keys_created_by` → `014_` TRƯỚC khi append vào manifest.json**
+> (cả root + cli mirror). Nếu không: runner ghi `013` vào `schema_migrations` rồi **silently skip**
+> DDL `created_by` → thiếu cột trên payment DB. Hai file `013_api_keys_created_by` hiện CHƯA có
+> trong manifest nào (orphaned, an toàn cho tới khi register).
+
 > **User chốt (2026-05-31):** mint bootstrap = **CLI seed** (KHÔNG wire JWT plane ở V4.0; dashboard/JWT defer V4.4). → endpoint HTTP `/v1/api-keys` (jwt-only) là **dead-by-design có document**, không phải dead âm thầm.
 
 ## Overview
