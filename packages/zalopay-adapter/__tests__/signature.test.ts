@@ -99,3 +99,22 @@ describe("verifyCallbackMac", () => {
     expect(verifyCallbackMac(tampered, ["k2_v1"], mac)).toBe(false);
   });
 });
+
+describe("ZaloPay — empty-secret forgery prevention", () => {
+  const data = '{"app_trans_id":"260523_abc","amount":100000}';
+
+  it("rejects mac computed with empty key2 (forgery vector)", () => {
+    const forgedMac = signWithKey2(data, "");
+    expect(verifyCallbackMac(data, [""], forgedMac)).toBe(false);
+  });
+
+  it("rejects when all key2s are empty or whitespace-only", () => {
+    const forgedMac = signWithKey2(data, "");
+    expect(verifyCallbackMac(data, ["", "  ", "\t"], forgedMac)).toBe(false);
+  });
+
+  it("still verifies with valid key2 alongside empty ones", () => {
+    const validMac = signWithKey2(data, "k2_real");
+    expect(verifyCallbackMac(data, ["", "k2_real", ""], validMac)).toBe(true);
+  });
+});

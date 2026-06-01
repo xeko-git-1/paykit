@@ -92,3 +92,25 @@ describe("Momo sign + verifyIpnSignature", () => {
     expect(signature).toMatch(/^[0-9a-f]{64}$/);
   });
 });
+
+describe("Momo — empty-secret forgery prevention", () => {
+  const params = { partnerCode: "MOMOTEST", orderId: "tx-1", amount: "100000", resultCode: "0" };
+
+  it("rejects signature computed with empty secret (forgery vector)", () => {
+    const canonical = buildIpnCanonical(params);
+    const forgedSig = sign(canonical, "");
+    expect(verifyIpnSignature(params, [""], forgedSig)).toBe(false);
+  });
+
+  it("rejects when all secrets are empty or whitespace-only", () => {
+    const canonical = buildIpnCanonical(params);
+    const forgedSig = sign(canonical, "");
+    expect(verifyIpnSignature(params, ["", "  "], forgedSig)).toBe(false);
+  });
+
+  it("still verifies with valid secret alongside empty ones", () => {
+    const canonical = buildIpnCanonical(params);
+    const validSig = sign(canonical, SECRET);
+    expect(verifyIpnSignature(params, ["", SECRET, ""], validSig)).toBe(true);
+  });
+});

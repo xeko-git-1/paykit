@@ -79,7 +79,11 @@ export function verifyIpnSignature(
   if (!receivedSignature || receivedSignature === "") return false;
   const canonical = buildIpnCanonical(params);
   let matched = false;
+  let validSecretChecked = false;
   for (const secret of secrets) {
+    // An empty HMAC key yields an attacker-computable digest — skip to prevent forgery.
+    if (!secret || secret.trim() === "") continue;
+    validSecretChecked = true;
     const expected = sign(canonical, secret);
     if (expected.length !== receivedSignature.length) continue;
     let diff = 0;
@@ -88,5 +92,7 @@ export function verifyIpnSignature(
     }
     if (diff === 0) matched = true;
   }
+  // Fail closed: if no valid secret was available, verification must not succeed.
+  if (!validSecretChecked) return false;
   return matched;
 }

@@ -72,7 +72,11 @@ export class SePayClient {
   verifyWebhookSignature(payload: string, signature: string): boolean {
     if (signature === "") return false;
     let matched = false;
+    let validSecretChecked = false;
     for (const secret of this.secrets) {
+      // An empty HMAC key yields an attacker-computable digest — skip to prevent forgery.
+      if (!secret || secret.trim() === "") continue;
+      validSecretChecked = true;
       const expected = createHmac("sha256", secret).update(payload).digest("hex");
       if (expected.length !== signature.length) continue;
       let diff = 0;
@@ -81,6 +85,8 @@ export class SePayClient {
       }
       if (diff === 0) matched = true;
     }
+    // Fail closed: if no valid secret was available, verification must not succeed.
+    if (!validSecretChecked) return false;
     return matched;
   }
 

@@ -96,3 +96,22 @@ describe("signParams + verifySignature", () => {
     expect(verifySignature(params, [HASH_SECRET], wrongLength)).toBe(false);
   });
 });
+
+describe("VNPay — empty-secret forgery prevention", () => {
+  const params = { vnp_Amount: "10000000", vnp_TxnRef: "tx-1" };
+
+  it("rejects signature computed with empty secret (forgery vector)", () => {
+    const forgedSig = signParams(params, "");
+    expect(verifySignature(params, [""], forgedSig)).toBe(false);
+  });
+
+  it("rejects when all secrets are empty or whitespace-only", () => {
+    const forgedSig = signParams(params, "");
+    expect(verifySignature(params, ["", "  ", "\t"], forgedSig)).toBe(false);
+  });
+
+  it("still verifies with valid secret alongside empty ones", () => {
+    const validSig = signParams(params, HASH_SECRET);
+    expect(verifySignature(params, ["", HASH_SECRET, ""], validSig)).toBe(true);
+  });
+});

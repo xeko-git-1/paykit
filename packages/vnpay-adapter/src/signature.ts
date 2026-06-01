@@ -27,7 +27,11 @@ export function verifySignature(
   const canonical = buildCanonicalString(params);
   const lowerReceived = receivedSignature.toLowerCase();
   let matched = false;
+  let validSecretChecked = false;
   for (const secret of hashSecrets) {
+    // An empty HMAC key yields an attacker-computable digest — skip to prevent forgery.
+    if (!secret || secret.trim() === "") continue;
+    validSecretChecked = true;
     const expected = createHmac("sha512", secret).update(canonical, "utf-8").digest("hex");
     if (expected.length !== lowerReceived.length) continue;
     let diff = 0;
@@ -36,5 +40,7 @@ export function verifySignature(
     }
     if (diff === 0) matched = true;
   }
+  // Fail closed: if no valid secret was available, verification must not succeed.
+  if (!validSecretChecked) return false;
   return matched;
 }

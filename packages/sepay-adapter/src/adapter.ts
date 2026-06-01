@@ -44,7 +44,11 @@ const QR_EXPIRY_MS = 30 * 60 * 1000;
 function verifyHmac(payload: string, signature: string, secrets: readonly string[]): boolean {
   if (signature === "") return false;
   let matched = false;
+  let validSecretChecked = false;
   for (const secret of secrets) {
+    // An empty HMAC key yields an attacker-computable digest — skip to prevent forgery.
+    if (!secret || secret.trim() === "") continue;
+    validSecretChecked = true;
     const expected = createHmac("sha256", secret).update(payload).digest("hex");
     if (expected.length !== signature.length) continue;
     let diff = 0;
@@ -53,6 +57,8 @@ function verifyHmac(payload: string, signature: string, secrets: readonly string
     }
     if (diff === 0) matched = true;
   }
+  // Fail closed: if no valid secret was available, verification must not succeed.
+  if (!validSecretChecked) return false;
   return matched;
 }
 

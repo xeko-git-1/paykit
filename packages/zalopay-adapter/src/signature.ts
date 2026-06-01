@@ -59,7 +59,11 @@ export function verifyCallbackMac(
 ): boolean {
   if (!receivedMac || receivedMac === "") return false;
   let matched = false;
+  let validKeyChecked = false;
   for (const k of key2s) {
+    // An empty HMAC key yields an attacker-computable digest — skip to prevent forgery.
+    if (!k || k.trim() === "") continue;
+    validKeyChecked = true;
     const expected = signWithKey2(rawDataField, k);
     if (expected.length !== receivedMac.length) continue;
     let diff = 0;
@@ -68,6 +72,8 @@ export function verifyCallbackMac(
     }
     if (diff === 0) matched = true;
   }
+  // Fail closed: if no valid key was available, verification must not succeed.
+  if (!validKeyChecked) return false;
   return matched;
 }
 

@@ -48,3 +48,25 @@ describe("SePayClient.verifyWebhookSignature", () => {
     expect(client.verifyWebhookSignature(payload, wrongLengthMatch)).toBe(false);
   });
 });
+
+describe("SePayClient — empty-secret forgery prevention", () => {
+  const payload = JSON.stringify({ id: "evt-forge", transferType: "in", transferAmount: 500 });
+
+  it("rejects signature computed with empty secret", () => {
+    const client = new SePayClient({ ...cfg, secretKey: [""] });
+    const forgedSig = sign(payload, "");
+    expect(client.verifyWebhookSignature(payload, forgedSig)).toBe(false);
+  });
+
+  it("rejects when all secrets are empty or whitespace-only", () => {
+    const client = new SePayClient({ ...cfg, secretKey: ["", "  "] });
+    const forgedSig = sign(payload, "");
+    expect(client.verifyWebhookSignature(payload, forgedSig)).toBe(false);
+  });
+
+  it("still verifies with valid secret alongside empty ones", () => {
+    const client = new SePayClient({ ...cfg, secretKey: ["", SECRET_NEW, ""] });
+    const validSig = sign(payload, SECRET_NEW);
+    expect(client.verifyWebhookSignature(payload, validSig)).toBe(true);
+  });
+});

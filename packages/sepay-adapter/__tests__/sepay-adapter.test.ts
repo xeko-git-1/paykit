@@ -157,6 +157,30 @@ describe("createSepayAdapter — parseWebhookPayload", () => {
   });
 });
 
+describe("createSepayAdapter — empty-secret forgery prevention", () => {
+  it("rejects signature computed with empty secret (forgery vector)", () => {
+    const adapter = createSepayAdapter({ ...baseConfig, secretKey: [""] });
+    const payload = JSON.stringify({ id: "evt-forge", transferType: "in", transferAmount: 1000 });
+    // Attacker computes HMAC with empty key — must be rejected
+    const forgedSig = sign(payload, "");
+    expect(adapter.verifyWebhookSignature(payload, { "x-sepay-signature": forgedSig })).toBe(false);
+  });
+
+  it("rejects when all secrets are empty or whitespace-only", () => {
+    const adapter = createSepayAdapter({ ...baseConfig, secretKey: ["", "  ", "\t"] });
+    const payload = JSON.stringify({ id: "evt-forge2", transferType: "in" });
+    const forgedSig = sign(payload, "");
+    expect(adapter.verifyWebhookSignature(payload, { "x-sepay-signature": forgedSig })).toBe(false);
+  });
+
+  it("still verifies correctly when a valid secret is present alongside empty ones", () => {
+    const adapter = createSepayAdapter({ ...baseConfig, secretKey: ["", "real_secret", ""] });
+    const payload = JSON.stringify({ id: "evt-ok", transferType: "in" });
+    const validSig = sign(payload, "real_secret");
+    expect(adapter.verifyWebhookSignature(payload, { "x-sepay-signature": validSig })).toBe(true);
+  });
+});
+
 describe("createSepayAdapter — refund", () => {
   it("returns state='unsupported' with pointer to /admin/billing/ledger/adjust", async () => {
     const adapter = createSepayAdapter(baseConfig);
