@@ -37,7 +37,7 @@ describe("webhook route isolation", () => {
     }
   });
 
-  it("POST /webhooks/sepay is NOT rejected with 401 or 429", async () => {
+  it("POST /webhooks/sepay is processed (2xx), not rejected by auth/rate-limit", async () => {
     const app = await buildTestApp();
 
     // Simulate a provider IPN callback — no auth header
@@ -49,8 +49,13 @@ describe("webhook route isolation", () => {
       }),
     );
 
-    // Must NOT be 401 (auth) or 429 (rate-limit)
+    // Assert a concrete 2xx — not merely "not 401/429" — so the route is proven
+    // both reachable AND handled. The mock adapter returns a null event, so the
+    // handler ACKs with 200 received/skipped. A 500 from a wiring bug now fails.
+    expect(res.status).toBe(200);
     expect(res.status).not.toBe(401);
     expect(res.status).not.toBe(429);
+    const body = (await res.json()) as { received?: boolean };
+    expect(body.received).toBe(true);
   });
 });

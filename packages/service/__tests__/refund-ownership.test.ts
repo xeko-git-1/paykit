@@ -97,7 +97,7 @@ describe("/v1/refunds ownership enforcement", () => {
     expect(body.apiVersion).toBeDefined();
   });
 
-  it("merchant B balance is NOT debited when merchant A attempts cross-tenant refund", async () => {
+  it("merchant B balance is NOT debited and no ledger entry is written on cross-tenant refund", async () => {
     const dbState = createMockDbState();
     dbState.transactions.push(merchantBTx);
     dbState.balances.push({
@@ -108,7 +108,7 @@ describe("/v1/refunds ownership enforcement", () => {
     });
 
     const { app } = buildV1TestApp({ auth: merchantAAuth, dbState });
-    await app.request(
+    const res = await app.request(
       new Request("http://localhost/v1/refunds", {
         method: "POST",
         headers: {
@@ -123,7 +123,13 @@ describe("/v1/refunds ownership enforcement", () => {
       }),
     );
 
-    // Merchant B's balance must remain unchanged
+    // The request must be rejected at the ownership gate (404), BEFORE any
+    // refund processing. The balance assertion alone is vacuous (the mock never
+    // mutates balance), so the load-bearing check is that the refund path never
+    // ran: no ledger entry was inserted. Remove the ownership guard and this
+    // fails because executeRefund would write a refund_debit entry.
+    expect(res.status).toBe(404);
+    expect(dbState.ledgerEntries).toHaveLength(0);
     const bBalance = dbState.balances.find((b) => b.tenantId === "merchant-B");
     expect(bBalance?.currentBalanceMicros).toBe("10000000000");
   });

@@ -17,8 +17,11 @@ function createMockAdapter(id = "sepay"): PaymentProviderAdapter {
     createCheckout: async () => {
       throw new Error("mock: not implemented");
     },
-    parseWebhookPayload: async () => null,
-    verifyWebhookSignature: async () => true,
+    // Sync to match the real PaymentProviderAdapter interface. Returning a
+    // Promise here (async) would make the router treat the truthy Promise as a
+    // parsed event and fall through to db.transaction() on a null db.
+    parseWebhookPayload: () => null,
+    verifyWebhookSignature: () => true,
     refund: async () => ({ state: "unsupported" as const, reason: "mock" }),
     fetchTransactions: async () => [],
   };
