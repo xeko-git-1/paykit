@@ -27,6 +27,7 @@ import type { DbClient } from "../../db/client.js";
 import { applyDelta } from "../../db/repos/balance.repo.js";
 import { appendLedgerEntryIdempotent } from "../../db/repos/ledger.repo.js";
 import { updateTransactionStatus } from "../../db/repos/payment.repo.js";
+import { findActiveByTransaction, markCompleted } from "../../db/repos/pending-refund.repo.js";
 import { tryRecordWebhookEvent } from "../../db/repos/webhook-event.repo.js";
 import { paymentTransactions } from "../../db/schema/payment-transactions.js";
 import type { PaykitEventHandlers } from "../../events/emitter.js";
@@ -213,6 +214,22 @@ async function handleWebhook(
         if (inserted) {
           await applyDelta(tx, row.tenantId, evt.currencyCode, -refundMicros);
         }
+
+        // Release any active reservations for this transaction+provider so that
+        // remaining is not double-counted (once via the committed ledger entry
+        // above, once via a stale queued/processing reservation). For concurrent
+        // partial refunds on async providers, releasing all active reservations
+        // for the tx errs toward freeing headroom (conservative: remaining goes
+        // UP, never enables over-refund). The correct reservation is always
+        // released; extras are rare and harmless (they just free stuck headroom).
+        const activeReservations = await findActiveByTransaction(tx, {
+          provider: adapter.id,
+          transactionId: row.transactionId,
+        });
+        for (const reservation of activeReservations) {
+          await markCompleted(tx, reservation.pendingId);
+        }
+
         const updated = await updateTransactionStatus(tx, row.transactionId, "refunded");
         if (updated !== undefined) {
           processedTxId = updated.transactionId;

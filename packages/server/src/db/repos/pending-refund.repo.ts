@@ -128,6 +128,74 @@ export async function recordPollAttempt(db: DbOrTx, pendingId: string): Promise<
 }
 
 /**
+ * Sum amountMicros of active reservations (queued or processing) for a given transaction.
+ * Used inside the FOR UPDATE lock to include reserved-but-not-yet-finalized headroom
+ * in the remaining-refundable calculation, preventing PSP/ledger divergence.
+ */
+export async function sumActiveReservationsByTransaction(
+  db: DbOrTx,
+  opts: { transactionId: string; currencyCode: string },
+): Promise<string> {
+  const [row] = await db
+    .select({
+      totalMicros: sql<string>`COALESCE(SUM(${pendingRefunds.amountMicros}), 0)::text`,
+    })
+    .from(pendingRefunds)
+    .where(
+      and(
+        eq(pendingRefunds.transactionId, opts.transactionId),
+        eq(pendingRefunds.currencyCode, opts.currencyCode),
+        or(eq(pendingRefunds.state, "queued"), eq(pendingRefunds.state, "processing")),
+      ),
+    );
+  return row?.totalMicros ?? "0";
+}
+
+/**
+ * Find an existing pending_refund by (provider, idempotencyKey).
+ * Used for dedup-before-gate: if a reservation or completed refund already exists
+ * for this key, the retry returns the existing result without re-evaluating remaining.
+ */
+export async function findByProviderAndKey(
+  db: DbOrTx,
+  opts: { provider: string; idempotencyKey: string },
+): Promise<PendingRefund | undefined> {
+  const [row] = await db
+    .select()
+    .from(pendingRefunds)
+    .where(
+      and(
+        eq(pendingRefunds.provider, opts.provider),
+        eq(pendingRefunds.idempotencyKey, opts.idempotencyKey),
+      ),
+    )
+    .limit(1);
+  return row;
+}
+
+/**
+ * Find all active (queued/processing) reservations for a given transaction and provider.
+ * Used by the webhook handler to release reservations when the committed ledger entry
+ * arrives — ensuring remaining is never double-counted (once via committed entry, once
+ * via stale reservation).
+ */
+export async function findActiveByTransaction(
+  db: DbOrTx,
+  opts: { provider: string; transactionId: string },
+): Promise<PendingRefund[]> {
+  return db
+    .select()
+    .from(pendingRefunds)
+    .where(
+      and(
+        eq(pendingRefunds.provider, opts.provider),
+        eq(pendingRefunds.transactionId, opts.transactionId),
+        or(eq(pendingRefunds.state, "queued"), eq(pendingRefunds.state, "processing")),
+      ),
+    );
+}
+
+/**
  * Reconciler picks: queued/processing rows older than `staleAfter` since last poll.
  * Returns ordered list; reconciler iterates and polls each.
  */

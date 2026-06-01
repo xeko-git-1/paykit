@@ -134,3 +134,52 @@ export async function computeBalancesByTenant(
     .groupBy(ledgerEntries.currencyCode);
   return rows;
 }
+
+/**
+ * Read-only lookup: find a ledger entry by (provider, sourceId, entryType).
+ * Used for dedup-before-gate: if a completed refund ledger entry already exists
+ * for this sourceId, the retry returns the existing result without re-evaluating remaining.
+ */
+export async function findLedgerEntryBySourceId(
+  db: DbOrTx,
+  opts: { provider: string; sourceId: string; entryType: LedgerEntryType },
+): Promise<LedgerEntry | undefined> {
+  const [row] = await db
+    .select()
+    .from(ledgerEntries)
+    .where(
+      and(
+        eq(ledgerEntries.provider, opts.provider),
+        eq(ledgerEntries.sourceId, opts.sourceId),
+        eq(ledgerEntries.entryType, opts.entryType),
+      ),
+    )
+    .limit(1);
+  return row;
+}
+
+/**
+ * Sum all refund ledger entries for a specific original transaction.
+ * Queries via JSONB metadata key to avoid capped in-memory filtering.
+ * Returns the sum as a string (negative value, since refunds are stored negative).
+ * Returns "0" if no prior refunds exist.
+ */
+export async function sumRefundsByOriginalTransaction(
+  db: DbOrTx,
+  opts: { tenantId: string; currencyCode: string; originalTransactionId: string },
+): Promise<string> {
+  const [row] = await db
+    .select({
+      totalMicros: sql<string>`COALESCE(SUM(${ledgerEntries.amountMicros}), 0)::text`,
+    })
+    .from(ledgerEntries)
+    .where(
+      and(
+        eq(ledgerEntries.tenantId, opts.tenantId),
+        eq(ledgerEntries.entryType, "refund"),
+        eq(ledgerEntries.currencyCode, opts.currencyCode),
+        sql`${ledgerEntries.metadataJson}->>'originalTransactionId' = ${opts.originalTransactionId}`,
+      ),
+    );
+  return row?.totalMicros ?? "0";
+}
