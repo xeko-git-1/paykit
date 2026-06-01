@@ -15,11 +15,13 @@ import type { ProviderRegistry } from "@vibecc/paykit";
 import {
   type DbClient,
   type PaymentTransaction,
+  balanceRepo,
+  ledgerRepo,
   paymentTransactions,
   pendingRefundRepo,
   reconciliationRepo,
 } from "@vibecc/paykit-server";
-import { and, gte, lt } from "drizzle-orm";
+import { and, eq, gte, lt } from "drizzle-orm";
 import { releaseReconcileLock, tryAcquireReconcileLock } from "./advisory-lock.js";
 import { type PaykitTxnSnapshot, diffPaykitVsProvider } from "./differ.js";
 import {
@@ -199,7 +201,62 @@ async function pollPendingRefunds(
         reason: row.reason,
       });
       if (result.state === "completed") {
-        await pendingRefundRepo.markCompleted(db, row.pendingId);
+        // The path that commits the refund ledger entry must also release the
+        // reservation, in the same transaction, so remaining is never double-counted.
+        // pending_refunds lacks tenantId/ownerId — load from payment_transactions.
+        await db.transaction(async (tx) => {
+          const [txRow] = await tx
+            .select()
+            .from(paymentTransactions)
+            .where(eq(paymentTransactions.transactionId, row.transactionId))
+            .for("update")
+            .limit(1);
+          if (!txRow) {
+            // Orphaned reservation — mark completed to stop polling
+            await pendingRefundRepo.markCompleted(tx, row.pendingId);
+            return;
+          }
+
+          const amountMicros = BigInt(row.amountMicros.split(".")[0] ?? "0");
+          const sourceId = `tx:${row.transactionId}:${row.idempotencyKey}`;
+
+          const { inserted } = await ledgerRepo.appendLedgerEntryIdempotent(tx, {
+            tenantId: txRow.tenantId,
+            ownerId: txRow.ownerId,
+            entryType: "refund",
+            amountMicros: (-amountMicros).toString(),
+            currencyCode: row.currencyCode,
+            provider: row.provider,
+            sourceId,
+            metadataJson: {
+              source: "reconciler_refund",
+              originalTransactionId: row.transactionId,
+              idempotencyKey: row.idempotencyKey,
+              providerRefundId: result.providerRefundId ?? null,
+            },
+          });
+
+          if (inserted) {
+            await balanceRepo.applyDelta(tx, txRow.tenantId, row.currencyCode, -amountMicros);
+
+            // Check if cumulative refunds now cover the full original amount
+            const totalRefundedStr = await ledgerRepo.sumRefundsByOriginalTransaction(tx, {
+              tenantId: txRow.tenantId,
+              currencyCode: row.currencyCode,
+              originalTransactionId: row.transactionId,
+            });
+            const totalRefunded = BigInt(totalRefundedStr.split(".")[0] ?? "0"); // negative
+            const originalMicros = BigInt(txRow.amountMicros.split(".")[0] ?? "0");
+            if (-totalRefunded >= originalMicros) {
+              await tx
+                .update(paymentTransactions)
+                .set({ status: "refunded", updatedAt: new Date() })
+                .where(eq(paymentTransactions.transactionId, row.transactionId));
+            }
+          }
+
+          await pendingRefundRepo.markCompleted(tx, row.pendingId);
+        });
         completed++;
       } else if (result.state === "failed" || result.state === "unsupported") {
         await pendingRefundRepo.markFailed(db, row.pendingId, {
