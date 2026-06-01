@@ -15,6 +15,7 @@
  *   - Admin missing Idempotency-Key → 400
  *   - Admin guard reject → 403
  */
+import { createHash } from "node:crypto";
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -23,7 +24,8 @@ const idempotencyRows: Array<{
   tenantId: string;
   key: string;
   bodyHash: string;
-  status: number;
+  state: "in_flight" | "done";
+  status: number | null;
   body: Record<string, unknown>;
   expiresAt: Date;
 }> = [];
@@ -113,57 +115,74 @@ vi.mock("../src/db/repos/idempotency.repo.js", async () => {
   }
   return {
     IdempotencyBodyMismatchError,
-    lookupIdempotency: vi.fn(
+    claimIdempotency: vi.fn(
       async (_db: unknown, input: { tenantId: string; key: string; bodyHash: string }) => {
         const now = Date.now();
         const row = idempotencyRows.find(
           (r) => r.tenantId === input.tenantId && r.key === input.key,
         );
-        if (!row || row.expiresAt.getTime() <= now) return { hit: false };
+        // No row, or expired → claim it (insert/reclaim in_flight placeholder).
+        if (!row || row.expiresAt.getTime() <= now) {
+          const placeholder = {
+            tenantId: input.tenantId,
+            key: input.key,
+            bodyHash: input.bodyHash,
+            state: "in_flight" as const,
+            status: null,
+            body: {},
+            expiresAt: new Date(now + 120_000),
+          };
+          if (row) Object.assign(row, placeholder);
+          else idempotencyRows.push(placeholder);
+          return { outcome: "claimed" };
+        }
         if (row.bodyHash !== input.bodyHash) {
           throw new IdempotencyBodyMismatchError();
         }
-        return {
-          hit: true,
-          record: {
-            tenantId: row.tenantId,
-            idempotencyKey: row.key,
-            requestBodyHash: row.bodyHash,
-            responseStatus: row.status,
-            responseBodyJson: row.body,
-            expiresAt: row.expiresAt,
-          },
-        };
+        if (row.state === "done") {
+          return {
+            outcome: "replay",
+            record: {
+              tenantId: row.tenantId,
+              idempotencyKey: row.key,
+              requestBodyHash: row.bodyHash,
+              state: row.state,
+              responseStatus: row.status,
+              responseBodyJson: row.body,
+              expiresAt: row.expiresAt,
+            },
+          };
+        }
+        return { outcome: "in_flight" };
       },
     ),
-    recordIdempotencyResponse: vi.fn(
+    finalizeIdempotency: vi.fn(
       async (
         _db: unknown,
         input: {
           tenantId: string;
           key: string;
-          bodyHash: string;
           responseStatus: number;
           responseBody: Record<string, unknown>;
         },
       ) => {
-        const expiresAt = new Date(Date.now() + 86_400_000);
-        const idx = idempotencyRows.findIndex(
+        const row = idempotencyRows.find(
           (r) => r.tenantId === input.tenantId && r.key === input.key,
         );
-        const row = {
-          tenantId: input.tenantId,
-          key: input.key,
-          bodyHash: input.bodyHash,
-          status: input.responseStatus,
-          body: input.responseBody,
-          expiresAt,
-        };
-        if (idx >= 0) idempotencyRows[idx] = row;
-        else idempotencyRows.push(row);
+        if (!row) throw new Error("finalizeIdempotency: no row to finalize (claim lost?)");
+        row.state = "done";
+        row.status = input.responseStatus;
+        row.body = input.responseBody;
+        row.expiresAt = new Date(Date.now() + 86_400_000);
         return row;
       },
     ),
+    releaseIdempotency: vi.fn(async (_db: unknown, input: { tenantId: string; key: string }) => {
+      const idx = idempotencyRows.findIndex(
+        (r) => r.tenantId === input.tenantId && r.key === input.key && r.state === "in_flight",
+      );
+      if (idx >= 0) idempotencyRows.splice(idx, 1);
+    }),
     sweepExpired: vi.fn(async () => 0),
   };
 });
@@ -318,6 +337,31 @@ describe("Subscribe — Idempotency-Key behaviors (RT F6)", () => {
     expect(r2.status).toBe(422);
     const json = (await r2.json()) as { error: { code: string } };
     expect(json.error.code).toBe("IDEMPOTENCY_BODY_MISMATCH");
+  });
+
+  it("same key still in flight (another request processing) → 409 IDEMPOTENCY_IN_FLIGHT", async () => {
+    const { app } = buildTenantApp(TENANT_A);
+    // Simulate a concurrent request that has claimed the key but not finalized:
+    // an unexpired in_flight row with a matching body hash.
+    const bodyHash = createHash("sha256").update(JSON.stringify(POST_BODY)).digest("hex");
+    idempotencyRows.push({
+      tenantId: TENANT_A,
+      key: "idem-in-flight-1",
+      bodyHash,
+      state: "in_flight",
+      status: null,
+      body: {},
+      expiresAt: new Date(Date.now() + 120_000),
+    });
+
+    const res = await app.request("/billing/subscriptions", {
+      method: "POST",
+      headers: headers("idem-in-flight-1"),
+      body: JSON.stringify(POST_BODY),
+    });
+    expect(res.status).toBe(409);
+    const json = (await res.json()) as { error: { code: string } };
+    expect(json.error.code).toBe("IDEMPOTENCY_IN_FLIGHT");
   });
 
   it("cross-tenant isolation: same key from different tenants creates distinct subs (RT F6)", async () => {

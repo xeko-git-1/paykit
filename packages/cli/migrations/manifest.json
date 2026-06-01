@@ -100,6 +100,13 @@
       "up": "014_api_keys_created_by.up.sql",
       "down": "014_api_keys_created_by.down.sql",
       "description": "V4.0 — add api_keys.created_by (nullable TEXT) for mint attribution; records acting principal (CLI operator or jwt-plane admin)"
+    },
+    {
+      "id": "015",
+      "slug": "idempotency_in_flight_state",
+      "up": "015_idempotency_in_flight_state.up.sql",
+      "down": "015_idempotency_in_flight_state.down.sql",
+      "description": "Add idempotency_records.state (in_flight|done) + nullable response_status so concurrent requests sharing a key serialize: first INSERT wins, racer gets 409 instead of double-running the handler"
     }
   ]
 }

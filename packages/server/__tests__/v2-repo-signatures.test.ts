@@ -49,9 +49,10 @@ describe("subscriptionEventRepo public API (RT 15j append-only)", () => {
 });
 
 describe("idempotencyRepo public API (RT F6 tenant-scoped 24h replay)", () => {
-  it("exposes lookup + record + sweep helpers + body-mismatch error", () => {
-    expect(typeof idempotencyRepo.lookupIdempotency).toBe("function");
-    expect(typeof idempotencyRepo.recordIdempotencyResponse).toBe("function");
+  it("exposes claim + finalize + release + sweep helpers + body-mismatch error", () => {
+    expect(typeof idempotencyRepo.claimIdempotency).toBe("function");
+    expect(typeof idempotencyRepo.finalizeIdempotency).toBe("function");
+    expect(typeof idempotencyRepo.releaseIdempotency).toBe("function");
     expect(typeof idempotencyRepo.sweepExpired).toBe("function");
     expect(typeof idempotencyRepo.IdempotencyBodyMismatchError).toBe("function");
   });

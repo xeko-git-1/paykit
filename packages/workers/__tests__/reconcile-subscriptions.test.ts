@@ -52,8 +52,9 @@ vi.mock("@vibecc/paykit-server", () => ({
   },
   idempotencyRepo: {
     sweepExpired: vi.fn(async () => idempotencyDeleted.count),
-    lookupIdempotency: vi.fn(),
-    recordIdempotencyResponse: vi.fn(),
+    claimIdempotency: vi.fn(),
+    finalizeIdempotency: vi.fn(),
+    releaseIdempotency: vi.fn(),
     IdempotencyBodyMismatchError: class extends Error {},
   },
 }));

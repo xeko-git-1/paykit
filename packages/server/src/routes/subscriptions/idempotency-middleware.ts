@@ -2,19 +2,18 @@
  * Idempotency-Key middleware (RT F6) — V2 Phase 05.
  *
  * Tenant-scoped Idempotency-Key replay store backed by paykit.idempotency_records.
- * Required for state-mutating subscription routes; produces consistent error
- * codes across body-mismatch (422), missing-key (400), TTL-expired (409 if
- * caller would forward to Stripe with a fresh key — protected by adapter's
- * own dedup, but we still surface).
+ * Required for state-mutating subscription routes.
  *
- * Behavior:
- *   - Cache HIT (same tenant + key + body): replay cached response status + body.
- *   - Cache MISS: invoke handler; on 2xx, persist response under (tenant_id, key).
- *   - Body MISMATCH (same key, different body within TTL): 422.
+ * Insert-first concurrency: the middleware claims (tenant_id, key) atomically
+ * before running the handler, so two requests with the same key never both
+ * mutate. Outcomes:
+ *   - CLAIMED: we won — run the handler, then finalize (2xx) or release (non-2xx/throw).
+ *   - REPLAY (prior done row, same body): replay cached status + body.
+ *   - IN_FLIGHT (another request still processing): 409 IDEMPOTENCY_IN_FLIGHT.
+ *   - BODY MISMATCH (same key, different body within TTL): 422.
  *   - MISSING KEY: 400 IDEMPOTENCY_KEY_REQUIRED.
  *
- * The middleware reuses Hono's `c.req.json()` parser cache by stashing the
- * canonical body string for the handler.
+ * The middleware stashes the canonical body string so the handler can re-read it.
  */
 import { createHash } from "node:crypto";
 import type { TenantResolver } from "@vibecc/paykit";
@@ -23,8 +22,9 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { DbClient } from "../../db/client.js";
 import {
   IdempotencyBodyMismatchError,
-  lookupIdempotency,
-  recordIdempotencyResponse,
+  claimIdempotency,
+  finalizeIdempotency,
+  releaseIdempotency,
 } from "../../db/repos/idempotency.repo.js";
 import { errorJson } from "../shared/response.js";
 
@@ -78,17 +78,10 @@ export function buildIdempotencyMiddleware(
     const bodyHash = createHash("sha256").update(bodyText).digest("hex");
     const routePath = new URL(c.req.url).pathname;
 
+    // Insert-first claim: serializes concurrent requests sharing this key.
+    let claim: Awaited<ReturnType<typeof claimIdempotency>>;
     try {
-      const lookup = await lookupIdempotency(db, {
-        tenantId,
-        key,
-        provider,
-        routePath,
-        bodyHash,
-      });
-      if (lookup.hit) {
-        return replayCached(c, lookup.record.responseStatus, lookup.record.responseBodyJson);
-      }
+      claim = await claimIdempotency(db, { tenantId, key, provider, routePath, bodyHash });
     } catch (err) {
       if (err instanceof IdempotencyBodyMismatchError) {
         return errorJson(
@@ -101,24 +94,43 @@ export function buildIdempotencyMiddleware(
       throw err;
     }
 
+    if (claim.outcome === "replay") {
+      return replayCached(c, claim.record.responseStatus ?? 200, claim.record.responseBodyJson);
+    }
+    if (claim.outcome === "in_flight") {
+      return errorJson(
+        c,
+        409,
+        "IDEMPOTENCY_IN_FLIGHT",
+        "A request with this Idempotency-Key is still being processed. Retry shortly.",
+      );
+    }
+
+    // We own the claim. Run the handler, then finalize on success or release on
+    // failure so a crashed/non-2xx attempt does not wedge the key for its TTL.
     c.set("paykitIdempotencyKey", key);
     c.set("paykitIdempotencyBodyHash", bodyHash);
     c.set("paykitIdempotencyBodyText", bodyText);
 
-    await next();
+    try {
+      await next();
+    } catch (err) {
+      await releaseIdempotency(db, { tenantId, key }).catch(() => {});
+      throw err;
+    }
 
     const status = c.res.status as ContentfulStatusCode;
     if (status >= 200 && status < 300) {
       const responseBody = await readResponseBody(c);
-      await recordIdempotencyResponse(db, {
+      await finalizeIdempotency(db, {
         tenantId,
         key,
-        provider,
-        routePath,
-        bodyHash,
         responseStatus: status,
         responseBody,
       });
+    } else {
+      // Non-2xx: drop the placeholder so the caller can retry immediately.
+      await releaseIdempotency(db, { tenantId, key }).catch(() => {});
     }
   };
 }

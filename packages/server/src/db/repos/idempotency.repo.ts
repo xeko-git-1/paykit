@@ -1,21 +1,24 @@
 /**
  * idempotency.repo — V2. Tenant-scoped Idempotency-Key replay store (RT F6).
  *
- * `lookupOrInsert` returns:
- *   - { hit: true,  record }: caller MUST replay record.responseStatus + record.responseBodyJson
- *   - { hit: false, record }: caller proceeds; later fills response via `recordResponse`
- *   - throws IdempotencyBodyMismatchError when same key arrives with different body
+ * Insert-first concurrency model: `claimIdempotency` atomically INSERTs an
+ * 'in_flight' row (ON CONFLICT DO NOTHING). The request that wins the insert
+ * runs the handler; a concurrent request sharing the same (tenant_id, key)
+ * observes the existing row and is told to replay (if done) or back off with
+ * 409 (if still in_flight) — it never re-runs the mutating handler. The winner
+ * calls `finalizeIdempotency` to record the response, or `releaseIdempotency`
+ * if the handler failed so the key can be retried immediately.
  *
- * 24h TTL applied DB-side via DEFAULT NOW() + INTERVAL '24h'. Expired rows
- * are treated as cache miss (caller proceeds; old row overwritten on next
- * `recordResponse` of same key).
+ * Race-safety rests on Postgres's atomic INSERT ... ON CONFLICT DO NOTHING:
+ * exactly one concurrent INSERT for a given PK returns a row. An in_flight row
+ * carries a short TTL so a crashed handler cannot wedge the key permanently.
  */
 import { and, eq, lt } from "drizzle-orm";
 import type { DbOrTx } from "../client.js";
 import {
   type IdempotencyRecord,
-  idempotencyRecords,
   type NewIdempotencyRecord,
+  idempotencyRecords,
 } from "../schema/idempotency-records.js";
 
 export class IdempotencyBodyMismatchError extends Error {
@@ -25,7 +28,12 @@ export class IdempotencyBodyMismatchError extends Error {
   }
 }
 
-export interface LookupInput {
+/** Placeholder lifetime for an in_flight claim; a crashed handler self-heals after this. */
+const IN_FLIGHT_TTL_SECONDS = 120;
+/** Replay window for a finalized response (matches Stripe's 24h). */
+const DONE_TTL_SECONDS = 86_400;
+
+export interface ClaimInput {
   readonly tenantId: string;
   readonly key: string;
   readonly provider: string;
@@ -34,12 +42,44 @@ export interface LookupInput {
   readonly now?: Date;
 }
 
-export type LookupResult =
-  | { readonly hit: true; readonly record: IdempotencyRecord }
-  | { readonly hit: false };
+export type ClaimResult =
+  /** We won the claim and inserted an in_flight row — caller runs the handler. */
+  | { readonly outcome: "claimed" }
+  /** A finalized response already exists — caller replays it. */
+  | { readonly outcome: "replay"; readonly record: IdempotencyRecord }
+  /** Another request holds an active in_flight claim — caller returns 409. */
+  | { readonly outcome: "in_flight" };
 
-export async function lookupIdempotency(db: DbOrTx, input: LookupInput): Promise<LookupResult> {
+/**
+ * Atomically claim (tenant_id, key) for processing, or report what already
+ * exists. Throws IdempotencyBodyMismatchError when an unexpired row carries a
+ * different request body.
+ */
+export async function claimIdempotency(db: DbOrTx, input: ClaimInput): Promise<ClaimResult> {
   const now = input.now ?? new Date();
+  const inFlightExpiry = new Date(now.getTime() + IN_FLIGHT_TTL_SECONDS * 1000);
+
+  const placeholder: NewIdempotencyRecord = {
+    tenantId: input.tenantId,
+    idempotencyKey: input.key,
+    provider: input.provider,
+    routePath: input.routePath,
+    requestBodyHash: input.bodyHash,
+    state: "in_flight",
+    responseStatus: null,
+    responseBodyJson: {},
+    expiresAt: inFlightExpiry,
+  };
+
+  // Win-or-nothing insert. A returned row means we own the claim.
+  const [won] = await db
+    .insert(idempotencyRecords)
+    .values(placeholder)
+    .onConflictDoNothing()
+    .returning();
+  if (won) return { outcome: "claimed" };
+
+  // A row already exists. Inspect it.
   const [existing] = await db
     .select()
     .from(idempotencyRecords)
@@ -50,57 +90,97 @@ export async function lookupIdempotency(db: DbOrTx, input: LookupInput): Promise
       ),
     )
     .limit(1);
-  if (!existing) return { hit: false };
-  if (existing.expiresAt.getTime() <= now.getTime()) return { hit: false };
+  if (!existing) {
+    // Row vanished between the failed insert and this read (concurrent sweep).
+    // Treat conservatively as in-flight; the caller retries safely.
+    return { outcome: "in_flight" };
+  }
+
+  // Expired (done row past its window, or a wedged in_flight placeholder):
+  // reclaim it atomically. The expires_at guard ensures only one racer reclaims.
+  if (existing.expiresAt.getTime() <= now.getTime()) {
+    const [reclaimed] = await db
+      .update(idempotencyRecords)
+      .set({
+        provider: input.provider,
+        routePath: input.routePath,
+        requestBodyHash: input.bodyHash,
+        state: "in_flight",
+        responseStatus: null,
+        responseBodyJson: {},
+        expiresAt: inFlightExpiry,
+      })
+      .where(
+        and(
+          eq(idempotencyRecords.tenantId, input.tenantId),
+          eq(idempotencyRecords.idempotencyKey, input.key),
+          lt(idempotencyRecords.expiresAt, now),
+        ),
+      )
+      .returning();
+    return reclaimed ? { outcome: "claimed" } : { outcome: "in_flight" };
+  }
+
   if (existing.requestBodyHash !== input.bodyHash) {
     throw new IdempotencyBodyMismatchError();
   }
-  return { hit: true, record: existing };
+  if (existing.state === "done") {
+    return { outcome: "replay", record: existing };
+  }
+  return { outcome: "in_flight" };
 }
 
-export interface RecordResponseInput {
+export interface FinalizeInput {
   readonly tenantId: string;
   readonly key: string;
-  readonly provider: string;
-  readonly routePath: string;
-  readonly bodyHash: string;
   readonly responseStatus: number;
   readonly responseBody: Record<string, unknown>;
   readonly ttlSeconds?: number;
 }
 
-export async function recordIdempotencyResponse(
+/** Mark a claimed row as done with the handler's response and a 24h replay TTL. */
+export async function finalizeIdempotency(
   db: DbOrTx,
-  input: RecordResponseInput,
+  input: FinalizeInput,
 ): Promise<IdempotencyRecord> {
-  const ttl = input.ttlSeconds ?? 86_400;
-  const insert: NewIdempotencyRecord = {
-    tenantId: input.tenantId,
-    idempotencyKey: input.key,
-    provider: input.provider,
-    routePath: input.routePath,
-    requestBodyHash: input.bodyHash,
-    responseStatus: input.responseStatus,
-    responseBodyJson: input.responseBody,
-    expiresAt: new Date(Date.now() + ttl * 1000),
-  };
+  const ttl = input.ttlSeconds ?? DONE_TTL_SECONDS;
   const [row] = await db
-    .insert(idempotencyRecords)
-    .values(insert)
-    .onConflictDoUpdate({
-      target: [idempotencyRecords.tenantId, idempotencyRecords.idempotencyKey],
-      set: {
-        provider: insert.provider,
-        routePath: insert.routePath,
-        requestBodyHash: insert.requestBodyHash,
-        responseStatus: insert.responseStatus,
-        responseBodyJson: insert.responseBodyJson,
-        expiresAt: insert.expiresAt,
-      },
+    .update(idempotencyRecords)
+    .set({
+      state: "done",
+      responseStatus: input.responseStatus,
+      responseBodyJson: input.responseBody,
+      expiresAt: new Date(Date.now() + ttl * 1000),
     })
+    .where(
+      and(
+        eq(idempotencyRecords.tenantId, input.tenantId),
+        eq(idempotencyRecords.idempotencyKey, input.key),
+      ),
+    )
     .returning();
-  if (!row) throw new Error("recordIdempotencyResponse: upsert returned no row");
+  if (!row) throw new Error("finalizeIdempotency: no row to finalize (claim lost?)");
   return row;
+}
+
+/**
+ * Drop our in_flight placeholder after a failed handler so the key can be
+ * retried immediately. Scoped to state='in_flight' so it never deletes another
+ * request's finalized response.
+ */
+export async function releaseIdempotency(
+  db: DbOrTx,
+  input: { tenantId: string; key: string },
+): Promise<void> {
+  await db
+    .delete(idempotencyRecords)
+    .where(
+      and(
+        eq(idempotencyRecords.tenantId, input.tenantId),
+        eq(idempotencyRecords.idempotencyKey, input.key),
+        eq(idempotencyRecords.state, "in_flight"),
+      ),
+    );
 }
 
 export async function sweepExpired(db: DbOrTx, before: Date): Promise<number> {
