@@ -25,10 +25,12 @@ import type {
   UpgradeSubscriptionInput,
 } from "@vibecc/paykit";
 import { TenantResolutionError } from "@vibecc/paykit";
+import type { Context } from "hono";
 import { Hono } from "hono";
 import { z } from "zod";
 import type { DbClient } from "../../db/client.js";
 import * as subscriptionRepo from "../../db/repos/subscription.repo.js";
+import { getAuthTenant } from "../../auth/auth-context.js";
 import { buildCustomerService } from "../../services/customer-service.js";
 import { dataJson, errorJson } from "../shared/response.js";
 import {
@@ -161,9 +163,13 @@ export function buildTenantSubscriptionRoutes(deps: TenantSubscriptionRoutesDeps
 }
 
 async function resolveTenant(
-  c: { req: { raw: Request } },
+  c: Context,
   tenantResolver: TenantResolver,
 ): Promise<{ tenantId: string; ownerId: string } | { error: Response }> {
+  // Prefer the auth-derived tenant (service mode); fall back to the injected
+  // resolver for embedded mode. Auth context is never caller-controlled.
+  const authTenant = getAuthTenant(c);
+  if (authTenant) return authTenant;
   try {
     return await tenantResolver(c.req.raw);
   } catch (err) {

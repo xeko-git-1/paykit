@@ -38,7 +38,7 @@ import { dataJson, errorJson } from "../shared/response.js";
 import { applyDiscountInTx, resolveDiscount } from "./apply-discount.js";
 
 const checkoutBodySchema = z.object({
-  amountUsd: z.number().positive().min(1).max(500).optional(),
+  amountUsd: z.number().positive().min(1).max(500).multipleOf(0.01).optional(),
   amountVnd: z.number().int().positive().min(10_000).optional(),
   discountCode: z.string().min(1).max(64).optional(),
 });

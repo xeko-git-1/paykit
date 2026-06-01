@@ -1,6 +1,8 @@
+import { createJwtSecretLoader } from "@vibecc/paykit-server";
 /**
- * Config validation tests — verifies fail-fast behavior for missing/invalid env
- * and JWT secret bootstrap from runtime_config (not env).
+ * Config validation tests — verifies fail-fast behavior for missing/invalid env.
+ * Also exercises createJwtSecretLoader (the real runtime path) including the
+ * race-safe atomic-claim seed behavior.
  */
 import { describe, expect, it, vi } from "vitest";
 
@@ -101,50 +103,68 @@ describe("parseServiceConfig", () => {
   });
 });
 
-describe("bootstrapJwtSecret", () => {
-  it("generates and seeds a secret when runtime_config has none", async () => {
-    const { bootstrapJwtSecret } = await import("../src/config.js");
+describe("createJwtSecretLoader (race-safe seed)", () => {
+  it("generates and seeds a secret via claimKey when runtime_config has none", async () => {
     const store = new Map<string, string>();
     const deps = {
       getKey: vi.fn(async (_db: unknown, key: string) => {
         const val = store.get(key);
         return val ? { value: val } : undefined;
       }),
-      setKey: vi.fn(async (_db: unknown, input: { key: string; value: string }) => {
-        store.set(input.key, input.value);
-        return { value: input.value };
+      claimKey: vi.fn(async (_db: unknown, input: { key: string; value: string }) => {
+        // Simulate atomic claim: first writer wins
+        if (!store.has(input.key)) {
+          store.set(input.key, input.value);
+        }
+        return { value: store.get(input.key)! };
       }),
       db: {} as unknown,
     };
 
-    const secret = await bootstrapJwtSecret(deps);
+    const loader = createJwtSecretLoader(deps);
+    const secret = await loader();
     expect(secret.length).toBeGreaterThanOrEqual(32);
-    expect(deps.setKey).toHaveBeenCalledOnce();
+    expect(deps.claimKey).toHaveBeenCalledOnce();
   });
 
   it("returns existing secret when present and >= 32 bytes", async () => {
-    const { bootstrapJwtSecret } = await import("../src/config.js");
-    const validSecret = "a".repeat(48); // 48 bytes
+    const validSecret = "a".repeat(48);
     const deps = {
       getKey: vi.fn(async () => ({ value: validSecret })),
-      setKey: vi.fn(),
+      claimKey: vi.fn(),
       db: {} as unknown,
     };
 
-    const secret = await bootstrapJwtSecret(deps);
+    const loader = createJwtSecretLoader(deps);
+    const secret = await loader();
     expect(secret).toBe(validSecret);
-    expect(deps.setKey).not.toHaveBeenCalled();
+    expect(deps.claimKey).not.toHaveBeenCalled();
   });
 
   it("throws when existing secret is shorter than 32 bytes", async () => {
-    const { bootstrapJwtSecret } = await import("../src/config.js");
     const shortSecret = "short";
     const deps = {
       getKey: vi.fn(async () => ({ value: shortSecret })),
-      setKey: vi.fn(),
+      claimKey: vi.fn(),
       db: {} as unknown,
     };
 
-    await expect(bootstrapJwtSecret(deps)).rejects.toThrow(/too short|< 32/i);
+    const loader = createJwtSecretLoader(deps);
+    await expect(loader()).rejects.toThrow(/too short|< 32/i);
+  });
+
+  it("converges on the winner's value when another instance races", async () => {
+    const winnerSecret = "winner-secret-that-is-at-least-32-bytes-long!!";
+    const deps = {
+      getKey: vi.fn(async () => undefined),
+      // Simulate losing the race: claimKey returns the winner's value, not ours
+      claimKey: vi.fn(async () => ({ value: winnerSecret })),
+      db: {} as unknown,
+    };
+
+    const loader = createJwtSecretLoader(deps);
+    const secret = await loader();
+    // Must use the winner's value, not the locally generated one
+    expect(secret).toBe(winnerSecret);
   });
 });

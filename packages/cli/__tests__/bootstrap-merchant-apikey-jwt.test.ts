@@ -1,3 +1,4 @@
+import { JWT_AUDIENCE, JWT_ISSUER } from "@vibecc/paykit-server";
 /**
  * CLI bootstrap tests — operator path for merchant create, apikey mint, jwt mint.
  *
@@ -6,7 +7,6 @@
  * and a jwt that verifies against the same secret the service loads.
  */
 import { verify } from "hono/jwt";
-import { JWT_AUDIENCE, JWT_ISSUER } from "@vibecc/paykit-server";
 import { describe, expect, it } from "vitest";
 import { createMerchant, mintJwt, mintKey } from "../src/lib/bootstrap.js";
 import { createInMemoryDb, createInMemoryStore } from "./helpers/in-memory-paykit-db.js";

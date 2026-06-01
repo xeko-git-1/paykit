@@ -15,13 +15,13 @@ import {
   type ApiKeyAuthDeps,
   JWT_AUDIENCE,
   JWT_ISSUER,
+  SCOPES,
   apiKeyAuthMiddleware,
   authPlaneDispatcher,
   jwtAuthMiddleware,
   mintApiKey,
   requirePlane,
   requireScope,
-  SCOPES,
 } from "@vibecc/paykit-server";
 import { Hono } from "hono";
 import { sign } from "hono/jwt";

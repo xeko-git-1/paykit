@@ -83,6 +83,7 @@ export function apiKeyAuthMiddleware(deps: ApiKeyAuthDeps): MiddlewareHandler {
       tenant,
       scopes: record.scopes,
       plane: "api_key",
+      keyId: record.keyId,
     };
     c.set("paykitAuth", authContext);
 

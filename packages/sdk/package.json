@@ -1,0 +1,36 @@
+{
+  "name": "@vibecc/paykit-sdk",
+  "version": "0.4.0-rc.0",
+  "description": "Thin, type-safe TypeScript client for the Paykit /v1 API. Types generated from the OpenAPI 3.1 spec; transport is a hand-written fetch wrapper with zero runtime dependencies.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xeko-git-1/paykit.git",
+    "directory": "packages/sdk"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "sdk:generate": "tsx scripts/regenerate.ts"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@vibecc/paykit-service": "workspace:*",
+    "openapi-typescript": "7.4.4",
+    "tsx": "^4.19.2"
+  },
+  "engines": { "node": ">=20" }
+}

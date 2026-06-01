@@ -66,7 +66,18 @@ const refundsRoute = createRoute({
   method: "post",
   path: "/v1/refunds",
   summary: "Initiate a refund for a transaction owned by the authenticated merchant",
-  request: { body: { content: { "application/json": { schema: CreateRefundBody } } } },
+  request: {
+    headers: oz.object({
+      "Idempotency-Key": oz
+        .string()
+        .min(8)
+        .openapi({
+          param: { name: "Idempotency-Key", in: "header", required: true },
+          example: "refund-2026-05-31-0001",
+        }),
+    }),
+    body: { content: { "application/json": { schema: CreateRefundBody } } },
+  },
   responses: {
     200: { description: "Refund processed", content: { "application/json": { schema: RefundResponse } } },
     202: { description: "Refund accepted (async)", content: { "application/json": { schema: RefundResponse } } },
@@ -99,6 +110,14 @@ const mintApiKeyRoute = createRoute({
 export function getOpenAPIDocument(): unknown {
   const openapiApp = new OpenAPIHono();
 
+  // Bearer auth scheme — SDKs need this to know /v1 requires a token. Both
+  // planes present as `Authorization: Bearer <token>` (api-key pk_… or jwt).
+  openapiApp.openAPIRegistry.registerComponent("securitySchemes", "bearerAuth", {
+    type: "http",
+    scheme: "bearer",
+    description: "API key (pk_live_… / pk_test_…) or admin JWT, sent as a Bearer token.",
+  });
+
   // Register routes with no-op handlers (spec generation only)
   openapiApp.openapi(checkoutRoute, (c) => c.json({} as never));
   openapiApp.openapi(balancesRoute, (c) => c.json({} as never));
@@ -114,5 +133,6 @@ export function getOpenAPIDocument(): unknown {
       description: "Versioned public API for Paykit payment processing",
     },
     servers: [{ url: "/" }],
+    security: [{ bearerAuth: [] }],
   });
 }

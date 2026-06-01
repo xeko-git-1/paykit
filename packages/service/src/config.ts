@@ -2,10 +2,9 @@
  * Service configuration — zod-validated env parsing with fail-fast semantics.
  *
  * JWT signing secret is NOT read from env. It lives in the runtime_config
- * table and is bootstrapped at service start (generate+seed if absent,
- * fail if present but too short).
+ * table and is loaded/seeded at service start by createJwtSecretLoader
+ * (see @vibecc/paykit-server jwt-middleware).
  */
-import { randomBytes } from "node:crypto";
 import { z } from "zod";
 
 // ---------------------------------------------------------------------------
@@ -227,48 +226,4 @@ export function parseServiceConfig(env: Record<string, string | undefined>): Ser
     zalopay,
     adminSecret: parsed.ADMIN_SECRET,
   };
-}
-
-// ---------------------------------------------------------------------------
-// JWT secret bootstrap — reads/seeds from runtime_config, NOT from env
-// ---------------------------------------------------------------------------
-
-const MIN_SECRET_BYTES = 32;
-
-export interface BootstrapJwtDeps {
-  readonly getKey: (db: unknown, key: string) => Promise<{ value: string } | undefined>;
-  readonly setKey: (
-    db: unknown,
-    input: { key: string; value: string; expiresAt?: Date | null },
-  ) => Promise<{ value: string }>;
-  readonly db: unknown;
-}
-
-/**
- * Bootstrap JWT signing secret from runtime_config table.
- * - If absent: generate cryptographically random >= 32 bytes and seed.
- * - If present but < 32 bytes: fail-fast (rotation needed).
- * - If present and valid: return it.
- */
-export async function bootstrapJwtSecret(deps: BootstrapJwtDeps): Promise<string> {
-  const configKey = "jwt_signing_secret";
-  const row = await deps.getKey(deps.db, configKey);
-
-  if (row) {
-    if (Buffer.byteLength(row.value, "utf8") < MIN_SECRET_BYTES) {
-      throw new Error(
-        `JWT secret in runtime_config is too short (< ${MIN_SECRET_BYTES} bytes). Rotate to a longer secret before starting the service.`,
-      );
-    }
-    return row.value;
-  }
-
-  // Generate and seed a new secret
-  const newSecret = randomBytes(48).toString("base64url"); // 48 bytes → 64 chars
-  const result = await deps.setKey(deps.db, {
-    key: configKey,
-    value: newSecret,
-    expiresAt: null,
-  });
-  return result.value;
 }

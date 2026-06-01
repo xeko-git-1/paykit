@@ -3,8 +3,14 @@
   "version": "0.1.5",
   "description": "Paykit CLI: paykit migrate (advisory-locked), paykit doctor, paykit --version",
   "type": "module",
-  "main": "./dist/bin/paykit.js",
-  "types": "./dist/bin/paykit.d.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "bin": {
     "paykit": "./dist/bin/paykit.js"
   },

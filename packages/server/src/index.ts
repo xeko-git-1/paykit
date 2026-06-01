@@ -3,6 +3,11 @@
 
 export type { DbClient, DbOrTx, DbTransactionHandle } from "./db/client.js";
 
+// Full Drizzle schema namespace — pass to drizzle(pool, { schema }) so the
+// relational query API (db.query.*) is available. Service mode builds its own
+// client and MUST provide this; without it db.query.* is undefined at runtime.
+export * as paykitDbSchema from "./db/schema/index.js";
+
 // Schema
 export {
   type ApiKey,

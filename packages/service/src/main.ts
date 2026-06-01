@@ -11,6 +11,7 @@ import {
   jwtAuthMiddleware,
   JWT_AUDIENCE,
   JWT_ISSUER,
+  paykitDbSchema,
   runtimeConfigRepo,
 } from "@vibecc/paykit-server";
 /**
@@ -30,6 +31,10 @@ import type { Pool } from "pg";
 import { buildHealthRoutes } from "./health.js";
 import { buildV1Router } from "./v1/router.js";
 import { getOpenAPIDocument } from "./v1/openapi.js";
+import { serviceErrorHandler } from "./error-handler.js";
+
+// Re-exported for SDK generation + spec-snapshot tests (public API surface).
+export { getOpenAPIDocument } from "./v1/openapi.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -52,6 +57,9 @@ export async function buildServiceApp(deps: BuildServiceAppDeps): Promise<Hono> 
 
   const app = new Hono();
 
+  // Convert any uncaught route error into the standard envelope (no stack leak).
+  app.onError(serviceErrorHandler);
+
   // 1. Health routes — no auth, mounted first
   const healthApp = buildHealthRoutes({ pool });
   app.route("/", healthApp);
@@ -69,7 +77,11 @@ export async function buildServiceApp(deps: BuildServiceAppDeps): Promise<Hono> 
   });
   app.route("/webhooks", paykit.webhookRoutes());
 
-  // 3. Auth on /v1/* — dual plane. api-key (pk_ tokens) for s2s; jwt for
+  // 3. OpenAPI spec — mounted BEFORE the /v1 auth glob so the spec is public
+  //    documentation reachable without a key (same posture as /healthz).
+  app.get("/v1/openapi.json", (c) => c.json(getOpenAPIDocument()));
+
+  // 4. Auth on /v1/* — dual plane. api-key (pk_ tokens) for s2s; jwt for
   //    admin/dashboard (e.g. POST /v1/api-keys mint). A dispatcher routes by
   //    token shape so the two mutually-exclusive middlewares coexist: exactly
   //    one plane runs per request.
@@ -90,15 +102,12 @@ export async function buildServiceApp(deps: BuildServiceAppDeps): Promise<Hono> 
   });
   app.use("/v1/*", authPlaneDispatcher({ apiKey: apiKeyPlane, jwt: jwtPlane }));
 
-  // 4. Service routes under /v1 (tenant from paykitAuth, not resolver)
+  // 5. Service routes under /v1 (tenant from paykitAuth, not resolver)
   app.route("/v1", paykit.serviceRoutes());
 
-  // 5. V1 public API surface (scope-gated, rate-limited, OpenAPI-described)
+  // 6. V1 public API surface (scope-gated, rate-limited, OpenAPI-described)
   const v1Router = buildV1Router({ db, registry: paykit.registry });
   app.route("/v1", v1Router);
-
-  // 6. OpenAPI spec endpoint (no auth — public documentation)
-  app.get("/v1/openapi.json", (c) => c.json(getOpenAPIDocument()));
 
   // 7. Admin routes under /v1/admin (env-based guard for V4.0)
   if (adminSecret) {
@@ -154,9 +163,10 @@ export async function main(): Promise<void> {
     const { Pool: PgPool } = await import("pg");
     const pool = new PgPool({ connectionString: config.databaseUrl });
 
-    // Build Drizzle client
+    // Build Drizzle client WITH schema so the relational query API (db.query.*)
+    // works — repos like balance.repo use db.query.balanceProjections.
     const { drizzle } = await import("drizzle-orm/node-postgres");
-    const db = drizzle(pool) as unknown as DbClient;
+    const db = drizzle(pool, { schema: paykitDbSchema }) as unknown as DbClient;
 
     // Bootstrap JWT secret loader from runtime_config
     const jwtSecretLoader = createJwtSecretLoader({
@@ -164,7 +174,7 @@ export async function main(): Promise<void> {
         db: unknown,
         key: string,
       ) => Promise<{ value: string } | undefined>,
-      setKey: runtimeConfigRepo.setKey as (
+      claimKey: runtimeConfigRepo.claimKey as (
         db: unknown,
         input: { key: string; value: string; expiresAt?: Date | null },
       ) => Promise<{ value: string }>,

@@ -53,3 +53,34 @@ export async function ensureKey(db: DbOrTx, input: SetKeyInput): Promise<Runtime
   if (existing) return existing;
   return setKey(db, input);
 }
+
+/**
+ * Atomic claim: INSERT ... ON CONFLICT DO NOTHING. If the row already exists
+ * (another instance won the race), re-SELECT to return the winner's value.
+ * This guarantees all concurrent callers converge on the same stored value
+ * without clobbering — critical for JWT secret seeding across replicas.
+ */
+export async function claimKey(db: DbOrTx, input: SetKeyInput): Promise<RuntimeConfig> {
+  const now = new Date();
+  const expiresAt = input.expiresAt ?? null;
+  const insert: NewRuntimeConfig = {
+    key: input.key,
+    value: input.value,
+    expiresAt,
+    updatedAt: now,
+  };
+  const [inserted] = await db
+    .insert(runtimeConfig)
+    .values(insert)
+    .onConflictDoNothing({ target: runtimeConfig.key })
+    .returning();
+
+  if (inserted) return inserted;
+
+  // Another instance won the race — read the winner's value
+  const winner = await getKey(db, input.key);
+  if (!winner) {
+    throw new Error("claimKey: row vanished after conflict (concurrent DELETE?)");
+  }
+  return winner;
+}

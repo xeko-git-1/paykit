@@ -73,4 +73,36 @@ describe("/v1 rate limiting", () => {
     expect(res.headers.get("X-RateLimit-Remaining")).toBeDefined();
     expect(res.headers.get("X-RateLimit-Reset")).toBeDefined();
   });
+
+  it("two keys of the SAME merchant get independent buckets (per-keyId)", async () => {
+    const keyOne: PaykitAuthContext = { ...authMerchantA, keyId: "key-1" };
+    const keyTwo: PaykitAuthContext = { ...authMerchantA, keyId: "key-2" };
+
+    // Exhaust key-1's bucket
+    const { app: appKey1 } = buildV1TestApp({ auth: keyOne });
+    for (let i = 0; i < 100; i++) {
+      await appKey1.request(new Request("http://localhost/v1/balances"));
+    }
+    const blocked1 = await appKey1.request(new Request("http://localhost/v1/balances"));
+    expect(blocked1.status).toBe(429);
+
+    // key-2 (same merchant) must still have its full quota
+    const { app: appKey2 } = buildV1TestApp({ auth: keyTwo });
+    const resKey2 = await appKey2.request(new Request("http://localhost/v1/balances"));
+    expect(resKey2.status).toBe(200);
+    expect(resKey2.headers.get("X-RateLimit-Remaining")).toBe("99");
+  });
+
+  it("falls back to merchant bucket when keyId is absent (jwt plane)", async () => {
+    const jwtAuth: PaykitAuthContext = {
+      merchantId: "merchant-C",
+      tenant: { tenantId: "merchant-C", ownerId: "merchant-C" },
+      scopes: ["balance:read"],
+      plane: "jwt",
+    };
+    const { app } = buildV1TestApp({ auth: jwtAuth });
+    const res = await app.request(new Request("http://localhost/v1/balances"));
+    expect(res.status).toBe(200);
+    expect(res.headers.get("X-RateLimit-Remaining")).toBe("99");
+  });
 });

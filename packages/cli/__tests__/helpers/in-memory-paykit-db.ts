@@ -1,3 +1,4 @@
+import type { DbClient } from "@vibecc/paykit-server";
 /**
  * In-memory Drizzle-shaped DB for CLI bootstrap + merchant-repo unit tests.
  *
@@ -8,7 +9,6 @@
  * exist) but honors insert/returning, count, and runtime_config upsert.
  */
 import { getTableName } from "drizzle-orm";
-import type { DbClient } from "@vibecc/paykit-server";
 
 type Row = Record<string, unknown>;
 
@@ -81,13 +81,28 @@ export function createInMemoryDb(store: InMemoryStore): DbClient {
               store.runtime_config.push(row);
               return { returning: () => thenable([row]) };
             },
+            onConflictDoNothing() {
+              // Atomic claim: if key already exists, return empty (no insert).
+              // Caller re-SELECTs to get the winner's value.
+              const existing = store.runtime_config.find((r) => r.key === rec.key);
+              if (existing) {
+                return { returning: () => thenable([]) };
+              }
+              const row = build();
+              store.runtime_config.push(row);
+              return { returning: () => thenable([row]) };
+            },
           };
         },
       };
     },
 
     select(fields?: unknown) {
-      const isCount = fields !== undefined && typeof fields === "object" && fields !== null && "count" in (fields as object);
+      const isCount =
+        fields !== undefined &&
+        typeof fields === "object" &&
+        fields !== null &&
+        "count" in (fields as object);
       return {
         from(table: unknown) {
           const tname = getTableName(table as never);

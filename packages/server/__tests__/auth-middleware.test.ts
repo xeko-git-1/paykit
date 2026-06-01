@@ -480,7 +480,7 @@ describe("createJwtSecretLoader", () => {
   it("throws when existing secret is shorter than 32 bytes", async () => {
     const loader = createJwtSecretLoader({
       getKey: vi.fn().mockResolvedValue({ value: "short" }),
-      setKey: vi.fn(),
+      claimKey: vi.fn(),
       db: {} as never,
     });
 
@@ -488,25 +488,25 @@ describe("createJwtSecretLoader", () => {
   });
 
   it("generates and seeds a new secret when none exists", async () => {
-    const setKey = vi.fn().mockImplementation(async (_db, input) => ({
+    const claimKey = vi.fn().mockImplementation(async (_db, input) => ({
       value: input.value,
     }));
     const loader = createJwtSecretLoader({
       getKey: vi.fn().mockResolvedValue(undefined),
-      setKey,
+      claimKey,
       db: {} as never,
     });
 
     const secret = await loader();
     expect(secret.length).toBeGreaterThanOrEqual(32);
-    expect(setKey).toHaveBeenCalledOnce();
+    expect(claimKey).toHaveBeenCalledOnce();
   });
 
   it("caches the secret on subsequent calls", async () => {
     const getKey = vi.fn().mockResolvedValue({ value: TEST_SECRET });
     const loader = createJwtSecretLoader({
       getKey,
-      setKey: vi.fn(),
+      claimKey: vi.fn(),
       db: {} as never,
     });
 

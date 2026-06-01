@@ -40,7 +40,11 @@ export interface JwtAuthDeps {
 
 export interface SecretLoaderDeps {
   readonly getKey: (db: unknown, key: string) => Promise<{ value: string } | undefined>;
-  readonly setKey: (db: unknown, input: { key: string; value: string; expiresAt?: Date | null }) => Promise<{ value: string }>;
+  /**
+   * Atomic claim: INSERT ON CONFLICT DO NOTHING + re-SELECT winner.
+   * Ensures all replicas converge on the same secret during cold-boot race.
+   */
+  readonly claimKey: (db: unknown, input: { key: string; value: string; expiresAt?: Date | null }) => Promise<{ value: string }>;
   readonly db: unknown;
   readonly configKey?: string;
 }
@@ -55,7 +59,7 @@ const CACHE_TTL_MS = 60_000; // 1 minute cache
  * is too short.
  */
 export function createJwtSecretLoader(deps: SecretLoaderDeps): JwtSecretLoader {
-  const { getKey, setKey, db, configKey = "jwt_signing_secret" } = deps;
+  const { getKey, claimKey, db, configKey = "jwt_signing_secret" } = deps;
   let cached: { secret: string; expiresAt: number } | null = null;
 
   return async (): Promise<string> => {
@@ -78,10 +82,11 @@ export function createJwtSecretLoader(deps: SecretLoaderDeps): JwtSecretLoader {
       return row.value;
     }
 
-    // No secret exists — generate and seed one
+    // No secret exists — generate and atomically claim one. If another replica
+    // races us, claimKey returns the winner's value (INSERT DO NOTHING + re-SELECT).
     const { randomBytes } = await import("node:crypto");
     const newSecret = randomBytes(48).toString("base64url"); // 48 bytes → 64 chars base64url
-    const result = await setKey(db, { key: configKey, value: newSecret, expiresAt: null });
+    const result = await claimKey(db, { key: configKey, value: newSecret, expiresAt: null });
     cached = { secret: result.value, expiresAt: Date.now() + CACHE_TTL_MS };
     return result.value;
   };
@@ -162,11 +167,16 @@ export function jwtAuthMiddleware(deps: JwtAuthDeps): MiddlewareHandler {
 
     const scopes = Array.isArray(payload.scopes) ? (payload.scopes as string[]) : [];
 
+    // keyId for rate-limiting: JWT plane has no per-key identity, so we use a
+    // namespaced merchantId to keep its bucket separate from api_key buckets.
+    const keyId = `jwt:${merchantId}`;
+
     const authContext: PaykitAuthContext = {
       merchantId,
       tenant: { tenantId, ownerId },
       scopes,
       plane: "jwt",
+      keyId,
     };
     c.set("paykitAuth", authContext);
 

@@ -9,7 +9,11 @@ import { describe, expect, it } from "vitest";
 import { runDoctor } from "../src/lib/doctor.js";
 import type { MigrationManifest } from "../src/lib/manifest-types.js";
 
-const manifest = { schema: "paykit", advisoryLockKey: "paykit.migrate", migrations: [] } as unknown as MigrationManifest;
+const manifest = {
+  schema: "paykit",
+  advisoryLockKey: "paykit.migrate",
+  migrations: [],
+} as unknown as MigrationManifest;
 
 const ALL_TABLES = [
   "api_keys",

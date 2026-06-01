@@ -24,6 +24,12 @@ export interface PaykitAuthContext {
   readonly tenant: ResolvedTenant;
   readonly scopes: readonly string[];
   readonly plane: AuthPlane;
+  /**
+   * Identifier the rate limiter buckets on. The api_key plane sets the key's
+   * id; the jwt plane sets a namespaced `jwt:<merchantId>` so its buckets never
+   * collide with api-key ids. Two keys of one merchant throttle independently.
+   */
+  readonly keyId?: string;
 }
 
 // ---------------------------------------------------------------------------

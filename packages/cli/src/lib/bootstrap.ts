@@ -13,15 +13,15 @@
  * display only — never logged here.
  */
 import {
+  type DbClient,
   MAX_ACTIVE_KEYS_PER_MERCHANT,
   SCOPES,
   apiKeyRepo,
   createJwtSecretLoader,
   merchantRepo,
-  mintApiKey,
   mintAdminJwt,
+  mintApiKey,
   runtimeConfigRepo,
-  type DbClient,
 } from "@vibecc/paykit-server";
 
 // Valid scope strings, derived from the server's canonical SCOPES map.
@@ -137,7 +137,7 @@ export async function mintJwt(db: DbClient, input: MintJwtInput): Promise<{ toke
       db: unknown,
       key: string,
     ) => Promise<{ value: string } | undefined>,
-    setKey: runtimeConfigRepo.setKey as (
+    claimKey: runtimeConfigRepo.claimKey as (
       db: unknown,
       i: { key: string; value: string; expiresAt?: Date | null },
     ) => Promise<{ value: string }>,

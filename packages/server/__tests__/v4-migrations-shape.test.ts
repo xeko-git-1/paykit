@@ -12,10 +12,7 @@ const manifest = JSON.parse(readFileSync(resolve(MIGRATIONS_DIR, "manifest.json"
   migrations: { id: string; slug: string; up: string; down: string; description: string }[];
 };
 const m014Up = readFileSync(resolve(MIGRATIONS_DIR, "014_api_keys_created_by.up.sql"), "utf8");
-const m014Down = readFileSync(
-  resolve(MIGRATIONS_DIR, "014_api_keys_created_by.down.sql"),
-  "utf8",
-);
+const m014Down = readFileSync(resolve(MIGRATIONS_DIR, "014_api_keys_created_by.down.sql"), "utf8");
 
 describe("V4 migration 012_merchants_and_api_keys — up", () => {
   it("creates paykit.merchants table", () => {
@@ -82,7 +79,7 @@ describe("V4 manifest entry 012", () => {
   });
 
   it("manifest ids are ascending and contiguous up to at least 012 (no gaps)", () => {
-    const ids = manifest.migrations.map((m) => parseInt(m.id, 10));
+    const ids = manifest.migrations.map((m) => Number.parseInt(m.id, 10));
     expect(ids.length).toBeGreaterThanOrEqual(12);
     for (let i = 0; i < ids.length; i++) {
       expect(ids[i]).toBe(i + 1);

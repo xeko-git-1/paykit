@@ -9,8 +9,8 @@
  * and tenant. Data isolation between live/test is deferred to a future version.
  */
 import { text, timestamp, uuid } from "drizzle-orm/pg-core";
-import { paykitSchema } from "./payment-transactions.js";
 import { merchants } from "./merchants.js";
+import { paykitSchema } from "./payment-transactions.js";
 
 export const apiKeys = paykitSchema.table("api_keys", {
   keyId: uuid("key_id").primaryKey().defaultRandom(),

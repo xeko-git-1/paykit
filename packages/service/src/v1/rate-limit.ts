@@ -68,10 +68,10 @@ export function rateLimitMiddleware(config: RateLimitConfig = {}): MiddlewareHan
       return;
     }
 
-    // Key ID is embedded in the auth context via middleware pipeline.
-    // For api_key plane, use merchantId as bucket key (one bucket per merchant key).
-    // For jwt plane, use merchantId as well.
-    const bucketKey = auth.merchantId;
+    // Bucket per credential. Both planes set keyId — api_key uses the key's
+    // id, jwt uses a namespaced `jwt:<merchantId>` — so two keys of one
+    // merchant throttle independently. merchantId is only a defensive fallback.
+    const bucketKey = auth.keyId ?? auth.merchantId;
 
     const bucket = getBucket(bucketKey, maxTokens);
     refillBucket(bucket, maxTokens, refillIntervalMs);
