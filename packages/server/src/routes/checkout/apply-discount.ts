@@ -100,7 +100,9 @@ export async function applyDiscountInTx(opts: {
   }
   // Success: compute effective amount.
   const pct = discount.percent;
-  if (pct < 0 || pct > 100) {
+  // NaN must be rejected explicitly: NaN < 0 and NaN > 100 are both false, so a
+  // bare range check lets it through to BigInt(10000 - NaN), which throws.
+  if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
     logger.warn(`discount percent out of range [0,100]: ${pct} — full price applied`);
     return {
       applied: false,
@@ -109,9 +111,11 @@ export async function applyDiscountInTx(opts: {
       effectiveMicros: amountMicros,
     };
   }
-  // effective = amount * (100 - pct) / 100, rounded down (consumer-favoring? no, business-favoring).
-  // For % discount we round to nearest integer micros.
-  const effective = (amountMicros * BigInt(100 - Math.round(pct)) + 50n) / 100n;
+  // Percentage in basis points keeps fractional discounts exact: rounding the
+  // percent itself would turn 12.5% into 13% and 0.4% into 0%, charging the
+  // wrong amount. bps ∈ [0, 10000]; the +5000n rounds the result to the nearest micro.
+  const bps = Math.round(pct * 100);
+  const effective = (amountMicros * BigInt(10000 - bps) + 5000n) / 10000n;
   return {
     applied: true,
     discount,

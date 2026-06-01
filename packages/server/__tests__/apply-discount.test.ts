@@ -146,10 +146,67 @@ describe("applyDiscountInTx (consume phase, inside transaction)", () => {
     expect(warn).toHaveBeenCalledOnce();
   });
 
+  it("applies fractional 12.5% exactly (bps, not rounded to 13%): 1_000_000 → 875_000", async () => {
+    const r = await applyDiscountInTx({
+      discount: { percent: 12.5, code: "FRAC", sourceId: "u", consume: async () => true },
+      tx: FAKE_TX,
+      amountMicros: 1_000_000n,
+    });
+    expect(r.applied).toBe(true);
+    // Rounding the percent (old behaviour) would give 13% → 870_000. bps math keeps it exact.
+    expect(r.effectiveMicros).toBe(875_000n);
+  });
+
+  it("applies sub-1% discount 0.4% instead of silently dropping it to 0%", async () => {
+    const r = await applyDiscountInTx({
+      discount: { percent: 0.4, code: "TINY", sourceId: "u", consume: async () => true },
+      tx: FAKE_TX,
+      amountMicros: 1_000_000n,
+    });
+    expect(r.applied).toBe(true);
+    // Old Math.round(0.4) = 0 would charge full price; bps=40 deducts 4_000 micros.
+    expect(r.effectiveMicros).toBe(996_000n);
+  });
+
+  it("applies 100% discount: effective amount is zero", async () => {
+    const r = await applyDiscountInTx({
+      discount: { percent: 100, code: "FREE", sourceId: "u", consume: async () => true },
+      tx: FAKE_TX,
+      amountMicros: 1_000_000n,
+    });
+    expect(r.applied).toBe(true);
+    expect(r.effectiveMicros).toBe(0n);
+  });
+
+  it("applies 0% discount: full price, still marked applied", async () => {
+    const r = await applyDiscountInTx({
+      discount: { percent: 0, code: "ZERO", sourceId: "u", consume: async () => true },
+      tx: FAKE_TX,
+      amountMicros: 1_000_000n,
+    });
+    expect(r.applied).toBe(true);
+    expect(r.effectiveMicros).toBe(1_000_000n);
+  });
+
   it("rejects out-of-range percent (>100): falls back to full price", async () => {
     const r = await applyDiscountInTx({
       discount: {
         percent: 150,
+        code: "BAD",
+        sourceId: "u",
+        consume: async () => true,
+      },
+      tx: FAKE_TX,
+      amountMicros: 1_000_000n,
+    });
+    expect(r.applied).toBe(false);
+    expect(r.effectiveMicros).toBe(1_000_000n);
+  });
+
+  it("rejects NaN percent without throwing: falls back to full price", async () => {
+    const r = await applyDiscountInTx({
+      discount: {
+        percent: Number.NaN,
         code: "BAD",
         sourceId: "u",
         consume: async () => true,
