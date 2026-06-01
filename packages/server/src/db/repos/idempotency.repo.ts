@@ -138,11 +138,19 @@ export interface FinalizeInput {
   readonly ttlSeconds?: number;
 }
 
-/** Mark a claimed row as done with the handler's response and a 24h replay TTL. */
+/**
+ * Mark our claimed row as done with the handler's response and a 24h replay TTL.
+ *
+ * Guarded by state='in_flight' so it only finalizes a row we still own: if the
+ * handler outran the in_flight TTL and another request reclaimed the key, this
+ * matches nothing and returns null rather than overwriting the racer's row with
+ * a stale response. The caller treats null as "claim lost" — the mutation
+ * already happened, so it must NOT surface that as an error.
+ */
 export async function finalizeIdempotency(
   db: DbOrTx,
   input: FinalizeInput,
-): Promise<IdempotencyRecord> {
+): Promise<IdempotencyRecord | null> {
   const ttl = input.ttlSeconds ?? DONE_TTL_SECONDS;
   const [row] = await db
     .update(idempotencyRecords)
@@ -156,11 +164,11 @@ export async function finalizeIdempotency(
       and(
         eq(idempotencyRecords.tenantId, input.tenantId),
         eq(idempotencyRecords.idempotencyKey, input.key),
+        eq(idempotencyRecords.state, "in_flight"),
       ),
     )
     .returning();
-  if (!row) throw new Error("finalizeIdempotency: no row to finalize (claim lost?)");
-  return row;
+  return row ?? null;
 }
 
 /**

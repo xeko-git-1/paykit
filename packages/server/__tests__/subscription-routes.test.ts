@@ -166,10 +166,13 @@ vi.mock("../src/db/repos/idempotency.repo.js", async () => {
           responseBody: Record<string, unknown>;
         },
       ) => {
+        // Guarded by state='in_flight' — a finalize whose claim was reclaimed
+        // by a racing request matches nothing and returns null.
         const row = idempotencyRows.find(
-          (r) => r.tenantId === input.tenantId && r.key === input.key,
+          (r) =>
+            r.tenantId === input.tenantId && r.key === input.key && r.state === "in_flight",
         );
-        if (!row) throw new Error("finalizeIdempotency: no row to finalize (claim lost?)");
+        if (!row) return null;
         row.state = "done";
         row.status = input.responseStatus;
         row.body = input.responseBody;

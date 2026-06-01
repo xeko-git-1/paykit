@@ -47,6 +47,10 @@ describe("Migration 015_idempotency_in_flight_state — up", () => {
 });
 
 describe("Migration 015_idempotency_in_flight_state — down", () => {
+  it("locks the table before mutating to avoid a concurrent-insert race", () => {
+    expect(down).toMatch(/LOCK TABLE paykit\.idempotency_records IN ACCESS EXCLUSIVE MODE/i);
+  });
+
   it("deletes in_flight rows before restoring NOT NULL (they hold NULL status)", () => {
     expect(down).toMatch(/DELETE FROM paykit\.idempotency_records WHERE state = 'in_flight'/i);
     expect(down).toMatch(/ALTER COLUMN response_status SET NOT NULL/i);
