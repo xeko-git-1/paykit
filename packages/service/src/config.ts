@@ -36,6 +36,29 @@ const envSchema = z.object({
   NOWPAYMENTS_IPN_SECRET: z.string().optional(),
   NOWPAYMENTS_ENVIRONMENT: z.enum(["sandbox", "production"]).optional(),
 
+  // VNPay (VN bank/QR) — enabled when all required creds present
+  VNPAY_TMN_CODE: z.string().optional(),
+  VNPAY_HASH_SECRET: z.string().optional(),
+  VNPAY_RETURN_URL: z.string().optional(),
+  VNPAY_IPN_URL: z.string().optional(),
+  VNPAY_ENVIRONMENT: z.enum(["sandbox", "production"]).optional(),
+
+  // Momo (VN wallet)
+  MOMO_PARTNER_CODE: z.string().optional(),
+  MOMO_ACCESS_KEY: z.string().optional(),
+  MOMO_SECRET_KEY: z.string().optional(),
+  MOMO_RETURN_URL: z.string().optional(),
+  MOMO_IPN_URL: z.string().optional(),
+  MOMO_ENVIRONMENT: z.enum(["sandbox", "production"]).optional(),
+
+  // ZaloPay (VN wallet)
+  ZALOPAY_APP_ID: z.string().optional(),
+  ZALOPAY_KEY1: z.string().optional(),
+  ZALOPAY_KEY2: z.string().optional(),
+  ZALOPAY_RETURN_URL: z.string().optional(),
+  ZALOPAY_CALLBACK_URL: z.string().optional(),
+  ZALOPAY_ENVIRONMENT: z.enum(["sandbox", "production"]).optional(),
+
   // Admin guard secret (env-based for V4.0; dashboard JWT is V4.4)
   ADMIN_SECRET: z.string().optional(),
 });
@@ -64,6 +87,35 @@ export interface ServiceConfig {
     | {
         apiKey: string;
         ipnSecret: string;
+        environment: "sandbox" | "production";
+      }
+    | undefined;
+  readonly vnpay:
+    | {
+        tmnCode: string;
+        hashSecret: string;
+        returnUrl: string;
+        ipnUrl: string;
+        environment: "sandbox" | "production";
+      }
+    | undefined;
+  readonly momo:
+    | {
+        partnerCode: string;
+        accessKey: string;
+        secretKey: string;
+        returnUrl: string;
+        ipnUrl: string;
+        environment: "sandbox" | "production";
+      }
+    | undefined;
+  readonly zalopay:
+    | {
+        appId: string;
+        key1: string;
+        key2: string;
+        returnUrl: string;
+        callbackUrl: string;
         environment: "sandbox" | "production";
       }
     | undefined;
@@ -118,12 +170,61 @@ export function parseServiceConfig(env: Record<string, string | undefined>): Ser
         }
       : undefined;
 
+  const vnpay =
+    parsed.VNPAY_TMN_CODE &&
+    parsed.VNPAY_HASH_SECRET &&
+    parsed.VNPAY_RETURN_URL &&
+    parsed.VNPAY_IPN_URL
+      ? {
+          tmnCode: parsed.VNPAY_TMN_CODE,
+          hashSecret: parsed.VNPAY_HASH_SECRET,
+          returnUrl: parsed.VNPAY_RETURN_URL,
+          ipnUrl: parsed.VNPAY_IPN_URL,
+          environment: parsed.VNPAY_ENVIRONMENT ?? ("sandbox" as const),
+        }
+      : undefined;
+
+  const momo =
+    parsed.MOMO_PARTNER_CODE &&
+    parsed.MOMO_ACCESS_KEY &&
+    parsed.MOMO_SECRET_KEY &&
+    parsed.MOMO_RETURN_URL &&
+    parsed.MOMO_IPN_URL
+      ? {
+          partnerCode: parsed.MOMO_PARTNER_CODE,
+          accessKey: parsed.MOMO_ACCESS_KEY,
+          secretKey: parsed.MOMO_SECRET_KEY,
+          returnUrl: parsed.MOMO_RETURN_URL,
+          ipnUrl: parsed.MOMO_IPN_URL,
+          environment: parsed.MOMO_ENVIRONMENT ?? ("sandbox" as const),
+        }
+      : undefined;
+
+  const zalopay =
+    parsed.ZALOPAY_APP_ID &&
+    parsed.ZALOPAY_KEY1 &&
+    parsed.ZALOPAY_KEY2 &&
+    parsed.ZALOPAY_RETURN_URL &&
+    parsed.ZALOPAY_CALLBACK_URL
+      ? {
+          appId: parsed.ZALOPAY_APP_ID,
+          key1: parsed.ZALOPAY_KEY1,
+          key2: parsed.ZALOPAY_KEY2,
+          returnUrl: parsed.ZALOPAY_RETURN_URL,
+          callbackUrl: parsed.ZALOPAY_CALLBACK_URL,
+          environment: parsed.ZALOPAY_ENVIRONMENT ?? ("sandbox" as const),
+        }
+      : undefined;
+
   return {
     databaseUrl: parsed.DATABASE_URL,
     port: parsed.PORT,
     stripe,
     sepay,
     nowpayments,
+    vnpay,
+    momo,
+    zalopay,
     adminSecret: parsed.ADMIN_SECRET,
   };
 }

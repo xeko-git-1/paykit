@@ -31,6 +31,7 @@ export interface ApiKeyAuthDeps {
     lastUsedAt: Date | null;
     revokedAt: Date | null;
     createdAt: Date;
+    createdBy: string | null;
   } | null>;
   /** Fire-and-forget last-used timestamp update */
   readonly touchLastUsed: (db: DbClient, keyId: string) => Promise<void>;

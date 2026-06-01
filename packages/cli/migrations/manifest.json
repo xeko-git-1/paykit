@@ -93,6 +93,13 @@
       "up": "013_idempotency_key_tenant_scoped.up.sql",
       "down": "013_idempotency_key_tenant_scoped.down.sql",
       "description": "Scope idempotency_key unique constraint to (tenant_id, idempotency_key); fixes cross-tenant lookup isolation"
+    },
+    {
+      "id": "014",
+      "slug": "api_keys_created_by",
+      "up": "014_api_keys_created_by.up.sql",
+      "down": "014_api_keys_created_by.down.sql",
+      "description": "V4.0 — add api_keys.created_by (nullable TEXT) for mint attribution; records acting principal (CLI operator or jwt-plane admin)"
     }
   ]
 }

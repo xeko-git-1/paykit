@@ -24,7 +24,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@vibecc/paykit-server": "workspace:*",
     "cac": "^6.7.14",
+    "drizzle-orm": "^0.36.4",
     "pg": "^8.13.0"
   },
   "peerDependencies": {
@@ -35,6 +37,7 @@
   },
   "devDependencies": {
     "@types/pg": "^8.20.0",
-    "@vibecc/paykit": "workspace:*"
+    "@vibecc/paykit": "workspace:*",
+    "hono": "^4.6.0"
   }
 }

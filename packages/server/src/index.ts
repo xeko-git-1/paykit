@@ -53,6 +53,7 @@ export {
   hashApiKey,
   mintApiKey,
   verifyApiKey,
+  MAX_ACTIVE_KEYS_PER_MERCHANT,
   type ApiKeyLookup,
   type MintApiKeyOpts,
   type MintApiKeyResult,
@@ -84,6 +85,12 @@ export {
   type JwtSecretLoader,
   type SecretLoaderDeps,
 } from "./auth/jwt-middleware.js";
+export { JWT_ISSUER, JWT_AUDIENCE } from "./auth/jwt-claims.js";
+export { mintAdminJwt, type MintAdminJwtOpts } from "./auth/mint-admin-jwt.js";
+export {
+  authPlaneDispatcher,
+  type AuthPlaneDispatcherDeps,
+} from "./auth/auth-plane-dispatcher.js";
 export {
   requireScope,
   requirePlane,
@@ -96,6 +103,7 @@ export * as balanceRepo from "./db/repos/balance.repo.js";
 export * as customerRepo from "./db/repos/customer.repo.js";
 export * as idempotencyRepo from "./db/repos/idempotency.repo.js";
 export * as ledgerRepo from "./db/repos/ledger.repo.js";
+export * as merchantRepo from "./db/repos/merchant.repo.js";
 export * as paymentRepo from "./db/repos/payment.repo.js";
 export * as pendingRefundRepo from "./db/repos/pending-refund.repo.js";
 export * as reconciliationRepo from "./db/repos/reconciliation.repo.js";

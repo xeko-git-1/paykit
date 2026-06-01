@@ -1,6 +1,6 @@
 # Multi-stage build: compile TypeScript → slim Node.js 20 Alpine runtime.
-# Single image serves multiple commands: serve | migrate | doctor
-# via argv dispatch in main.ts.
+# The service image runs `serve` only. Migrations are applied separately via the
+# paykit CLI bin (node packages/cli/dist/bin/paykit.js migrate up).
 
 # --- Stage 1: Build ---
 FROM node:20-alpine AS builder
@@ -20,6 +20,9 @@ COPY packages/service/package.json packages/service/package.json
 COPY packages/stripe-adapter/package.json packages/stripe-adapter/package.json
 COPY packages/sepay-adapter/package.json packages/sepay-adapter/package.json
 COPY packages/nowpayments-adapter/package.json packages/nowpayments-adapter/package.json
+COPY packages/vnpay-adapter/package.json packages/vnpay-adapter/package.json
+COPY packages/momo-adapter/package.json packages/momo-adapter/package.json
+COPY packages/zalopay-adapter/package.json packages/zalopay-adapter/package.json
 
 # Install all workspace deps (frozen lockfile for reproducibility)
 RUN pnpm install --frozen-lockfile
@@ -32,6 +35,9 @@ COPY packages/service/ packages/service/
 COPY packages/stripe-adapter/ packages/stripe-adapter/
 COPY packages/sepay-adapter/ packages/sepay-adapter/
 COPY packages/nowpayments-adapter/ packages/nowpayments-adapter/
+COPY packages/vnpay-adapter/ packages/vnpay-adapter/
+COPY packages/momo-adapter/ packages/momo-adapter/
+COPY packages/zalopay-adapter/ packages/zalopay-adapter/
 COPY migrations/ migrations/
 
 # Build all packages (service depends on server, core, adapters)
@@ -66,6 +72,15 @@ COPY --from=builder /app/packages/sepay-adapter/package.json packages/sepay-adap
 
 COPY --from=builder /app/packages/nowpayments-adapter/dist packages/nowpayments-adapter/dist
 COPY --from=builder /app/packages/nowpayments-adapter/package.json packages/nowpayments-adapter/package.json
+
+COPY --from=builder /app/packages/vnpay-adapter/dist packages/vnpay-adapter/dist
+COPY --from=builder /app/packages/vnpay-adapter/package.json packages/vnpay-adapter/package.json
+
+COPY --from=builder /app/packages/momo-adapter/dist packages/momo-adapter/dist
+COPY --from=builder /app/packages/momo-adapter/package.json packages/momo-adapter/package.json
+
+COPY --from=builder /app/packages/zalopay-adapter/dist packages/zalopay-adapter/dist
+COPY --from=builder /app/packages/zalopay-adapter/package.json packages/zalopay-adapter/package.json
 
 COPY --from=builder /app/packages/service/dist packages/service/dist
 COPY --from=builder /app/packages/service/package.json packages/service/package.json

@@ -53,5 +53,46 @@ export async function buildAdaptersFromConfig(
     );
   }
 
+  if (config.vnpay) {
+    const { createVnpayAdapter } = await import("@vibecc/paykit-vnpay");
+    adapters.push(
+      createVnpayAdapter({
+        tmnCode: config.vnpay.tmnCode,
+        hashSecret: config.vnpay.hashSecret,
+        returnUrl: config.vnpay.returnUrl,
+        ipnUrl: config.vnpay.ipnUrl,
+        environment: config.vnpay.environment,
+      }),
+    );
+  }
+
+  if (config.momo) {
+    const { createMomoAdapter } = await import("@vibecc/paykit-momo");
+    adapters.push(
+      createMomoAdapter({
+        partnerCode: config.momo.partnerCode,
+        accessKey: config.momo.accessKey,
+        secretKey: config.momo.secretKey,
+        returnUrl: config.momo.returnUrl,
+        ipnUrl: config.momo.ipnUrl,
+        environment: config.momo.environment,
+      }),
+    );
+  }
+
+  if (config.zalopay) {
+    const { createZaloPayAdapter } = await import("@vibecc/paykit-zalopay");
+    adapters.push(
+      createZaloPayAdapter({
+        appId: config.zalopay.appId,
+        key1: config.zalopay.key1,
+        key2: config.zalopay.key2,
+        returnUrl: config.zalopay.returnUrl,
+        callbackUrl: config.zalopay.callbackUrl,
+        environment: config.zalopay.environment,
+      }),
+    );
+  }
+
   return adapters;
 }

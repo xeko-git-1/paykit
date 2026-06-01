@@ -24,6 +24,10 @@ export const apiKeys = paykitSchema.table("api_keys", {
   lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
   revokedAt: timestamp("revoked_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  // Mint attribution: identifies the principal that created this key
+  // (CLI operator string or jwt-plane admin merchantId). Nullable — keys
+  // minted before migration 014 have NULL.
+  createdBy: text("created_by"),
 });
 
 export type ApiKey = typeof apiKeys.$inferSelect;

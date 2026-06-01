@@ -58,12 +58,24 @@ export async function runDoctor(
       [manifest.schema],
     );
     const present = new Set(tablesCheck.rows.map((r) => r.table_name));
+    // Authoritative expected schema: every business table created by a CREATE
+    // TABLE migration (001..012). schema_migrations is runner-managed and not
+    // listed here. ALTER-only migrations (e.g. 013, 014) add columns/constraints
+    // and do NOT change this set. Update this list when a CREATE TABLE lands.
     const expected = [
-      "payment_transactions",
-      "ledger_entries",
+      "api_keys",
       "balance_projections",
-      "webhook_events",
+      "customers",
+      "idempotency_records",
+      "ledger_entries",
+      "merchants",
+      "payment_transactions",
+      "pending_refunds",
       "reconciliation_runs",
+      "runtime_config",
+      "subscription_events",
+      "subscriptions",
+      "webhook_events",
     ];
     const missing = expected.filter((t) => !present.has(t));
     if (missing.length > 0) {
@@ -73,7 +85,11 @@ export async function runDoctor(
         message: `missing tables: ${missing.join(", ")} — run 'paykit migrate up'`,
       });
     } else {
-      checks.push({ name: "paykit_tables", level: "ok", message: "all 5 paykit tables present" });
+      checks.push({
+        name: "paykit_tables",
+        level: "ok",
+        message: `all ${expected.length} paykit tables present`,
+      });
     }
   }
 

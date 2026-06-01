@@ -48,9 +48,15 @@ importers:
 
   packages/cli:
     dependencies:
+      '@vibecc/paykit-server':
+        specifier: workspace:*
+        version: link:../server
       cac:
         specifier: ^6.7.14
         version: 6.7.14
+      drizzle-orm:
+        specifier: ^0.36.4
+        version: 0.36.4(@types/pg@8.20.0)(@types/react@18.3.29)(pg@8.21.0)(react@19.2.6)
       pg:
         specifier: ^8.13.0
         version: 8.21.0
@@ -61,6 +67,9 @@ importers:
       '@vibecc/paykit':
         specifier: workspace:*
         version: link:../core
+      hono:
+        specifier: ^4.6.0
+        version: 4.12.22
 
   packages/core: {}
 
@@ -155,6 +164,9 @@ importers:
       '@vibecc/paykit-cli':
         specifier: workspace:*
         version: link:../cli
+      '@vibecc/paykit-momo':
+        specifier: workspace:*
+        version: link:../momo-adapter
       '@vibecc/paykit-nowpayments':
         specifier: workspace:*
         version: link:../nowpayments-adapter
@@ -167,6 +179,12 @@ importers:
       '@vibecc/paykit-stripe':
         specifier: workspace:*
         version: link:../stripe-adapter
+      '@vibecc/paykit-vnpay':
+        specifier: workspace:*
+        version: link:../vnpay-adapter
+      '@vibecc/paykit-zalopay':
+        specifier: workspace:*
+        version: link:../zalopay-adapter
       drizzle-orm:
         specifier: ^0.36.4
         version: 0.36.4(@types/pg@8.20.0)(@types/react@18.3.29)(pg@8.21.0)(react@19.2.6)

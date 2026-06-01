@@ -39,6 +39,66 @@ describe("parseServiceConfig", () => {
     // Config should not have a jwtSecret field from env
     expect((config as Record<string, unknown>).jwtSecret).toBeUndefined();
   });
+
+  it("enables vnpay/momo/zalopay when all of each provider's creds are present", async () => {
+    const env = {
+      DATABASE_URL: "postgres://localhost/paykit",
+      VNPAY_TMN_CODE: "TMN1",
+      VNPAY_HASH_SECRET: "vnp-secret",
+      VNPAY_RETURN_URL: "https://app/return",
+      VNPAY_IPN_URL: "https://app/ipn",
+      MOMO_PARTNER_CODE: "MOMO1",
+      MOMO_ACCESS_KEY: "ak",
+      MOMO_SECRET_KEY: "sk",
+      MOMO_RETURN_URL: "https://app/return",
+      MOMO_IPN_URL: "https://app/ipn",
+      ZALOPAY_APP_ID: "123",
+      ZALOPAY_KEY1: "k1",
+      ZALOPAY_KEY2: "k2",
+      ZALOPAY_RETURN_URL: "https://app/return",
+      ZALOPAY_CALLBACK_URL: "https://app/cb",
+    };
+    const { parseServiceConfig } = await import("../src/config.js");
+    const config = parseServiceConfig(env);
+    expect(config.vnpay).toEqual({
+      tmnCode: "TMN1",
+      hashSecret: "vnp-secret",
+      returnUrl: "https://app/return",
+      ipnUrl: "https://app/ipn",
+      environment: "sandbox",
+    });
+    expect(config.momo?.partnerCode).toBe("MOMO1");
+    expect(config.zalopay?.callbackUrl).toBe("https://app/cb");
+  });
+
+  it("leaves a VN provider undefined when any required cred is missing", async () => {
+    const env = {
+      DATABASE_URL: "postgres://localhost/paykit",
+      // VNPay missing IPN URL → must not enable
+      VNPAY_TMN_CODE: "TMN1",
+      VNPAY_HASH_SECRET: "vnp-secret",
+      VNPAY_RETURN_URL: "https://app/return",
+    };
+    const { parseServiceConfig } = await import("../src/config.js");
+    const config = parseServiceConfig(env);
+    expect(config.vnpay).toBeUndefined();
+    expect(config.momo).toBeUndefined();
+    expect(config.zalopay).toBeUndefined();
+  });
+
+  it("honors explicit VN environment override (production)", async () => {
+    const env = {
+      DATABASE_URL: "postgres://localhost/paykit",
+      VNPAY_TMN_CODE: "TMN1",
+      VNPAY_HASH_SECRET: "vnp-secret",
+      VNPAY_RETURN_URL: "https://app/return",
+      VNPAY_IPN_URL: "https://app/ipn",
+      VNPAY_ENVIRONMENT: "production",
+    };
+    const { parseServiceConfig } = await import("../src/config.js");
+    const config = parseServiceConfig(env);
+    expect(config.vnpay?.environment).toBe("production");
+  });
 });
 
 describe("bootstrapJwtSecret", () => {

@@ -11,6 +11,11 @@ const m012Down = readFileSync(
 const manifest = JSON.parse(readFileSync(resolve(MIGRATIONS_DIR, "manifest.json"), "utf8")) as {
   migrations: { id: string; slug: string; up: string; down: string; description: string }[];
 };
+const m014Up = readFileSync(resolve(MIGRATIONS_DIR, "014_api_keys_created_by.up.sql"), "utf8");
+const m014Down = readFileSync(
+  resolve(MIGRATIONS_DIR, "014_api_keys_created_by.down.sql"),
+  "utf8",
+);
 
 describe("V4 migration 012_merchants_and_api_keys — up", () => {
   it("creates paykit.merchants table", () => {
@@ -82,5 +87,30 @@ describe("V4 manifest entry 012", () => {
     for (let i = 0; i < ids.length; i++) {
       expect(ids[i]).toBe(i + 1);
     }
+  });
+});
+
+describe("V4.0 migration 014_api_keys_created_by", () => {
+  it("up adds created_by column to api_keys (ALTER, not a new table)", () => {
+    expect(m014Up).toMatch(/ALTER TABLE paykit\.api_keys\s+ADD COLUMN created_by/i);
+    // No CREATE TABLE — table count stays at 13 (this is an attribution column only)
+    expect(m014Up).not.toMatch(/CREATE TABLE/i);
+  });
+
+  it("created_by is nullable (no NOT NULL, no DEFAULT) — safe on populated table", () => {
+    expect(m014Up).not.toMatch(/created_by\s+TEXT\s+NOT NULL/i);
+    expect(m014Up).not.toMatch(/created_by\s+TEXT\s+DEFAULT/i);
+  });
+
+  it("down drops the created_by column", () => {
+    expect(m014Down).toMatch(/ALTER TABLE paykit\.api_keys\s+DROP COLUMN IF EXISTS created_by/i);
+  });
+
+  it("manifest entry 014 points to correct filenames", () => {
+    const entry = manifest.migrations.find((m) => m.id === "014");
+    expect(entry).toBeDefined();
+    expect(entry!.slug).toBe("api_keys_created_by");
+    expect(entry!.up).toBe("014_api_keys_created_by.up.sql");
+    expect(entry!.down).toBe("014_api_keys_created_by.down.sql");
   });
 });

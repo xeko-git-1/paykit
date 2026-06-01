@@ -1,6 +1,14 @@
-# Development docker-compose: service + postgres
-# Usage: docker compose up
-version: "3.9"
+# Development docker-compose: postgres + one-shot migrate + service.
+#
+# Cold-start ordering (fresh volume):
+#   postgres healthy → migrate (applies all migrations, exits 0)
+#                    → service serve (starts only after migrate succeeds)
+#
+# The migrate step is a one-shot init container, NOT the service image's entry
+# command: it clears the ENTRYPOINT and invokes the paykit CLI bin by absolute
+# path (node packages/cli/dist/bin/paykit.js) so it does not depend on `paykit`
+# being on PATH and is not swallowed by the service ENTRYPOINT's exec form.
+# The DSN travels via the DATABASE_URL env var (no shell interpolation).
 
 services:
   postgres:
@@ -19,7 +27,28 @@ services:
       timeout: 3s
       retries: 5
 
+  # One-shot migration runner. Applies all pending migrations then exits.
+  # serve waits on this via service_completed_successfully, so the schema is at
+  # HEAD before any request is served (multi-instance safe — the migrate runner
+  # holds an advisory lock internally).
+  migrate:
+    image: paykit-service
+    build:
+      context: .
+      dockerfile: packages/service/Dockerfile
+    entrypoint: []
+    command: ["node", "packages/cli/dist/bin/paykit.js", "migrate", "up"]
+    environment:
+      DATABASE_URL: postgres://paykit:paykit@postgres:5432/paykit
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Recovery: re-run a partial migration on transient failure. Scoped to the
+    # init container only — never the serve container (see below).
+    restart: on-failure
+
   service:
+    image: paykit-service
     build:
       context: .
       dockerfile: packages/service/Dockerfile
@@ -29,9 +58,9 @@ services:
       DATABASE_URL: postgres://paykit:paykit@postgres:5432/paykit
       PORT: "3000"
     depends_on:
-      postgres:
-        condition: service_healthy
-    # Run migrations before serving
+      migrate:
+        condition: service_completed_successfully
+    # No restart policy on serve: a crash loop here must surface, not be masked.
     command: ["serve"]
 
 volumes:

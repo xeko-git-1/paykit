@@ -67,16 +67,15 @@ describe("Manifest entry 013", () => {
     expect(entry!.down).toBe("013_idempotency_key_tenant_scoped.down.sql");
   });
 
-  it("manifest ids are ascending and contiguous 001..013 (no gaps)", () => {
+  it("manifest ids are ascending and contiguous from 001 with no gaps", () => {
     const ids = manifest.migrations.map((m) => parseInt(m.id, 10));
-    expect(ids.length).toBe(13);
+    expect(ids.length).toBeGreaterThanOrEqual(13);
     for (let i = 0; i < ids.length; i++) {
       expect(ids[i]).toBe(i + 1);
     }
   });
 
-  it("013 is the last entry in manifest", () => {
-    const last = manifest.migrations[manifest.migrations.length - 1];
-    expect(last?.id).toBe("013");
+  it("013 is registered at its expected position (13th entry)", () => {
+    expect(manifest.migrations[12]?.id).toBe("013");
   });
 });

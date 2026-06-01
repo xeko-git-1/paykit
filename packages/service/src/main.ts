@@ -5,8 +5,12 @@ import {
   type JwtSecretLoader,
   apiKeyAuthMiddleware,
   apiKeyRepo,
+  authPlaneDispatcher,
   createJwtSecretLoader,
   createPaykit,
+  jwtAuthMiddleware,
+  JWT_AUDIENCE,
+  JWT_ISSUER,
   runtimeConfigRepo,
 } from "@vibecc/paykit-server";
 /**
@@ -65,7 +69,10 @@ export async function buildServiceApp(deps: BuildServiceAppDeps): Promise<Hono> 
   });
   app.route("/webhooks", paykit.webhookRoutes());
 
-  // 3. Auth middleware on /v1/* — API key plane
+  // 3. Auth on /v1/* — dual plane. api-key (pk_ tokens) for s2s; jwt for
+  //    admin/dashboard (e.g. POST /v1/api-keys mint). A dispatcher routes by
+  //    token shape so the two mutually-exclusive middlewares coexist: exactly
+  //    one plane runs per request.
   const apiKeyDeps: ApiKeyAuthDeps = {
     db,
     findByHash: apiKeyRepo.findByHash,
@@ -75,7 +82,13 @@ export async function buildServiceApp(deps: BuildServiceAppDeps): Promise<Hono> 
       return { tenantId: merchantId, ownerId: merchantId };
     },
   };
-  app.use("/v1/*", apiKeyAuthMiddleware(apiKeyDeps));
+  const apiKeyPlane = apiKeyAuthMiddleware(apiKeyDeps);
+  const jwtPlane = jwtAuthMiddleware({
+    loadSecret: jwtSecretLoader,
+    expectedIssuer: JWT_ISSUER,
+    expectedAudience: JWT_AUDIENCE,
+  });
+  app.use("/v1/*", authPlaneDispatcher({ apiKey: apiKeyPlane, jwt: jwtPlane }));
 
   // 4. Service routes under /v1 (tenant from paykitAuth, not resolver)
   app.route("/v1", paykit.serviceRoutes());
@@ -121,27 +134,14 @@ export async function serve(port: number, app: Hono): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// CLI dispatch — single image, command-based (serve|migrate|doctor)
+// CLI dispatch — service image runs `serve` only. Migrations are applied by
+// the paykit CLI bin directly (compose init-container), never from this
+// process: keeps schema changes out of the request-serving image and avoids
+// shelling out with an interpolated DSN.
 // ---------------------------------------------------------------------------
 
 export async function main(): Promise<void> {
   const command = process.argv[2] ?? "serve";
-
-  if (command === "migrate") {
-    // Delegate to paykit-cli migrate sub-command
-    const subCmd = process.argv[3] ?? "up";
-    const { execSync } = await import("node:child_process");
-    const dbUrl = process.env.DATABASE_URL ?? "";
-    execSync(`paykit migrate ${subCmd} --db-url "${dbUrl}"`, { stdio: "inherit" });
-    return;
-  }
-
-  if (command === "doctor") {
-    const { execSync } = await import("node:child_process");
-    const dbUrl = process.env.DATABASE_URL ?? "";
-    execSync(`paykit doctor --db-url "${dbUrl}"`, { stdio: "inherit" });
-    return;
-  }
 
   if (command === "serve") {
     const { parseServiceConfig } = await import("./config.js");
@@ -187,7 +187,10 @@ export async function main(): Promise<void> {
     return;
   }
 
-  console.error(`Unknown command: ${command}. Use: serve | migrate | doctor`);
+  console.error(
+    `Unknown command: ${command}. The service image supports only: serve. ` +
+      "Run migrations with the paykit CLI (node packages/cli/dist/bin/paykit.js migrate up).",
+  );
   process.exit(1);
 }
 

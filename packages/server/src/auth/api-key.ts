@@ -14,6 +14,13 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type { ApiKey } from "../db/schema/api-keys.js";
 import type { ApiKeyScope } from "./scope.js";
 
+/**
+ * Maximum active (non-revoked) keys per merchant — durable, DB-counted cap.
+ * Enforced identically at every mint path (HTTP jwt-plane route + CLI operator
+ * bootstrap) so neither can exceed the other's invariant.
+ */
+export const MAX_ACTIVE_KEYS_PER_MERCHANT = 10;
+
 // ---------------------------------------------------------------------------
 // Base62 encoding (alphanumeric, URL-safe, no ambiguous chars)
 // ---------------------------------------------------------------------------

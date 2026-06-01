@@ -12,6 +12,7 @@ import type { ProviderRegistry } from "@vibecc/paykit";
 import {
   type DbClient,
   type PaykitAuthContext,
+  MAX_ACTIVE_KEYS_PER_MERCHANT,
   SCOPES,
   apiKeyRepo,
   balanceRepo,
@@ -36,13 +37,6 @@ import {
   PaymentsQueryParams,
 } from "./dto.js";
 import { rateLimitMiddleware } from "./rate-limit.js";
-
-// ---------------------------------------------------------------------------
-// Config
-// ---------------------------------------------------------------------------
-
-/** Maximum active (non-revoked) keys per merchant — durable DB-counted cap */
-const MAX_ACTIVE_KEYS_PER_MERCHANT = 10;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -316,13 +310,15 @@ export function buildV1Router(deps: V1RouterDeps): Hono {
       scopes: parsed.scopes as Parameters<typeof mintApiKey>[0]["scopes"],
     });
 
-    // Persist the key record
+    // Persist the key record. created_by records the minting principal for
+    // attribution — on the jwt plane that is the authenticated admin merchant.
     const record = await apiKeyRepo.insert(db, {
       merchantId: minted.record.merchantId,
       keyHash: minted.record.keyHash,
       keyPrefix: minted.record.keyPrefix,
       mode: minted.record.mode,
       scopes: minted.record.scopes,
+      createdBy: `jwt:${auth.merchantId}`,
     });
 
     // Return plaintext exactly once — never stored or retrievable again

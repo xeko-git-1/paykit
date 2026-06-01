@@ -64,10 +64,10 @@ psql "$PAYKIT_DB_URL" -c "\d paykit.payment_transactions"   # composite unique (
 psql "$PAYKIT_DB_URL" -c "\d paykit.idempotency_records"     # cột state + response_status nullable
 ```
 
-**Harness (red-team finding F):** test migration-shape hiện có là **string-match thuần** (`v4-migrations-shape.test.ts` dùng `readFileSync`), KHÔNG chạm DB. Các test cần Postgres thật (IDOR cross-tenant INSERT, refund/idempotency concurrency, migration up/down) repo CHƯA có harness (grep pglite/testcontainers/pg = rỗng). Trước khi viết các test này phải chốt harness:
-- Lựa chọn: PGlite (in-process, nhanh, không cần Docker) hoặc testcontainers/docker-compose Postgres.
-- Đánh dấu test cần-DB là **integration**, tách khỏi `pnpm test` mặc định nếu CI thiếu Postgres (tránh đỏ giả).
-- Quyết định harness là **việc đầu tiên của Phase 1** (block các success-criteria có chữ "test chứng minh").
+**Harness (red-team finding F) — ĐÃ CHỐT: testcontainers/docker.** test migration-shape hiện có là **string-match thuần** (`v4-migrations-shape.test.ts` dùng `readFileSync`), KHÔNG chạm DB. Các test cần Postgres thật (IDOR cross-tenant INSERT, refund/idempotency concurrency, migration up/down) repo CHƯA có harness (grep pglite/testcontainers/pg = rỗng). Quyết định:
+- Dùng **@testcontainers/postgresql** (Postgres thật qua Docker) — sát production, hỗ trợ advisory lock + `FOR UPDATE` chuẩn cho test concurrency.
+- Đánh dấu test cần-DB là **integration**, tách khỏi `pnpm test` mặc định; chỉ chạy khi Docker khả dụng (skip có cảnh báo nếu thiếu, tránh đỏ giả trong CI trống).
+- Dựng harness testcontainers là **việc đầu tiên của Phase 1** (block các success-criteria có chữ "test chứng minh"). Yêu cầu Docker trong môi trường CI chạy integration.
 
 Mỗi phase có test regression riêng (xem Success Criteria). Critical/Important phải có test chứng minh trước khi đánh dấu hoàn tất.
 

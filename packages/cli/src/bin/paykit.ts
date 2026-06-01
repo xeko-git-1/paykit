@@ -7,13 +7,19 @@
  *   paykit migrate down [--target <id>] [--db-url <url>]
  *   paykit migrate status [--db-url <url>]
  *   paykit doctor [--db-url <url>]
+ *   paykit merchant create --name <name> [--db-url <url>]
+ *   paykit apikey mint --merchant <id> --scopes <csv> [--mode live|test] [--db-url <url>]
+ *   paykit jwt mint --merchant <id> [--ttl <sec>] [--db-url <url>]
  *   paykit --version
  */
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { DbClient } from "@vibecc/paykit-server";
 import cac from "cac";
+import { drizzle } from "drizzle-orm/node-postgres";
 import { Client } from "pg";
+import { createMerchant, mintJwt, mintKey } from "../lib/bootstrap.js";
 import { runDoctor } from "../lib/doctor.js";
 import { loadEnv } from "../lib/env-loader.js";
 import type { MigrationManifest } from "../lib/manifest-types.js";
@@ -45,6 +51,20 @@ async function withClient<T>(
   } finally {
     await client.end();
   }
+}
+
+/**
+ * withDb — like withClient, but hands the callback a Drizzle handle.
+ *
+ * The repos (merchant.repo, api-key.repo) issue Drizzle query-builder calls
+ * (db.insert().values().returning()), so the bootstrap commands need a Drizzle
+ * handle, not a raw pg.Client. Migrations stay on withClient (raw SQL).
+ */
+async function withDb<T>(dbUrl: string | undefined, fn: (db: DbClient) => Promise<T>): Promise<T> {
+  return withClient(dbUrl, async (client) => {
+    const db = drizzle(client) as unknown as DbClient;
+    return fn(db);
+  });
 }
 
 const cli = cac("paykit");
@@ -134,6 +154,82 @@ cli.command("reconcile-now", "Print reconciler invocation guide (V1.5)").action(
   console.log("");
   console.log("Schedule via cron, BullMQ, or Cloudflare Cron — paykit is library, not daemon.");
 });
+
+// ---------------------------------------------------------------------------
+// Bootstrap commands (operator path — direct DB, no running service required)
+// ---------------------------------------------------------------------------
+
+cli
+  .command("merchant create", "Create a merchant (root tenant) and print its id")
+  .option("--name <name>", "Merchant display name")
+  .option("--db-url <url>", "Postgres URL")
+  .action(async (opts: { name?: string; dbUrl?: string }) => {
+    if (!opts.name) {
+      console.error("paykit merchant create: --name is required");
+      process.exit(1);
+    }
+    const { merchantId } = await withDb(opts.dbUrl, (db) => createMerchant(db, opts.name!));
+    console.log(merchantId);
+  });
+
+cli
+  .command("apikey mint", "Mint an API key for a merchant (prints plaintext ONCE)")
+  .option("--merchant <id>", "Merchant id to mint the key for")
+  .option("--scopes <csv>", "Comma-separated scopes (e.g. checkout:write,balance:read)")
+  .option("--mode <mode>", "Key mode: live | test", { default: "live" })
+  .option("--db-url <url>", "Postgres URL")
+  .action(async (opts: { merchant?: string; scopes?: string; mode?: string; dbUrl?: string }) => {
+    if (!opts.merchant) {
+      console.error("paykit apikey mint: --merchant is required");
+      process.exit(1);
+    }
+    if (!opts.scopes) {
+      console.error("paykit apikey mint: --scopes is required (comma-separated)");
+      process.exit(1);
+    }
+    if (opts.mode !== "live" && opts.mode !== "test") {
+      console.error("paykit apikey mint: --mode must be 'live' or 'test'");
+      process.exit(1);
+    }
+    const scopes = opts.scopes
+      .split(",")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+    const result = await withDb(opts.dbUrl, (db) =>
+      mintKey(db, { merchantId: opts.merchant!, scopes, mode: opts.mode as "live" | "test" }),
+    );
+    console.error(
+      "⚠ This plaintext key is shown ONCE and is not recoverable. Store it now.\n" +
+        "  Do not run this via `docker compose exec` where stdout is captured to centralized logs;\n" +
+        "  run interactively. If it leaks into logs, revoke and re-mint immediately.",
+    );
+    console.log(result.plaintext);
+  });
+
+cli
+  .command("jwt mint", "Mint a short-lived admin JWT (jwt plane) for HTTP key management")
+  .option("--merchant <id>", "Merchant id the admin token acts for")
+  .option("--ttl <seconds>", "Token lifetime in seconds", { default: "900" })
+  .option("--db-url <url>", "Postgres URL")
+  .action(async (opts: { merchant?: string; ttl?: string; dbUrl?: string }) => {
+    if (!opts.merchant) {
+      console.error("paykit jwt mint: --merchant is required");
+      process.exit(1);
+    }
+    const ttlSeconds = Number.parseInt(opts.ttl ?? "900", 10);
+    if (!Number.isFinite(ttlSeconds) || ttlSeconds <= 0) {
+      console.error("paykit jwt mint: --ttl must be a positive integer (seconds)");
+      process.exit(1);
+    }
+    const { token } = await withDb(opts.dbUrl, (db) =>
+      mintJwt(db, { merchantId: opts.merchant!, ttlSeconds }),
+    );
+    console.error(
+      `⚠ Admin JWT (valid ${ttlSeconds}s) shown ONCE. Use as: Authorization: Bearer <token>\n` +
+        "  Treat as a secret; do not capture stdout to centralized logs.",
+    );
+    console.log(token);
+  });
 
 cli.help();
 cli.version(loadVersion());
