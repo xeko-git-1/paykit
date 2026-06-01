@@ -45,6 +45,11 @@
 - Secrets: pluggable `SecretProvider` (env / AWS KMS / HashiCorp Vault)
 - Migrations triggered from your CI/CD pipeline, never auto-run on app boot
 
+### Two ways to run
+
+- **Embedded (V1–V3):** `import { createPaykit }` into your own Hono app, supply a `TenantResolver`. Quickstart below.
+- **Standalone service (V4):** run `@vibecc/paykit-service` as a container — config + API-key auth via env, no app code. Migrate-then-serve cold start, 6 wired adapters (Stripe / SePay / NowPayments / VNPay / Momo / ZaloPay), `/v1` HTTP API, CLI bootstrap, and a thin TypeScript SDK. See [service-mode-setup.md](docs/service-mode-setup.md).
+
 ## Quickstart (preview — V1 not yet published)
 
 ```bash
@@ -75,6 +80,8 @@ app.route("/admin/billing", paykit.adminRoutes());
 See `docs/`:
 
 - [Installation](docs/installation.md) — setup, DB provisioning, adapter install
+- [Service mode (V4)](docs/service-mode-setup.md) — Docker cold-start, CLI bootstrap, `/v1` API + TypeScript SDK
+- [V4 acceptance tests](docs/v4-acceptance-tests.md) — cold-start → bootstrap → mint → checkout checklist
 - [Refund flows](docs/refund-flows.md) — per-provider refund capabilities + `pending_webhook` state
 - [Stripe subscription setup](docs/stripe-subscription-setup.md) · [V2 setup checklist](docs/v2-setup-checklist.md)
 - [Mobile integration](docs/mobile-integration.md) · [Deeplink formats](docs/deeplink-formats.md)

@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Docker cold-start (migrate then serve) + doctor table-count fix"
-status: pending
+status: completed
 priority: P1
 effort: "5h"
 dependencies: [1]

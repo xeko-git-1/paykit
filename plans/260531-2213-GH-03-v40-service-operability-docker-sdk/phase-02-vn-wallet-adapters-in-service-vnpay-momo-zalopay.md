@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "VN wallet adapters in service (VNPay/Momo/ZaloPay)"
-status: pending
+status: completed
 priority: P1
 effort: "3h"
 dependencies: []

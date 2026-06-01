@@ -1,7 +1,7 @@
 ---
 title: "Paykit V4.0 — Service operability: cold-start Docker, CLI bootstrap, VN adapters, TS SDK"
 description: "Đóng last-mile để paykit-service chạy ok từ cold start qua Docker: merchant repo + CLI bootstrap (giải chicken-egg mint key), wire 3 ví VN vào service, docker-compose migrate-then-serve, thin TS SDK từ OpenAPI, docs service-mode + e2e acceptance."
-status: pending
+status: completed
 priority: P1
 branch: "feat/v3-phase-03-nowpayments-adapter"
 tags: [v4, service, docker, cli, bootstrap, vn-adapters, sdk, openapi, operability]
@@ -42,11 +42,44 @@ adapter), **thin TS SDK** từ OpenAPI, **CLI bootstrap** (`merchant create` + `
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Auth end-to-end: merchant repo, CLI bootstrap, wire JWT plane](./phase-01-merchant-repo-cli-bootstrap-merchant-create-apikey-mint.md) | Pending |
-| 2 | [VN wallet adapters in service (VNPay/Momo/ZaloPay)](./phase-02-vn-wallet-adapters-in-service-vnpay-momo-zalopay.md) | Pending |
-| 3 | [Docker cold-start (migrate then serve) + doctor table-count fix](./phase-03-docker-cold-start-migrate-then-serve-doctor-table-count-fix.md) | Pending |
-| 4 | [Thin TS SDK generated from OpenAPI](./phase-04-thin-ts-sdk-generated-from-openapi.md) | Pending |
-| 5 | [Service-mode docs + end-to-end acceptance](./phase-05-service-mode-docs-end-to-end-acceptance.md) | Pending |
+| 1 | [Auth end-to-end: merchant repo, CLI bootstrap, wire JWT plane](./phase-01-merchant-repo-cli-bootstrap-merchant-create-apikey-mint.md) | ✅ Completed |
+| 2 | [VN wallet adapters in service (VNPay/Momo/ZaloPay)](./phase-02-vn-wallet-adapters-in-service-vnpay-momo-zalopay.md) | ✅ Completed |
+| 3 | [Docker cold-start (migrate then serve) + doctor table-count fix](./phase-03-docker-cold-start-migrate-then-serve-doctor-table-count-fix.md) | ✅ Completed |
+| 4 | [Thin TS SDK generated from OpenAPI](./phase-04-thin-ts-sdk-generated-from-openapi.md) | ✅ Completed |
+| 5 | [Service-mode docs + end-to-end acceptance](./phase-05-service-mode-docs-end-to-end-acceptance.md) | ✅ Completed |
+| 6 | [Extract @vibecc/paykit-auth-core (deferred boundary fix)](./phase-06-extract-auth-core.md) | ⏸ Deferred |
+
+## Implementation outcome (2026-06-01)
+
+Phases 1–5 implemented, cooked, and verified end-to-end. Full suite: **849 passed,
+5 skipped** (4 e2e gated by `PAYKIT_E2E_DATABASE_URL`, 1 boundary test deferred to
+phase 6). Repo-wide typecheck clean. Docker cold-start verified for real
+(migrate→serve, `/healthz`+`/readyz` 200, bootstrap→mint→checkout through the
+container); e2e verified against a real throwaway Postgres.
+
+### Deviations from plan (surfaced + decided during cook)
+
+1. **Migration numbered 014, not 013.** A concurrent stream landed
+   `013_idempotency_key_tenant_scoped` mid-session, taking the `013` slot the plan
+   assumed was free. User decision: renumber the attribution migration to
+   `014_api_keys_created_by` (after idempotency). 13-table count unchanged (ALTER only).
+2. **F3 solved via a token-prefix dispatcher.** The api-key and jwt middlewares are
+   mutually exclusive (each 401s the other's token shape), so they can't be chained
+   with `app.use`. Added `authPlaneDispatcher` routing `pk_*`→api-key, else→jwt.
+   Verified live: JWT-plane `POST /v1/api-keys` returns 200 (was a dead endpoint).
+3. **Three pre-existing cold-start bugs found by real verification** (all masked by
+   mock-DB tests + no real-DB e2e — the F14 gap):
+   - cac 6.7.14 silently no-ops multi-word command names (`"migrate up"`) → migrate
+     applied nothing yet exited 0. Fixed via bracketed sub-arg form (`"migrate <action>"`).
+   - `loadEnv` only read `DATABASE_URL_PAYKIT`; compose sets `DATABASE_URL`. Added
+     `DATABASE_URL` as lowest-priority fallback (paykit-specific names still win).
+   - `drizzle(pool)` built without `{ schema }` → `db.query.*` undefined → `/v1/balances`
+     500. Fixed by exporting `paykitDbSchema` and passing it; also fixed CLI `main`
+     field (pointed at the bin, not the library barrel).
+4. **CLI↔server boundary deferred to phase 6.** Phase 1 (F5) has the CLI import
+   server auth primitives + repos, which violates the checked-in `no-cross-imports`
+   rule. User chose to extract `@vibecc/paykit-auth-core` as a separate phase; the
+   boundary test is `it.skip`-ped with a pointer to phase 6.
 
 ## Sequencing rationale
 

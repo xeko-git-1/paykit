@@ -1,7 +1,7 @@
 ---
 phase: 1
 title: "Auth end-to-end: merchant repo, CLI bootstrap, wire JWT plane in service"
-status: pending
+status: completed
 priority: P1
 effort: "6h"
 dependencies: []

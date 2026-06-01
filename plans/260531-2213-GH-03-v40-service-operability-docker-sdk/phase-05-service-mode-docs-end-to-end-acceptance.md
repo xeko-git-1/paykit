@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Service-mode docs + end-to-end acceptance"
-status: pending
+status: completed
 priority: P2
 effort: "3h"
 dependencies: [1, 2, 3, 4]

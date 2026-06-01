@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Thin TS SDK generated from OpenAPI"
-status: pending
+status: completed
 priority: P2
 effort: "4h"
 dependencies: [3]

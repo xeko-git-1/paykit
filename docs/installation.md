@@ -54,7 +54,13 @@ DATABASE_URL_PAYKIT="postgres://user:pass@host:5432/paykit_prod"
 npx paykit migrate up
 ```
 
-This creates the `paykit` schema and 5 tables inside the paykit DB.
+This creates the `paykit` schema and its tables (13 business tables as of V4.0)
+inside the paykit DB.
+
+> **Running Paykit as a standalone service (Docker)?** See
+> [service-mode-setup.md](./service-mode-setup.md) for the cold-start flow
+> (migrate → serve), CLI bootstrap (`merchant create` / `apikey mint` / `jwt mint`),
+> the 6 wired adapters, and the `/v1` HTTP API + TypeScript SDK.
 
 ## Step 5 — Wire createPaykit in your app
 
@@ -131,7 +137,7 @@ Expected output:
 ```
 ✓ db_reachable           Postgres connection OK
 ✓ paykit_schema          paykit schema exists
-✓ paykit_tables          all 5 paykit tables present
+✓ paykit_tables          all 13 paykit tables present
 ✓ db_isolation           DB appears dedicated to paykit
 ✓ provider_env           all provider env vars set
 ```
