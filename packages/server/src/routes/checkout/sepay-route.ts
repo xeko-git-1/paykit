@@ -7,7 +7,7 @@
  * Discount flow: paykit calls discountResolver, then invokes consume(tx) inside
  * the DB transaction. Race-loser pays full price.
  */
-import { TenantResolutionError, vndToMicros } from "@vibecc/paykit";
+import { TenantResolutionError, microsStringToBigInt, vndToMicros } from "@vibecc/paykit";
 import type {
   AppliedDiscount,
   CurrencyCode,
@@ -73,9 +73,12 @@ export function buildSepayCheckoutRoute(deps: SepayRouteDeps): Hono {
 
     const idempotencyKey = c.req.header("Idempotency-Key") ?? undefined;
     if (idempotencyKey !== undefined) {
-      const existing = await findByIdempotencyKey(db, idempotencyKey);
-      if (existing) {
-        const qr = sepayClient.generateQrUrl(existing.transactionId, parsed.amountVnd);
+      const existing = await findByIdempotencyKey(db, tenant.tenantId, idempotencyKey);
+      if (existing && existing.providerRef !== null) {
+        // Regenerate QR from the stored transaction amount — never trust caller-supplied
+        // amount on replay, as it could differ from the original committed value.
+        const storedAmountVnd = Number(microsStringToBigInt(existing.amountMicros) / 1_000_000n);
+        const qr = sepayClient.generateQrUrl(existing.transactionId, storedAmountVnd);
         return dataJson(c, {
           transactionId: existing.transactionId,
           discountApplied: Boolean(

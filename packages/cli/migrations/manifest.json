@@ -86,6 +86,13 @@
       "up": "012_merchants_and_api_keys.up.sql",
       "down": "012_merchants_and_api_keys.down.sql",
       "description": "V4 — merchants + api_keys tables for API-key authentication; merchant_id is root tenant entity"
+    },
+    {
+      "id": "013",
+      "slug": "idempotency_key_tenant_scoped",
+      "up": "013_idempotency_key_tenant_scoped.up.sql",
+      "down": "013_idempotency_key_tenant_scoped.down.sql",
+      "description": "Scope idempotency_key unique constraint to (tenant_id, idempotency_key); fixes cross-tenant lookup isolation"
     }
   ]
 }

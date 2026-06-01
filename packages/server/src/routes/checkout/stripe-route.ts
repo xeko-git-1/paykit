@@ -72,7 +72,7 @@ export function buildStripeCheckoutRoute(deps: StripeRouteDeps): Hono {
 
     const idempotencyKey = c.req.header("Idempotency-Key") ?? undefined;
     if (idempotencyKey !== undefined) {
-      const existing = await findByIdempotencyKey(db, idempotencyKey);
+      const existing = await findByIdempotencyKey(db, tenant.tenantId, idempotencyKey);
       if (existing && existing.providerRef !== null) {
         return dataJson(c, {
           transactionId: existing.transactionId,

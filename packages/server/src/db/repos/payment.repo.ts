@@ -46,10 +46,14 @@ export async function createTransaction(
 
 export async function findByIdempotencyKey(
   db: DbClient,
+  tenantId: string,
   key: string,
 ): Promise<PaymentTransaction | undefined> {
   return db.query.paymentTransactions.findFirst({
-    where: eq(paymentTransactions.idempotencyKey, key),
+    where: and(
+      eq(paymentTransactions.idempotencyKey, key),
+      eq(paymentTransactions.tenantId, tenantId),
+    ),
   });
 }
 

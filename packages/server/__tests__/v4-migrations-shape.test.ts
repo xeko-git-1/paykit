@@ -63,10 +63,10 @@ describe("V4 migration 012_merchants_and_api_keys — down (rename-not-drop)", (
 });
 
 describe("V4 manifest entry 012", () => {
-  it("manifest has entry with id 012 at the end", () => {
-    const last = manifest.migrations[manifest.migrations.length - 1];
-    expect(last?.id).toBe("012");
-    expect(last?.slug).toBe("merchants_and_api_keys");
+  it("manifest has entry with id 012", () => {
+    const entry = manifest.migrations.find((m) => m.id === "012");
+    expect(entry).toBeDefined();
+    expect(entry!.slug).toBe("merchants_and_api_keys");
   });
 
   it("manifest 012 entry points to correct filenames", () => {
@@ -76,9 +76,9 @@ describe("V4 manifest entry 012", () => {
     expect(entry!.down).toBe("012_merchants_and_api_keys.down.sql");
   });
 
-  it("manifest ids are ascending and contiguous 001..012 (no gaps)", () => {
+  it("manifest ids are ascending and contiguous up to at least 012 (no gaps)", () => {
     const ids = manifest.migrations.map((m) => parseInt(m.id, 10));
-    expect(ids.length).toBe(12);
+    expect(ids.length).toBeGreaterThanOrEqual(12);
     for (let i = 0; i < ids.length; i++) {
       expect(ids[i]).toBe(i + 1);
     }
