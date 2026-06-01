@@ -8,15 +8,17 @@
  *   POST /v1/refunds     [api_key, refund:write] + ownership check
  *   POST /v1/api-keys    [jwt plane ONLY, key:manage] + scope-subset + DB cap
  */
-import type { ProviderRegistry } from "@vibecc/paykit";
+import type { AppliedDiscount, ProviderRegistry } from "@vibecc/paykit";
 import {
   type DbClient,
   type PaykitAuthContext,
   MAX_ACTIVE_KEYS_PER_MERCHANT,
   SCOPES,
   apiKeyRepo,
+  applyDiscountInTx,
   balanceRepo,
   dataJson,
+  discountRepo,
   errorJson,
   executeRefund,
   isScopeSubset,
@@ -95,19 +97,55 @@ export function buildV1Router(deps: V1RouterDeps): Hono {
       return errorJson(c, 400, "UNSUPPORTED_CURRENCY", `unsupported: ${currency}`);
     }
 
-    const created = await paymentRepo.createTransaction(db, {
-      tenantId: auth.tenant.tenantId,
-      ownerId: auth.tenant.ownerId,
-      provider: adapter.id,
-      amountMicros: amountMicros.toString(),
-      currencyCode: currency,
+    // Resolve a promo code (if supplied) to a race-safe AppliedDiscount. The
+    // consume() runs inside the checkout transaction and only succeeds while
+    // the code is active, unexpired, and under its redemption cap.
+    let appliedDiscount: AppliedDiscount | null = null;
+    if (parsed.discountCode !== undefined) {
+      const row = await discountRepo.findActiveByCode(
+        db,
+        auth.tenant.tenantId,
+        parsed.discountCode,
+      );
+      if (row) {
+        appliedDiscount = {
+          percent: Number(row.percent),
+          code: row.code,
+          sourceId: row.discountId,
+          // tx is the opaque DbTransaction handle the consumer contract passes
+          // through; the repo accepts the same Drizzle tx as a DbOrTx.
+          consume: (tx) => discountRepo.redeem(tx as DbClient, row.discountId),
+        };
+      }
+    }
+
+    // Apply the discount and persist the transaction in one DB transaction so a
+    // lost redemption race falls back to full price atomically.
+    let effectiveMicros = amountMicros;
+    let discountApplied = false;
+    const created = await db.transaction(async (tx) => {
+      const outcome = await applyDiscountInTx({
+        discount: appliedDiscount,
+        tx,
+        amountMicros,
+        ...(logger !== undefined ? { logger } : {}),
+      });
+      effectiveMicros = outcome.effectiveMicros;
+      discountApplied = outcome.applied;
+      return paymentRepo.createTransaction(tx, {
+        tenantId: auth.tenant.tenantId,
+        ownerId: auth.tenant.ownerId,
+        provider: adapter.id,
+        amountMicros: effectiveMicros.toString(),
+        currencyCode: currency,
+      });
     });
 
     const checkoutResult = await adapter.createCheckout({
       transactionId: created.transactionId,
       tenantId: auth.tenant.tenantId,
       ownerId: auth.tenant.ownerId,
-      amountMicros,
+      amountMicros: effectiveMicros,
       currencyCode: currency,
     });
 
@@ -126,7 +164,7 @@ export function buildV1Router(deps: V1RouterDeps): Hono {
         ...(checkoutResult.qrUrl ? { qrUrl: checkoutResult.qrUrl } : {}),
         ...(checkoutResult.mobileDeeplink ? { mobileDeeplink: checkoutResult.mobileDeeplink } : {}),
         expiresAt: checkoutResult.expiresAt.toISOString(),
-        discountApplied: false,
+        discountApplied,
       },
     });
   });

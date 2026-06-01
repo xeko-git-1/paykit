@@ -107,6 +107,13 @@
       "up": "015_idempotency_in_flight_state.up.sql",
       "down": "015_idempotency_in_flight_state.down.sql",
       "description": "Add idempotency_records.state (in_flight|done) + nullable response_status so concurrent requests sharing a key serialize: first INSERT wins, racer gets 409 instead of double-running the handler"
+    },
+    {
+      "id": "016",
+      "slug": "discounts",
+      "up": "016_discounts.up.sql",
+      "down": "016_discounts.down.sql",
+      "description": "paykit.discounts — tenant-scoped promo codes (percent, redemption cap, expiry) for the public checkout API; race-safe consume guards the redemption cap"
     }
   ]
 }

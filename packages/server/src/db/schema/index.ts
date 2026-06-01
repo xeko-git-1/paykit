@@ -5,6 +5,7 @@ export {
   type NewBalanceProjection,
 } from "./balance-projections.js";
 export { type Customer, customers, type NewCustomer } from "./customers.js";
+export { type Discount, discounts, type NewDiscount } from "./discounts.js";
 export {
   type IdempotencyRecord,
   idempotencyRecords,

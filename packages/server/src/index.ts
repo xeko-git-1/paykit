@@ -106,6 +106,7 @@ export {
 export * as apiKeyRepo from "./db/repos/api-key.repo.js";
 export * as balanceRepo from "./db/repos/balance.repo.js";
 export * as customerRepo from "./db/repos/customer.repo.js";
+export * as discountRepo from "./db/repos/discount.repo.js";
 export * as idempotencyRepo from "./db/repos/idempotency.repo.js";
 export * as ledgerRepo from "./db/repos/ledger.repo.js";
 export * as merchantRepo from "./db/repos/merchant.repo.js";
@@ -171,6 +172,14 @@ export {
 
 // Response helpers
 export { errorJson, dataJson } from "./routes/shared/response.js";
+
+// Discount application (consumer DiscountResolver hook + in-tx consume)
+export {
+  applyDiscountInTx,
+  resolveDiscount,
+  type DiscountOutcome,
+  type DiscountLogger,
+} from "./routes/checkout/apply-discount.js";
 
 // Refund core (guard-agnostic shared logic for admin + merchant planes)
 export {
