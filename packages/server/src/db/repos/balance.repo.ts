@@ -36,6 +36,11 @@ export async function listBalancesByTenant(
 /**
  * Atomic upsert: insert (tenantId, currencyCode, deltaMicros) or add deltaMicros to existing.
  * Negative `deltaMicros` reduces balance (used for refund / debit).
+ *
+ * A resulting negative balance is a valid state, not an error: a chargeback or
+ * refund can land after the merchant has already withdrawn funds. We therefore
+ * do not clamp at zero or guard against underflow — the ledger is the source of
+ * truth and a negative projection faithfully represents money owed.
  */
 export async function applyDelta(
   db: DbOrTx,

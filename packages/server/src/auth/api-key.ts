@@ -26,12 +26,14 @@ export const MAX_ACTIVE_KEYS_PER_MERCHANT = 10;
 // ---------------------------------------------------------------------------
 const BASE62_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
-function toBase62(buf: Buffer): string {
+export function toBase62(buf: Buffer): string {
+  // Two base62 digits per byte. Every byte decomposes uniquely as
+  // 62*hi + lo (hi ∈ [0,4], lo ∈ [0,61]) because 256 < 62² = 3844, so the
+  // mapping is injective and preserves the full entropy of the input bytes.
   let result = "";
   for (const byte of buf) {
-    // Two base62 digits per byte (62^2 = 3844 > 256, so we use modular mapping)
+    result += BASE62_CHARS[Math.floor(byte / 62)];
     result += BASE62_CHARS[byte % 62];
-    result += BASE62_CHARS[Math.floor(byte / 4) % 62];
   }
   return result;
 }
