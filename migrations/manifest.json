@@ -114,6 +114,13 @@
       "up": "016_discounts.up.sql",
       "down": "016_discounts.down.sql",
       "description": "paykit.discounts — tenant-scoped promo codes (percent, redemption cap, expiry) for the public checkout API; race-safe consume guards the redemption cap"
+    },
+    {
+      "id": "017",
+      "slug": "discount_reserved",
+      "up": "017_discount_reserved.up.sql",
+      "down": "017_discount_reserved.down.sql",
+      "description": "Add discounts.reserved so the cap counts completed payments: checkout reserves, payment webhook commits (times_redeemed++) or releases on failure; reserved+times_redeemed bounds in-flight checkouts under the cap"
     }
   ]
 }

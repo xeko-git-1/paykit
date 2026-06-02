@@ -97,10 +97,14 @@ export function buildV1Router(deps: V1RouterDeps): Hono {
       return errorJson(c, 400, "UNSUPPORTED_CURRENCY", `unsupported: ${currency}`);
     }
 
-    // Resolve a promo code (if supplied) to a race-safe AppliedDiscount. The
-    // consume() runs inside the checkout transaction and only succeeds while
-    // the code is active, unexpired, and under its redemption cap.
+    // Resolve a promo code (if supplied) to a race-safe AppliedDiscount whose
+    // consume() RESERVES one unit inside the checkout transaction. The cap
+    // counts completed payments, so reserve only holds the slot; the payment
+    // webhook later commits it (on payment.completed) or releases it (on
+    // failure/expiry). reserve only succeeds while the code is active,
+    // unexpired, and reserved + times_redeemed is under the cap.
     let appliedDiscount: AppliedDiscount | null = null;
+    let discountId: string | null = null;
     if (parsed.discountCode !== undefined) {
       const row = await discountRepo.findActiveByCode(
         db,
@@ -108,19 +112,22 @@ export function buildV1Router(deps: V1RouterDeps): Hono {
         parsed.discountCode,
       );
       if (row) {
+        discountId = row.discountId;
         appliedDiscount = {
           percent: Number(row.percent),
           code: row.code,
           sourceId: row.discountId,
           // tx is the opaque DbTransaction handle the consumer contract passes
           // through; the repo accepts the same Drizzle tx as a DbOrTx.
-          consume: (tx) => discountRepo.redeem(tx as DbClient, row.discountId),
+          consume: (tx) => discountRepo.reserve(tx as DbClient, row.discountId),
         };
       }
     }
 
     // Apply the discount and persist the transaction in one DB transaction so a
-    // lost redemption race falls back to full price atomically.
+    // lost reservation race falls back to full price atomically. The discountId
+    // is stamped on the tx metadata so the payment webhook can commit or
+    // release the reservation later.
     let effectiveMicros = amountMicros;
     let discountApplied = false;
     const created = await db.transaction(async (tx) => {
@@ -138,16 +145,30 @@ export function buildV1Router(deps: V1RouterDeps): Hono {
         provider: adapter.id,
         amountMicros: effectiveMicros.toString(),
         currencyCode: currency,
+        ...(discountApplied && discountId !== null
+          ? { metadataJson: { discountId, discountApplied: true } }
+          : {}),
       });
     });
 
-    const checkoutResult = await adapter.createCheckout({
-      transactionId: created.transactionId,
-      tenantId: auth.tenant.tenantId,
-      ownerId: auth.tenant.ownerId,
-      amountMicros: effectiveMicros,
-      currencyCode: currency,
-    });
+    // createCheckout runs after the commit. If the provider call fails the
+    // reservation would otherwise be stranded (the payment can never complete),
+    // so release it before surfacing the error.
+    let checkoutResult: Awaited<ReturnType<typeof adapter.createCheckout>>;
+    try {
+      checkoutResult = await adapter.createCheckout({
+        transactionId: created.transactionId,
+        tenantId: auth.tenant.tenantId,
+        ownerId: auth.tenant.ownerId,
+        amountMicros: effectiveMicros,
+        currencyCode: currency,
+      });
+    } catch (err) {
+      if (discountApplied && discountId !== null) {
+        await discountRepo.releaseReservation(db, discountId).catch(() => {});
+      }
+      throw err;
+    }
 
     const providerRef = checkoutResult.providerSessionId ?? created.transactionId;
     await db

@@ -1,14 +1,20 @@
 /**
  * discount.repo unit tests.
  *
- * findActiveByCode's active/expiry filtering is tested directly. The redeem()
- * race-safety lives in the guarded UPDATE's WHERE clause (a DB-level guarantee
- * not reproducible without real Postgres), so here we assert redeem correctly
- * maps "rows returned" → true and "no rows" → false; the concurrency guarantee
- * itself is covered by the migration's CHECK + the guarded UPDATE shape.
+ * findActiveByCode's active/expiry filtering is tested directly. The
+ * reserve/commit/release race-safety lives in each guarded UPDATE's WHERE
+ * clause (a DB-level guarantee not reproducible without real Postgres), so here
+ * we assert each maps "rows returned" → true and "no rows" → false; the
+ * concurrency guarantee itself is covered by the migration CHECK + guarded
+ * UPDATE shape.
  */
-import { describe, expect, it, vi } from "vitest";
-import { findActiveByCode, redeem } from "../src/db/repos/discount.repo.js";
+import { describe, expect, it } from "vitest";
+import {
+  commitReservation,
+  findActiveByCode,
+  releaseReservation,
+  reserve,
+} from "../src/db/repos/discount.repo.js";
 import type { DbOrTx } from "../src/db/client.js";
 
 function selectDb(row: unknown): DbOrTx {
@@ -75,12 +81,28 @@ describe("findActiveByCode", () => {
   });
 });
 
-describe("redeem", () => {
-  it("returns true when the guarded UPDATE matched a row", async () => {
-    expect(await redeem(updateDb([{ discountId: "d-1" }]), "d-1")).toBe(true);
+describe("reserve / commitReservation / releaseReservation", () => {
+  it("reserve returns true when the guarded UPDATE matched a row", async () => {
+    expect(await reserve(updateDb([{ discountId: "d-1" }]), "d-1")).toBe(true);
   });
 
-  it("returns false when the UPDATE matched nothing (cap reached / expired / inactive)", async () => {
-    expect(await redeem(updateDb([]), "d-1")).toBe(false);
+  it("reserve returns false when the cap is reached (UPDATE matched nothing)", async () => {
+    expect(await reserve(updateDb([]), "d-1")).toBe(false);
+  });
+
+  it("commitReservation returns true when a reservation was committed", async () => {
+    expect(await commitReservation(updateDb([{ discountId: "d-1" }]), "d-1")).toBe(true);
+  });
+
+  it("commitReservation returns false on a resent webhook (reserved already 0)", async () => {
+    expect(await commitReservation(updateDb([]), "d-1")).toBe(false);
+  });
+
+  it("releaseReservation returns true when a reservation was freed", async () => {
+    expect(await releaseReservation(updateDb([{ discountId: "d-1" }]), "d-1")).toBe(true);
+  });
+
+  it("releaseReservation returns false when there was nothing to release", async () => {
+    expect(await releaseReservation(updateDb([]), "d-1")).toBe(false);
   });
 });

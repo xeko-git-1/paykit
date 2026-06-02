@@ -25,6 +25,7 @@ import type { Context } from "hono";
 import { Hono } from "hono";
 import type { DbClient } from "../../db/client.js";
 import { applyDelta } from "../../db/repos/balance.repo.js";
+import { commitReservation, releaseReservation } from "../../db/repos/discount.repo.js";
 import { appendLedgerEntryIdempotent } from "../../db/repos/ledger.repo.js";
 import { updateTransactionStatus } from "../../db/repos/payment.repo.js";
 import { findActiveByTransaction, markCompleted } from "../../db/repos/pending-refund.repo.js";
@@ -189,6 +190,11 @@ async function handleWebhook(
           processedTxId = updated.transactionId;
           eventTypeProcessed = "payment.completed";
         }
+        // Commit a discount reservation now that the payment is final. Guarded
+        // by reserved > 0 in the repo so a resent webhook cannot double-count.
+        // Only the service v1 checkout stamps a discountId; embedded BYO-
+        // resolver checkouts never do, so this is a no-op there.
+        await commitDiscountReservation(tx, row.metadataJson);
         break;
       }
       case "payment.refunded": {
@@ -244,6 +250,8 @@ async function handleWebhook(
           processedTxId = updated.transactionId;
           eventTypeProcessed = "payment.expired";
         }
+        // The payment will never complete — free any discount reservation.
+        await releaseDiscountReservation(tx, row.metadataJson);
         break;
       }
       case "payment.failed": {
@@ -253,6 +261,8 @@ async function handleWebhook(
           processedTxId = updated.transactionId;
           eventTypeProcessed = "payment.failed";
         }
+        // The payment will never complete — free any discount reservation.
+        await releaseDiscountReservation(tx, row.metadataJson);
         break;
       }
       case "payment.underpaid": {
@@ -323,4 +333,26 @@ async function handleWebhook(
   }
 
   return c.json({ received: true });
+}
+
+// ---------------------------------------------------------------------------
+// Discount reservation lifecycle — tx.metadataJson.discountId is set only by
+// the service v1 checkout when a promo code was reserved. These extract it and
+// move the reservation to its terminal state inside the webhook transaction.
+// ---------------------------------------------------------------------------
+
+function discountIdFrom(metadataJson: unknown): string | null {
+  if (typeof metadataJson !== "object" || metadataJson === null) return null;
+  const id = (metadataJson as Record<string, unknown>).discountId;
+  return typeof id === "string" ? id : null;
+}
+
+async function commitDiscountReservation(tx: DbClient, metadataJson: unknown): Promise<void> {
+  const discountId = discountIdFrom(metadataJson);
+  if (discountId !== null) await commitReservation(tx, discountId);
+}
+
+async function releaseDiscountReservation(tx: DbClient, metadataJson: unknown): Promise<void> {
+  const discountId = discountIdFrom(metadataJson);
+  if (discountId !== null) await releaseReservation(tx, discountId);
 }
