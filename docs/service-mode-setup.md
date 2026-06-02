@@ -144,6 +144,57 @@ await pk.refunds.create(
 The SDK covers the api-key plane only. Key minting is the admin (JWT) plane and is
 intentionally absent from the SDK surface.
 
+## 6. Discount codes
+
+Tenant-scoped promo codes apply a percentage discount at checkout. There is no
+HTTP endpoint to manage them in V4.0 — seed rows directly into `paykit.discounts`
+(operator/DB trust boundary, same as the CLI bootstrap):
+
+```sql
+INSERT INTO paykit.discounts (tenant_id, code, percent, max_redemptions, expires_at)
+VALUES ('<merchant_id>', 'LAUNCH25', 25.00, 100, '2026-12-31T23:59:59Z');
+-- max_redemptions NULL = unlimited; expires_at NULL = no expiry.
+```
+
+Pass the code at checkout; the charged amount is reduced and `discountApplied`
+reflects whether it took effect:
+
+```bash
+curl -X POST localhost:3000/v1/checkouts \
+  -H "Authorization: Bearer pk_live_..." -H "Content-Type: application/json" \
+  -d '{"provider":"sepay","amountVnd":100000,"discountCode":"LAUNCH25"}'
+# → amountVnd effectively 75000; data.discountApplied = true
+```
+
+**The cap counts completed payments, not checkout sessions.** A code is *reserved*
+at checkout (so concurrent checkouts cannot oversubscribe the cap), then
+*committed* when the payment webhook fires `payment.completed`, or *released* on
+`payment.failed` / `payment.expired` / quarantine, or if the provider checkout
+call fails. An unknown, inactive, expired, or fully-redeemed code silently falls
+back to full price (never an error). A fractional percent (e.g. `12.5`) is applied
+exactly via basis points.
+
+> **Known limitation:** if a provider goes silent — a checkout that never completes
+> and never fires a failed/expired webhook — its reservation is held indefinitely
+> (the slot is not freed). This drains the cap slowly but never over-grants. A
+> reservation sweeper for stale-pending checkouts is deferred to a future version.
+
+## Operational notes & current limitations
+
+- **Merchant suspension is not enforced (deferred to V4.x).** `merchants.status`
+  can be set to `suspended`, but the auth path does not yet check it, so a
+  suspended merchant's API keys still authenticate. Revoke the keys to cut access
+  in V4.0.
+- **`mode` (`live`/`test`) is not isolation.** A key's mode is recorded and
+  surfaced, but live and test traffic share one database and one set of tables.
+  Use separate deployments/databases if you need hard isolation.
+- **Rate limiting is soft and per-process.** The `/v1` limiter is an in-memory
+  token bucket per API key; it resets on restart and is not shared across
+  instances behind a load balancer. It throttles accidental bursts, not a
+  determined attacker. Durable, multi-instance rate limiting (Redis) is deferred.
+- **Admin plane is env-secret gated.** `/v1/admin/*` is guarded by `ADMIN_SECRET`
+  (constant-time compared). The JWT dashboard plane is V4.4.
+
 ## Migrate-recovery runbook
 
 If `migrate` fails partway, each migration commits in its own transaction, so the
