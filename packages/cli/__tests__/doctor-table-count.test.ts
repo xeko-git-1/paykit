@@ -1,6 +1,6 @@
 /**
  * doctor table-count test (F6) — the schema check must expect the full set of
- * business tables (13) and flag any missing one (e.g. reconciliation_runs),
+ * business tables (14) and flag any missing one (e.g. reconciliation_runs),
  * not the stale hardcoded 5. Uses a minimal mock pg.Client that returns scripted
  * query results by SQL shape.
  */
@@ -19,6 +19,7 @@ const ALL_TABLES = [
   "api_keys",
   "balance_projections",
   "customers",
+  "discounts",
   "idempotency_records",
   "ledger_entries",
   "merchants",
@@ -54,11 +55,11 @@ function mockClient(tables: string[]): Client {
 }
 
 describe("runDoctor — table coverage (F6)", () => {
-  it("reports all 13 tables present when the schema is complete", async () => {
+  it("reports all 14 tables present when the schema is complete", async () => {
     const result = await runDoctor(mockClient(ALL_TABLES), manifest);
     const tablesCheck = result.checks.find((c) => c.name === "paykit_tables");
     expect(tablesCheck?.level).toBe("ok");
-    expect(tablesCheck?.message).toMatch(/all 13 paykit tables present/);
+    expect(tablesCheck?.message).toMatch(/all 14 paykit tables present/);
   });
 
   it("flags reconciliation_runs as missing when absent (was hidden by the old 5-table list)", async () => {

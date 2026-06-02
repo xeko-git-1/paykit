@@ -59,13 +59,14 @@ export async function runDoctor(
     );
     const present = new Set(tablesCheck.rows.map((r) => r.table_name));
     // Authoritative expected schema: every business table created by a CREATE
-    // TABLE migration (001..012). schema_migrations is runner-managed and not
-    // listed here. ALTER-only migrations (e.g. 013, 014) add columns/constraints
+    // TABLE migration. schema_migrations is runner-managed and not listed here.
+    // ALTER-only migrations (e.g. 013, 014, 015, 017) add columns/constraints
     // and do NOT change this set. Update this list when a CREATE TABLE lands.
     const expected = [
       "api_keys",
       "balance_projections",
       "customers",
+      "discounts",
       "idempotency_records",
       "ledger_entries",
       "merchants",

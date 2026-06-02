@@ -157,4 +157,4 @@ schema is left at the last fully-applied migration (never half-applied). To reco
 4. `service` will not start until `migrate` exits 0, so requests are never served
    against an incomplete schema.
 
-Confirm schema health any time with `paykit doctor` (expects 13 business tables).
+Confirm schema health any time with `paykit doctor` (expects 14 business tables).
