@@ -160,6 +160,9 @@ async function handleWebhook(
             });
             await updateTransactionStatus(tx, row.transactionId, "quarantine");
             deps.emitMetric?.("paykit_credit_blocked_total", { provider: adapter.id });
+            // Quarantine is terminal for this payment — it will never complete,
+            // so free any discount reservation rather than stranding the slot.
+            await releaseDiscountReservation(tx, row.metadataJson);
             return;
           }
         }
@@ -296,6 +299,8 @@ async function handleWebhook(
           processedTxId = updated.transactionId;
           eventTypeProcessed = "payment.amount_mismatch";
         }
+        // Quarantine is terminal for this payment — free any discount reservation.
+        await releaseDiscountReservation(tx, row.metadataJson);
         break;
       }
       default:

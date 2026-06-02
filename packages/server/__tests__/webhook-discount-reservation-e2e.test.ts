@@ -75,7 +75,7 @@ function makeDb() {
   } as never;
 }
 
-function makeApp() {
+function makeApp(extraDeps: Record<string, unknown> = {}) {
   const adapter: PaymentProviderAdapter = {
     id: "sepay",
     displayName: "SePay",
@@ -94,11 +94,13 @@ function makeApp() {
     list: () => [adapter],
     register: () => {},
   } as unknown as ProviderRegistry;
-  return buildWebhookRouter({ db: makeDb(), registry, events: {} });
+  return buildWebhookRouter({ db: makeDb(), registry, events: {}, ...extraDeps });
 }
 
-function post() {
-  return makeApp().request(new Request("http://localhost/sepay", { method: "POST", body: "{}" }));
+function post(extraDeps: Record<string, unknown> = {}) {
+  return makeApp(extraDeps).request(
+    new Request("http://localhost/sepay", { method: "POST", body: "{}" }),
+  );
 }
 
 beforeEach(() => {
@@ -164,5 +166,39 @@ describe("webhook discount reservation lifecycle", () => {
     await post();
     expect(mCommit).not.toHaveBeenCalled();
     expect(mRelease).not.toHaveBeenCalled();
+  });
+
+  it("releases the reservation when onBeforeCredit quarantines the payment", async () => {
+    event = {
+      type: "payment.completed",
+      eventId: "evt-q-1",
+      providerRef: "prov-ref-1",
+      amountMicros: "750000000",
+      currencyCode: "VND",
+      metadata: {},
+    } as NormalizedWebhookEvent;
+    await post({
+      onBeforeCredit: async () => {
+        throw new Error("sanctioned");
+      },
+    });
+    // Quarantined → never completes → reservation freed, not committed.
+    expect(mRelease).toHaveBeenCalledWith(expect.anything(), "disc-1");
+    expect(mCommit).not.toHaveBeenCalled();
+  });
+
+  it("releases the reservation on payment.amount_mismatch (quarantine)", async () => {
+    event = {
+      type: "payment.amount_mismatch",
+      eventId: "evt-q-2",
+      providerRef: "prov-ref-1",
+      amountMicros: "740000000",
+      expectedAmountMicros: "750000000",
+      currencyCode: "VND",
+      metadata: {},
+    } as NormalizedWebhookEvent;
+    await post();
+    expect(mRelease).toHaveBeenCalledWith(expect.anything(), "disc-1");
+    expect(mCommit).not.toHaveBeenCalled();
   });
 });
