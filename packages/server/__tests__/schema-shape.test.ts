@@ -5,7 +5,7 @@ import {
   paymentTransactions,
   reconciliationRuns,
   webhookEvents,
-} from "../src/db/schema/index.js";
+} from "@vibecc/paykit-auth-core/db/schema/index.js";
 
 describe("paykit schema shape", () => {
   it("payment_transactions has expected columns", () => {

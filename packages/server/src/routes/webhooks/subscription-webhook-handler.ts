@@ -34,13 +34,13 @@ import type {
 } from "@vibecc/paykit";
 import type { Context } from "hono";
 import { Hono } from "hono";
-import type { DbClient, DbOrTx } from "../../db/client.js";
-import * as customerRepo from "../../db/repos/customer.repo.js";
-import { appendLedgerEntryIdempotent } from "../../db/repos/ledger.repo.js";
-import * as subscriptionRepo from "../../db/repos/subscription.repo.js";
-import { appendSubscriptionEvent } from "../../db/repos/subscription-event.repo.js";
-import { tryRecordWebhookEvent } from "../../db/repos/webhook-event.repo.js";
-import type { Subscription } from "../../db/schema/subscriptions.js";
+import type { DbClient, DbOrTx } from "@vibecc/paykit-auth-core/db/client.js";
+import * as customerRepo from "@vibecc/paykit-auth-core/db/repos/customer.repo.js";
+import { appendLedgerEntryIdempotent } from "@vibecc/paykit-auth-core/db/repos/ledger.repo.js";
+import * as subscriptionRepo from "@vibecc/paykit-auth-core/db/repos/subscription.repo.js";
+import { appendSubscriptionEvent } from "@vibecc/paykit-auth-core/db/repos/subscription-event.repo.js";
+import { tryRecordWebhookEvent } from "@vibecc/paykit-auth-core/db/repos/webhook-event.repo.js";
+import type { Subscription } from "@vibecc/paykit-auth-core/db/schema/subscriptions.js";
 import { errorJson } from "../shared/response.js";
 
 const LEDGER_CURRENCY = "USD";

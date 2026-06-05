@@ -11,8 +11,8 @@ import type { TenantResolver } from "@vibecc/paykit";
 import { and, count, desc, eq, gte, lt, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
-import type { DbClient } from "../../db/client.js";
-import { paymentTransactions } from "../../db/schema/payment-transactions.js";
+import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
+import { paymentTransactions } from "@vibecc/paykit-auth-core/db/schema/payment-transactions.js";
 import { getAuthTenant } from "../../auth/auth-context.js";
 import { dataJson, errorJson } from "../shared/response.js";
 

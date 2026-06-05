@@ -4,8 +4,8 @@
  */
 import { getTableName } from "drizzle-orm";
 import { describe, expect, expectTypeOf, it } from "vitest";
-import type { DbOrTx } from "../src/db/client.js";
-import * as merchantRepo from "../src/db/repos/merchant.repo.js";
+import type { DbOrTx } from "@vibecc/paykit-auth-core/db/client.js";
+import * as merchantRepo from "@vibecc/paykit-auth-core/db/repos/merchant.repo.js";
 
 type Row = Record<string, unknown>;
 

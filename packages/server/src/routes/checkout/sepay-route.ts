@@ -17,9 +17,9 @@ import type {
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
-import type { DbClient } from "../../db/client.js";
-import { createTransaction, findByIdempotencyKey } from "../../db/repos/payment.repo.js";
-import { paymentTransactions } from "../../db/schema/payment-transactions.js";
+import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
+import { createTransaction, findByIdempotencyKey } from "@vibecc/paykit-auth-core/db/repos/payment.repo.js";
+import { paymentTransactions } from "@vibecc/paykit-auth-core/db/schema/payment-transactions.js";
 import type { SePayClient } from "../../providers/sepay/client.js";
 import { getAuthTenant } from "../../auth/auth-context.js";
 import { dataJson, errorJson } from "../shared/response.js";

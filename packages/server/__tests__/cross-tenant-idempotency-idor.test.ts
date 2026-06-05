@@ -13,7 +13,7 @@ import { buildSepayCheckoutRoute } from "../src/routes/checkout/sepay-route.js";
 import { buildCheckoutRouter } from "../src/routes/checkout/checkout-router.js";
 
 // Mock payment repo — we intercept findByIdempotencyKey to verify tenant scoping
-vi.mock("../src/db/repos/payment.repo.js", () => ({
+vi.mock("@vibecc/paykit-auth-core/db/repos/payment.repo.js", () => ({
   createTransaction: vi.fn().mockResolvedValue({
     transactionId: "tx-new-000",
     tenantId: "tenant-bbb",
@@ -35,7 +35,7 @@ vi.mock("./apply-discount.js", () => ({
   }),
 }));
 
-import { findByIdempotencyKey } from "../src/db/repos/payment.repo.js";
+import { findByIdempotencyKey } from "@vibecc/paykit-auth-core/db/repos/payment.repo.js";
 
 const TENANT_A = { tenantId: "tenant-aaa-111", ownerId: "owner-aaa-111" };
 const TENANT_B = { tenantId: "tenant-bbb-222", ownerId: "owner-bbb-222" };

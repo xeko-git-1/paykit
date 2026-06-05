@@ -34,15 +34,16 @@ describe("no cross-package forbidden imports", () => {
     expect(matches, matches.join("\n")).toEqual([]);
   });
 
-  // SKIPPED pending the auth-core extraction (plans/.../phase-06-extract-auth-core.md).
-  // The V4 CLI bootstrap (merchant create / apikey mint / jwt mint) deliberately
-  // reuses server auth primitives + repos (mintApiKey, SCOPES, the per-merchant
-  // cap, merchant/api-key/runtime-config repos) so the operator path enforces the
-  // SAME invariants as the HTTP mint route — duplicating them would invite drift.
-  // The clean fix is a lower-tier @vibecc/paykit-auth-core that both CLI and
-  // server import; until that lands, this boundary is intentionally relaxed.
-  it.skip("cli does not import from server (deferred to auth-core extraction)", () => {
+  // CLI must not bundle the HTTP layer. It reuses auth primitives + repos via
+  // @vibecc/paykit-auth-core (the HTTP-free lower tier), never from server.
+  it("cli does not import from server", () => {
     const matches = grepImports("packages/cli/src", "@vibecc/paykit-server");
+    expect(matches, matches.join("\n")).toEqual([]);
+  });
+
+  // auth-core is the HTTP-free foundation: it must never import the HTTP server.
+  it("auth-core does not import from server", () => {
+    const matches = grepImports("packages/auth-core/src", "@vibecc/paykit-server");
     expect(matches, matches.join("\n")).toEqual([]);
   });
 

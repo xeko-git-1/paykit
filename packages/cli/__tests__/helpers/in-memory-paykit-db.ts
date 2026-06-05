@@ -1,4 +1,4 @@
-import type { DbClient } from "@vibecc/paykit-server";
+import type { DbClient } from "@vibecc/paykit-auth-core";
 /**
  * In-memory Drizzle-shaped DB for CLI bootstrap + merchant-repo unit tests.
  *

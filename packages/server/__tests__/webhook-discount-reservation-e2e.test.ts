@@ -12,26 +12,26 @@
 import type { NormalizedWebhookEvent, PaymentProviderAdapter, ProviderRegistry } from "@vibecc/paykit";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../src/db/repos/webhook-event.repo.js", () => ({ tryRecordWebhookEvent: vi.fn() }));
-vi.mock("../src/db/repos/ledger.repo.js", () => ({ appendLedgerEntryIdempotent: vi.fn() }));
-vi.mock("../src/db/repos/balance.repo.js", () => ({ applyDelta: vi.fn() }));
-vi.mock("../src/db/repos/pending-refund.repo.js", () => ({
+vi.mock("@vibecc/paykit-auth-core/db/repos/webhook-event.repo.js", () => ({ tryRecordWebhookEvent: vi.fn() }));
+vi.mock("@vibecc/paykit-auth-core/db/repos/ledger.repo.js", () => ({ appendLedgerEntryIdempotent: vi.fn() }));
+vi.mock("@vibecc/paykit-auth-core/db/repos/balance.repo.js", () => ({ applyDelta: vi.fn() }));
+vi.mock("@vibecc/paykit-auth-core/db/repos/pending-refund.repo.js", () => ({
   findActiveByTransaction: vi.fn(),
   markCompleted: vi.fn(),
 }));
-vi.mock("../src/db/repos/payment.repo.js", () => ({ updateTransactionStatus: vi.fn() }));
-vi.mock("../src/db/repos/discount.repo.js", () => ({
+vi.mock("@vibecc/paykit-auth-core/db/repos/payment.repo.js", () => ({ updateTransactionStatus: vi.fn() }));
+vi.mock("@vibecc/paykit-auth-core/db/repos/discount.repo.js", () => ({
   commitReservation: vi.fn(),
   releaseReservation: vi.fn(),
 }));
 
 import { buildWebhookRouter } from "../src/routes/webhooks/webhook-router.js";
-import { tryRecordWebhookEvent } from "../src/db/repos/webhook-event.repo.js";
-import { appendLedgerEntryIdempotent } from "../src/db/repos/ledger.repo.js";
-import { applyDelta } from "../src/db/repos/balance.repo.js";
-import { findActiveByTransaction } from "../src/db/repos/pending-refund.repo.js";
-import { updateTransactionStatus } from "../src/db/repos/payment.repo.js";
-import { commitReservation, releaseReservation } from "../src/db/repos/discount.repo.js";
+import { tryRecordWebhookEvent } from "@vibecc/paykit-auth-core/db/repos/webhook-event.repo.js";
+import { appendLedgerEntryIdempotent } from "@vibecc/paykit-auth-core/db/repos/ledger.repo.js";
+import { applyDelta } from "@vibecc/paykit-auth-core/db/repos/balance.repo.js";
+import { findActiveByTransaction } from "@vibecc/paykit-auth-core/db/repos/pending-refund.repo.js";
+import { updateTransactionStatus } from "@vibecc/paykit-auth-core/db/repos/payment.repo.js";
+import { commitReservation, releaseReservation } from "@vibecc/paykit-auth-core/db/repos/discount.repo.js";
 
 const mTryRecord = tryRecordWebhookEvent as ReturnType<typeof vi.fn>;
 const mAppend = appendLedgerEntryIdempotent as ReturnType<typeof vi.fn>;

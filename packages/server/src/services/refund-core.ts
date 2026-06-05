@@ -25,22 +25,22 @@
  */
 import type { ProviderRegistry, RefundResult } from "@vibecc/paykit";
 import { eq } from "drizzle-orm";
-import type { DbClient } from "../db/client.js";
-import { applyDelta } from "../db/repos/balance.repo.js";
+import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
+import { applyDelta } from "@vibecc/paykit-auth-core/db/repos/balance.repo.js";
 import {
   appendLedgerEntryIdempotent,
   findLedgerEntryBySourceId,
   sumRefundsByOriginalTransaction,
-} from "../db/repos/ledger.repo.js";
+} from "@vibecc/paykit-auth-core/db/repos/ledger.repo.js";
 import {
   createPendingRefund,
   findByProviderAndKey,
   markCompleted,
   markFailed,
   sumActiveReservationsByTransaction,
-} from "../db/repos/pending-refund.repo.js";
-import { paymentTransactions } from "../db/schema/payment-transactions.js";
-import type { PaymentTransaction } from "../db/schema/payment-transactions.js";
+} from "@vibecc/paykit-auth-core/db/repos/pending-refund.repo.js";
+import { paymentTransactions } from "@vibecc/paykit-auth-core/db/schema/payment-transactions.js";
+import type { PaymentTransaction } from "@vibecc/paykit-auth-core/db/schema/payment-transactions.js";
 
 // ---------------------------------------------------------------------------
 // Types

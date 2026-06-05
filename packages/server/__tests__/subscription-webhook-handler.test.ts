@@ -21,7 +21,7 @@ const ledgerRows: Array<Record<string, unknown>> = [];
 const eventRows: Array<Record<string, unknown>> = [];
 const webhookEventRows: Array<{ provider: string; eventId: string }> = [];
 
-vi.mock("../src/db/repos/subscription.repo.js", () => ({
+vi.mock("@vibecc/paykit-auth-core/db/repos/subscription.repo.js", () => ({
   upsertFromEvent: vi.fn(async (_db: unknown, input: Record<string, unknown>) => {
     const existing = subscriptionRows.find(
       (r) =>
@@ -79,14 +79,14 @@ vi.mock("../src/db/repos/subscription.repo.js", () => ({
   }),
 }));
 
-vi.mock("../src/db/repos/customer.repo.js", () => ({
+vi.mock("@vibecc/paykit-auth-core/db/repos/customer.repo.js", () => ({
   findCustomer: vi.fn(),
   findByProviderCustomerId: vi.fn(),
   getOrInsertCustomer: vi.fn(),
   deleteCustomerForCascade: vi.fn(async () => undefined),
 }));
 
-vi.mock("../src/db/repos/ledger.repo.js", async () => {
+vi.mock("@vibecc/paykit-auth-core/db/repos/ledger.repo.js", async () => {
   return {
     appendLedgerEntry: vi.fn(),
     appendLedgerEntryIdempotent: vi.fn(
@@ -111,7 +111,7 @@ vi.mock("../src/db/repos/ledger.repo.js", async () => {
   };
 });
 
-vi.mock("../src/db/repos/subscription-event.repo.js", () => ({
+vi.mock("@vibecc/paykit-auth-core/db/repos/subscription-event.repo.js", () => ({
   appendSubscriptionEvent: vi.fn(async (_db: unknown, input: Record<string, unknown>) => {
     const row = { eventId: crypto.randomUUID(), createdAt: new Date(), ...input };
     eventRows.push(row);
@@ -120,7 +120,7 @@ vi.mock("../src/db/repos/subscription-event.repo.js", () => ({
   listEventsForSubscription: vi.fn(),
 }));
 
-vi.mock("../src/db/repos/webhook-event.repo.js", () => ({
+vi.mock("@vibecc/paykit-auth-core/db/repos/webhook-event.repo.js", () => ({
   tryRecordWebhookEvent: vi.fn(async (_db: unknown, provider: string, eventId: string) => {
     if (webhookEventRows.some((r) => r.provider === provider && r.eventId === eventId)) {
       return { recorded: false };

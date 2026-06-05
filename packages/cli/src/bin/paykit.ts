@@ -15,8 +15,8 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { DbClient } from "@vibecc/paykit-server";
-import { SCOPES } from "@vibecc/paykit-server";
+import type { DbClient } from "@vibecc/paykit-auth-core";
+import { SCOPES } from "@vibecc/paykit-auth-core";
 import cac from "cac";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Client } from "pg";

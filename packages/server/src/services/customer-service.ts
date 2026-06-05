@@ -12,8 +12,8 @@
  * updates back (RT 15g). The optional metadata-tenant integrity check is
  * exposed for V2.1 multi-instance "link existing customer" flows.
  */
-import type { DbOrTx } from "../db/client.js";
-import * as customerRepo from "../db/repos/customer.repo.js";
+import type { DbOrTx } from "@vibecc/paykit-auth-core/db/client.js";
+import * as customerRepo from "@vibecc/paykit-auth-core/db/repos/customer.repo.js";
 
 export class CustomerTenantMismatchError extends Error {
   constructor(message = "Stripe customer.metadata.paykitTenantId does not match request tenant") {

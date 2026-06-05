@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "@vibecc/paykit": "workspace:*",
+    "@vibecc/paykit-auth-core": "workspace:*",
     "zod": "^4.4.3"
   },
   "peerDependencies": {

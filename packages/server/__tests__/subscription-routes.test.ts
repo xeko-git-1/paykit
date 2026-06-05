@@ -30,7 +30,7 @@ const idempotencyRows: Array<{
   expiresAt: Date;
 }> = [];
 
-vi.mock("../src/db/repos/subscription.repo.js", () => {
+vi.mock("@vibecc/paykit-auth-core/db/repos/subscription.repo.js", () => {
   return {
     upsertFromEvent: vi.fn(async (_db: unknown, input: Record<string, unknown>) => {
       const existing = subscriptionRows.find(
@@ -81,7 +81,7 @@ vi.mock("../src/db/repos/subscription.repo.js", () => {
   };
 });
 
-vi.mock("../src/db/repos/customer.repo.js", () => {
+vi.mock("@vibecc/paykit-auth-core/db/repos/customer.repo.js", () => {
   const customers: Array<Record<string, unknown>> = [];
   return {
     findCustomer: vi.fn(async (_db: unknown, tenantId: string, provider: string) =>
@@ -106,7 +106,7 @@ vi.mock("../src/db/repos/customer.repo.js", () => {
   };
 });
 
-vi.mock("../src/db/repos/idempotency.repo.js", async () => {
+vi.mock("@vibecc/paykit-auth-core/db/repos/idempotency.repo.js", async () => {
   class IdempotencyBodyMismatchError extends Error {
     constructor(message = "body mismatch") {
       super(message);

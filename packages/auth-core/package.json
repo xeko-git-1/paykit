@@ -1,0 +1,47 @@
+{
+  "name": "@vibecc/paykit-auth-core",
+  "version": "0.4.0-rc.0",
+  "description": "Paykit auth-core: DB schema, Drizzle client types, repos, and HTTP-free auth primitives (key mint/verify, scopes, JWT signing). Shared by paykit-server and paykit-cli with no HTTP-layer dependency.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./db/*.js": {
+      "types": "./dist/db/*.d.ts",
+      "import": "./dist/db/*.js"
+    },
+    "./auth/*.js": {
+      "types": "./dist/auth/*.d.ts",
+      "import": "./dist/auth/*.js"
+    }
+  },
+  "files": ["dist"],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xeko-git-1/paykit.git",
+    "directory": "packages/auth-core"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "peerDependencies": {
+    "drizzle-orm": "^0.36.0",
+    "hono": "^4.6.0",
+    "pg": "^8.13.0"
+  },
+  "engines": { "node": ">=20" },
+  "devDependencies": {
+    "@types/pg": "^8.20.0",
+    "drizzle-orm": "^0.36.4",
+    "hono": "^4.6.0"
+  }
+}

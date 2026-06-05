@@ -15,8 +15,8 @@ import type { AdminGuard, AdminGuardResult, SubscriptionAdapter } from "@vibecc/
 import type { Context } from "hono";
 import { Hono } from "hono";
 import { z } from "zod";
-import type { DbClient } from "../../db/client.js";
-import * as subscriptionRepo from "../../db/repos/subscription.repo.js";
+import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
+import * as subscriptionRepo from "@vibecc/paykit-auth-core/db/repos/subscription.repo.js";
 import { dataJson, errorJson } from "../shared/response.js";
 import { adminGuardMiddleware } from "../admin/admin-guard.js";
 import { parseStatusFilter, toDto } from "./subscription-dto.js";
@@ -197,7 +197,7 @@ async function listAllProvider(
   providerId: string,
   statuses: readonly string[] | null,
 ) {
-  const { subscriptions } = await import("../../db/schema/subscriptions.js");
+  const { subscriptions } = await import("@vibecc/paykit-auth-core/db/schema/subscriptions.js");
   const { and, desc, eq, inArray } = await import("drizzle-orm");
   const conds = [eq(subscriptions.provider, providerId)];
   if (statuses && statuses.length > 0) conds.push(inArray(subscriptions.status, [...statuses]));

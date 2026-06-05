@@ -7,9 +7,9 @@
 import type { AdminGuard } from "@vibecc/paykit";
 import { Hono } from "hono";
 import { z } from "zod";
-import type { DbClient } from "../../db/client.js";
-import { listRuns } from "../../db/repos/reconciliation.repo.js";
-import { listEvents } from "../../db/repos/webhook-event.repo.js";
+import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
+import { listRuns } from "@vibecc/paykit-auth-core/db/repos/reconciliation.repo.js";
+import { listEvents } from "@vibecc/paykit-auth-core/db/repos/webhook-event.repo.js";
 import { dataJson, errorJson } from "../shared/response.js";
 import { adminGuardMiddleware } from "./admin-guard.js";
 

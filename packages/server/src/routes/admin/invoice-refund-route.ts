@@ -22,9 +22,9 @@ import { and, eq } from "drizzle-orm";
 import type { Context } from "hono";
 import { Hono } from "hono";
 import { z } from "zod";
-import type { DbClient } from "../../db/client.js";
-import { appendLedgerEntryIdempotent } from "../../db/repos/ledger.repo.js";
-import { subscriptions } from "../../db/schema/subscriptions.js";
+import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
+import { appendLedgerEntryIdempotent } from "@vibecc/paykit-auth-core/db/repos/ledger.repo.js";
+import { subscriptions } from "@vibecc/paykit-auth-core/db/schema/subscriptions.js";
 import { adminGuardMiddleware } from "../admin/admin-guard.js";
 import { dataJson, errorJson } from "../shared/response.js";
 

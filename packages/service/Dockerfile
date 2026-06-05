@@ -14,6 +14,7 @@ COPY pnpm-workspace.yaml pnpm-lock.yaml package.json tsconfig.base.json ./
 
 # Copy all package.json files for workspace install
 COPY packages/core/package.json packages/core/package.json
+COPY packages/auth-core/package.json packages/auth-core/package.json
 COPY packages/server/package.json packages/server/package.json
 COPY packages/cli/package.json packages/cli/package.json
 COPY packages/service/package.json packages/service/package.json
@@ -29,6 +30,7 @@ RUN pnpm install --frozen-lockfile
 
 # Copy source for build
 COPY packages/core/ packages/core/
+COPY packages/auth-core/ packages/auth-core/
 COPY packages/server/ packages/server/
 COPY packages/cli/ packages/cli/
 COPY packages/service/ packages/service/
@@ -56,6 +58,9 @@ COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
 # Copy built packages (dist only) + package.json for each
 COPY --from=builder /app/packages/core/dist packages/core/dist
 COPY --from=builder /app/packages/core/package.json packages/core/package.json
+
+COPY --from=builder /app/packages/auth-core/dist packages/auth-core/dist
+COPY --from=builder /app/packages/auth-core/package.json packages/auth-core/package.json
 
 COPY --from=builder /app/packages/server/dist packages/server/dist
 COPY --from=builder /app/packages/server/package.json packages/server/package.json

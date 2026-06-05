@@ -10,25 +10,25 @@
  */
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import type { ProviderRegistry, RefundResult } from "@vibecc/paykit";
-import type { PaymentTransaction } from "../src/db/schema/payment-transactions.js";
-import type { LedgerEntry } from "../src/db/schema/ledger-entries.js";
-import type { PendingRefund } from "../src/db/schema/pending-refunds.js";
+import type { PaymentTransaction } from "@vibecc/paykit-auth-core/db/schema/payment-transactions.js";
+import type { LedgerEntry } from "@vibecc/paykit-auth-core/db/schema/ledger-entries.js";
+import type { PendingRefund } from "@vibecc/paykit-auth-core/db/schema/pending-refunds.js";
 
 // ---------------------------------------------------------------------------
 // Mock repo modules
 // ---------------------------------------------------------------------------
 
-vi.mock("../src/db/repos/ledger.repo.js", () => ({
+vi.mock("@vibecc/paykit-auth-core/db/repos/ledger.repo.js", () => ({
   appendLedgerEntryIdempotent: vi.fn(),
   findLedgerEntryBySourceId: vi.fn(),
   sumRefundsByOriginalTransaction: vi.fn(),
 }));
 
-vi.mock("../src/db/repos/balance.repo.js", () => ({
+vi.mock("@vibecc/paykit-auth-core/db/repos/balance.repo.js", () => ({
   applyDelta: vi.fn().mockResolvedValue({ tenantId: "t", currencyCode: "USD", currentBalanceMicros: "0" }),
 }));
 
-vi.mock("../src/db/repos/pending-refund.repo.js", () => ({
+vi.mock("@vibecc/paykit-auth-core/db/repos/pending-refund.repo.js", () => ({
   createPendingRefund: vi.fn(),
   findByProviderAndKey: vi.fn(),
   markCompleted: vi.fn(),
@@ -38,9 +38,9 @@ vi.mock("../src/db/repos/pending-refund.repo.js", () => ({
 
 // Import AFTER mocks
 import { executeRefund, type RefundCoreDeps, type RefundActor } from "../src/services/refund-core.js";
-import { appendLedgerEntryIdempotent, findLedgerEntryBySourceId, sumRefundsByOriginalTransaction } from "../src/db/repos/ledger.repo.js";
-import { applyDelta } from "../src/db/repos/balance.repo.js";
-import { createPendingRefund, findByProviderAndKey, markCompleted, markFailed, sumActiveReservationsByTransaction } from "../src/db/repos/pending-refund.repo.js";
+import { appendLedgerEntryIdempotent, findLedgerEntryBySourceId, sumRefundsByOriginalTransaction } from "@vibecc/paykit-auth-core/db/repos/ledger.repo.js";
+import { applyDelta } from "@vibecc/paykit-auth-core/db/repos/balance.repo.js";
+import { createPendingRefund, findByProviderAndKey, markCompleted, markFailed, sumActiveReservationsByTransaction } from "@vibecc/paykit-auth-core/db/repos/pending-refund.repo.js";
 
 const mockAppendIdempotent = appendLedgerEntryIdempotent as ReturnType<typeof vi.fn>;
 const mockFindLedgerBySourceId = findLedgerEntryBySourceId as ReturnType<typeof vi.fn>;

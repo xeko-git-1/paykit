@@ -14,8 +14,8 @@ import {
   findActiveByCode,
   releaseReservation,
   reserve,
-} from "../src/db/repos/discount.repo.js";
-import type { DbOrTx } from "../src/db/client.js";
+} from "@vibecc/paykit-auth-core/db/repos/discount.repo.js";
+import type { DbOrTx } from "@vibecc/paykit-auth-core/db/client.js";
 
 function selectDb(row: unknown): DbOrTx {
   return {

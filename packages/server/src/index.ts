@@ -1,12 +1,12 @@
 // Server barrel — db schema + repos. Phases 04-07 will add provider clients,
 // routes, middleware. Phase 13 adds observability + secret rotation hooks.
 
-export type { DbClient, DbOrTx, DbTransactionHandle } from "./db/client.js";
+export type { DbClient, DbOrTx, DbTransactionHandle } from "@vibecc/paykit-auth-core/db/client.js";
 
 // Full Drizzle schema namespace — pass to drizzle(pool, { schema }) so the
 // relational query API (db.query.*) is available. Service mode builds its own
 // client and MUST provide this; without it db.query.* is undefined at runtime.
-export * as paykitDbSchema from "./db/schema/index.js";
+export * as paykitDbSchema from "@vibecc/paykit-auth-core/db/schema/index.js";
 
 // Schema
 export {
@@ -51,7 +51,7 @@ export {
   subscriptions,
   type WebhookEvent,
   webhookEvents,
-} from "./db/schema/index.js";
+} from "@vibecc/paykit-auth-core/db/schema/index.js";
 
 // Auth primitives
 export {
@@ -63,13 +63,13 @@ export {
   type MintApiKeyOpts,
   type MintApiKeyResult,
   type VerifyResult,
-} from "./auth/api-key.js";
+} from "@vibecc/paykit-auth-core/auth/api-key.js";
 export {
   hasScope,
   isScopeSubset,
   SCOPES,
   type ApiKeyScope,
-} from "./auth/scope.js";
+} from "@vibecc/paykit-auth-core/auth/scope.js";
 
 // Auth middleware (V4 Phase 3)
 export {
@@ -90,8 +90,8 @@ export {
   type JwtSecretLoader,
   type SecretLoaderDeps,
 } from "./auth/jwt-middleware.js";
-export { JWT_ISSUER, JWT_AUDIENCE } from "./auth/jwt-claims.js";
-export { mintAdminJwt, type MintAdminJwtOpts } from "./auth/mint-admin-jwt.js";
+export { JWT_ISSUER, JWT_AUDIENCE } from "@vibecc/paykit-auth-core/auth/jwt-claims.js";
+export { mintAdminJwt, type MintAdminJwtOpts } from "@vibecc/paykit-auth-core/auth/mint-admin-jwt.js";
 export {
   authPlaneDispatcher,
   type AuthPlaneDispatcherDeps,
@@ -103,20 +103,20 @@ export {
 } from "./auth/require-scope.js";
 
 // Repos
-export * as apiKeyRepo from "./db/repos/api-key.repo.js";
-export * as balanceRepo from "./db/repos/balance.repo.js";
-export * as customerRepo from "./db/repos/customer.repo.js";
-export * as discountRepo from "./db/repos/discount.repo.js";
-export * as idempotencyRepo from "./db/repos/idempotency.repo.js";
-export * as ledgerRepo from "./db/repos/ledger.repo.js";
-export * as merchantRepo from "./db/repos/merchant.repo.js";
-export * as paymentRepo from "./db/repos/payment.repo.js";
-export * as pendingRefundRepo from "./db/repos/pending-refund.repo.js";
-export * as reconciliationRepo from "./db/repos/reconciliation.repo.js";
-export * as runtimeConfigRepo from "./db/repos/runtime-config.repo.js";
-export * as subscriptionRepo from "./db/repos/subscription.repo.js";
-export * as subscriptionEventRepo from "./db/repos/subscription-event.repo.js";
-export * as webhookEventRepo from "./db/repos/webhook-event.repo.js";
+export * as apiKeyRepo from "@vibecc/paykit-auth-core/db/repos/api-key.repo.js";
+export * as balanceRepo from "@vibecc/paykit-auth-core/db/repos/balance.repo.js";
+export * as customerRepo from "@vibecc/paykit-auth-core/db/repos/customer.repo.js";
+export * as discountRepo from "@vibecc/paykit-auth-core/db/repos/discount.repo.js";
+export * as idempotencyRepo from "@vibecc/paykit-auth-core/db/repos/idempotency.repo.js";
+export * as ledgerRepo from "@vibecc/paykit-auth-core/db/repos/ledger.repo.js";
+export * as merchantRepo from "@vibecc/paykit-auth-core/db/repos/merchant.repo.js";
+export * as paymentRepo from "@vibecc/paykit-auth-core/db/repos/payment.repo.js";
+export * as pendingRefundRepo from "@vibecc/paykit-auth-core/db/repos/pending-refund.repo.js";
+export * as reconciliationRepo from "@vibecc/paykit-auth-core/db/repos/reconciliation.repo.js";
+export * as runtimeConfigRepo from "@vibecc/paykit-auth-core/db/repos/runtime-config.repo.js";
+export * as subscriptionRepo from "@vibecc/paykit-auth-core/db/repos/subscription.repo.js";
+export * as subscriptionEventRepo from "@vibecc/paykit-auth-core/db/repos/subscription-event.repo.js";
+export * as webhookEventRepo from "@vibecc/paykit-auth-core/db/repos/webhook-event.repo.js";
 
 // Provider clients
 export {

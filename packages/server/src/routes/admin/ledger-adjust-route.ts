@@ -11,9 +11,9 @@
 import type { AdminGuard, AdminGuardResult } from "@vibecc/paykit";
 import { Hono } from "hono";
 import { z } from "zod";
-import type { DbClient } from "../../db/client.js";
-import { applyDelta } from "../../db/repos/balance.repo.js";
-import { appendLedgerEntry } from "../../db/repos/ledger.repo.js";
+import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
+import { applyDelta } from "@vibecc/paykit-auth-core/db/repos/balance.repo.js";
+import { appendLedgerEntry } from "@vibecc/paykit-auth-core/db/repos/ledger.repo.js";
 import { dataJson, errorJson } from "../shared/response.js";
 import { adminGuardMiddleware } from "./admin-guard.js";
 

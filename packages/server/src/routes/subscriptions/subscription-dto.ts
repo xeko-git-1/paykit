@@ -3,7 +3,7 @@
  * route files. Keeps each route under 200 LOC.
  */
 import type { SubscriptionStatus } from "@vibecc/paykit";
-import type { Subscription } from "../../db/schema/subscriptions.js";
+import type { Subscription } from "@vibecc/paykit-auth-core/db/schema/subscriptions.js";
 
 export interface SubscriptionDto {
   readonly id: string;

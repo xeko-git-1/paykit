@@ -14,9 +14,9 @@
 import { TenantResolutionError } from "@vibecc/paykit";
 import type { TenantResolver } from "@vibecc/paykit";
 import { Hono } from "hono";
-import type { DbClient } from "../../db/client.js";
-import { listBalancesByTenant } from "../../db/repos/balance.repo.js";
-import { computeBalancesByTenant } from "../../db/repos/ledger.repo.js";
+import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
+import { listBalancesByTenant } from "@vibecc/paykit-auth-core/db/repos/balance.repo.js";
+import { computeBalancesByTenant } from "@vibecc/paykit-auth-core/db/repos/ledger.repo.js";
 import { getAuthTenant } from "../../auth/auth-context.js";
 import { dataJson, errorJson } from "../shared/response.js";
 

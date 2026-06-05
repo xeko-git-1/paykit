@@ -22,7 +22,7 @@ import {
   type TenantResolver,
 } from "@vibecc/paykit";
 import { Hono } from "hono";
-import type { DbClient } from "../db/client.js";
+import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
 import type { PaykitEventHandlers } from "../events/emitter.js";
 import type { SePayConfig } from "../providers/sepay/client.js";
 import type { StripeConfig } from "../providers/stripe/client.js";

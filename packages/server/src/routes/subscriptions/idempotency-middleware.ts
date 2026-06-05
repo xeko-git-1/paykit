@@ -19,13 +19,13 @@ import { createHash } from "node:crypto";
 import type { TenantResolver } from "@vibecc/paykit";
 import type { Context, MiddlewareHandler } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
-import type { DbClient } from "../../db/client.js";
+import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
 import {
   IdempotencyBodyMismatchError,
   claimIdempotency,
   finalizeIdempotency,
   releaseIdempotency,
-} from "../../db/repos/idempotency.repo.js";
+} from "@vibecc/paykit-auth-core/db/repos/idempotency.repo.js";
 import { errorJson } from "../shared/response.js";
 
 export const IDEMPOTENCY_HEADER = "Idempotency-Key";

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { hashApiKey, mintApiKey, toBase62, verifyApiKey } from "../src/auth/api-key.js";
-import { type ApiKeyScope, hasScope, isScopeSubset } from "../src/auth/scope.js";
-import type { ApiKey } from "../src/db/schema/api-keys.js";
+import { hashApiKey, mintApiKey, toBase62, verifyApiKey } from "@vibecc/paykit-auth-core/auth/api-key.js";
+import { type ApiKeyScope, hasScope, isScopeSubset } from "@vibecc/paykit-auth-core/auth/scope.js";
+import type { ApiKey } from "@vibecc/paykit-auth-core/db/schema/api-keys.js";
 
 // ---------------------------------------------------------------------------
 // toBase62 — must be injective per byte so no entropy is lost
