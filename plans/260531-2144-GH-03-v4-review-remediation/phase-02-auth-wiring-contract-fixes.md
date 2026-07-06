@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Auth wiring + contract fixes"
-status: pending
+status: completed
 priority: P1
 effort: "4-5h"
 dependencies: []
@@ -76,11 +76,11 @@ khóa sai field, OpenAPI thiếu header/security scheme. Thêm CLI để tạo m
 
 ## Success Criteria
 
-- [ ] `/v1/openapi.json` trả 200 không cần key (qua app thật); có securitySchemes + Idempotency-Key param
-- [ ] CLI `merchant:create` + `key:mint` tạo merchant/key, in plaintext 1 lần
-- [ ] jwtSecretLoader chết + bootstrapJwtSecret trùng lặp đã gỡ; `/v1/api-keys` documented JWT-gated V4.4
-- [ ] `app.onError` envelope + apiVersion; không leak stack
-- [ ] Rate-limit khóa khớp contract (per-key sau khi user chốt, hoặc comment sửa nếu giữ per-merchant)
+- [x] `/v1/openapi.json` trả 200 không cần key (qua app thật); có securitySchemes + Idempotency-Key param
+- [x] CLI `merchant:create` + `key:mint` tạo merchant/key, in plaintext 1 lần
+- [x] jwtSecretLoader chết + bootstrapJwtSecret trùng lặp đã gỡ; `/v1/api-keys` documented JWT-gated V4.4
+- [x] `app.onError` envelope + apiVersion; không leak stack
+- [x] Rate-limit khóa khớp contract (per-key sau khi user chốt, hoặc comment sửa nếu giữ per-merchant)
 
 ## Risk Assessment
 

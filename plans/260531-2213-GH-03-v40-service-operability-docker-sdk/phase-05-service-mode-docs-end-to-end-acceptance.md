@@ -80,13 +80,13 @@ e2e/
 
 ## Success Criteria
 
-- [ ] `docs/service-mode-setup.md` đủ để 1 dev lạ deploy service qua Docker + gọi `/v1` thành công
-- [ ] **F6:** `installation.md` không còn "5 tables" → **13**; có link service mode
-- [ ] **F4:** E2E cold-start → bootstrap → mint → checkout (SePay `amountVnd`) → 2xx + DTO khớp
-- [ ] E2E negative: thiếu scope → 403, no key → 401
-- [ ] **F14:** CI job Postgres gate migrate→/readyz; cold-start không chỉ verify thủ công
-- [ ] `pnpm test` toàn repo xanh (không hồi quy)
-- [ ] README phản ánh service mode V4
+- [x] `docs/service-mode-setup.md` đủ để 1 dev lạ deploy service qua Docker + gọi `/v1` thành công
+- [x] **F6:** `installation.md` không còn "5 tables" → **13**; có link service mode
+- [x] **F4:** E2E cold-start → bootstrap → mint → checkout (SePay `amountVnd`) → 2xx + DTO khớp
+- [x] E2E negative: thiếu scope → 403, no key → 401
+- [x] **F14:** CI job Postgres gate migrate→/readyz; cold-start không chỉ verify thủ công
+- [x] `pnpm test` toàn repo xanh (không hồi quy)
+- [x] README phản ánh service mode V4
 
 ## Risk Assessment
 

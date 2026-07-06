@@ -85,13 +85,13 @@ underpaid/overpaid → `payment.underpaid` / amount-drift → `payment.amount_mi
 8. Update `docs/refund-flows.md:41` BitPay row from "pending" to shipped; bump release-manifest.
 
 ## Todo
-- [ ] Confirm BitPay invoice/status/IPN-auth/refund API (no assumptions)
-- [ ] Scaffold `@vibecc/paykit-bitpay` from NP shape
-- [ ] Signature verifier (real BitPay scheme)
-- [ ] Status map + refund event sets `refundAmountMicros`
-- [ ] adapter.ts checkout/refund(pending_webhook)/fetchTransactions
-- [ ] Test suite incl. refund→webhook resolution
-- [ ] Build + tests green; docs row flipped to shipped
+- [x] Confirm BitPay invoice/status/IPN-auth/refund API (no assumptions)
+- [x] Scaffold `@vibecc/paykit-bitpay` from NP shape
+- [x] Signature verifier (real BitPay scheme)
+- [x] Status map + refund event sets `refundAmountMicros`
+- [x] adapter.ts checkout/refund(pending_webhook)/fetchTransactions
+- [x] Test suite incl. refund→webhook resolution
+- [x] Build + tests green; docs row flipped to shipped
 
 ## Success criteria
 - `@vibecc/paykit-bitpay` builds, exports `createBitpayAdapter`.

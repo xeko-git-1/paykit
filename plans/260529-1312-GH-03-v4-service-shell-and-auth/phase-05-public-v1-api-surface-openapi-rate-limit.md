@@ -95,15 +95,15 @@ refund-core(actor, tenantId, txId, amount)  ←── admin-refund-route (adminC
 
 ## Success Criteria
 
-- [ ] Mọi `/v1` scope-gated (403 thiếu scope, 401 thiếu key/sai plane)
-- [ ] **F4:** merchant không refund được tx của merchant khác (404, không debit)
-- [ ] **F3 + F14:** mint = JWT/admin plane only; merchantId từ auth; scopes ⊆ caller; per-merchant DB-counted cap → 429 khi vượt (durable)
-- [ ] **F7:** refund-core extracted; admin refund route cũ vẫn xanh (không hồi quy)
-- [ ] **F13:** DTO `.strict()`; body card-like → 400; redaction wire log `/v1`
-- [ ] **F8:** `/v1/openapi.json` spec 3.1 hợp lệ; cách build chốt + zod-v4 verified
-- [ ] **F14:** rate-limit 429/header, isolation per key_id; KHÔNG là control duy nhất cho mint
-- [ ] Webhook KHÔNG bị rate-limit/scope (đã top-level — phase 4)
-- [ ] `paykit-service` + `paykit-server` suite xanh
+- [x] Mọi `/v1` scope-gated (403 thiếu scope, 401 thiếu key/sai plane)
+- [x] **F4:** merchant không refund được tx của merchant khác (404, không debit)
+- [x] **F3 + F14:** mint = JWT/admin plane only; merchantId từ auth; scopes ⊆ caller; per-merchant DB-counted cap → 429 khi vượt (durable)
+- [x] **F7:** refund-core extracted; admin refund route cũ vẫn xanh (không hồi quy)
+- [x] **F13:** DTO `.strict()`; body card-like → 400; redaction wire log `/v1`
+- [x] **F8:** `/v1/openapi.json` spec 3.1 hợp lệ; cách build chốt + zod-v4 verified
+- [x] **F14:** rate-limit 429/header, isolation per key_id; KHÔNG là control duy nhất cho mint
+- [x] Webhook KHÔNG bị rate-limit/scope (đã top-level — phase 4)
+- [x] `paykit-service` + `paykit-server` suite xanh
 
 ## Risk Assessment
 

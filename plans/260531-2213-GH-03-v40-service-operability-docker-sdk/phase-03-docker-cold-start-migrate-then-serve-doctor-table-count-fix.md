@@ -113,14 +113,14 @@ doctor.ts (F6): EXPECTED = 13 bảng (đếm động từ migration SQL / manife
 
 ## Success Criteria
 
-- [ ] **F1/F2:** `docker compose up` cold DB: migrate init chạy (không "Unknown command", không
+- [x] **F1/F2:** `docker compose up` cold DB: migrate init chạy (không "Unknown command", không
       "paykit: not found") → serve lên không query-fail
-- [ ] `/healthz` 200 + `/readyz` 200 sau cold-start
-- [ ] **F6:** doctor báo đúng **13** bảng; thiếu reconciliation_runs → bắt được
-- [ ] **F9:** main.ts không còn migrate sub-command (xóa ở phase 1) → không execSync nội suy DSN; compose gọi CLI bin trực tiếp
-- [ ] **F12:** serve chỉ chạy sau khi migrate ở HEAD (init completed_successfully)
-- [ ] **F13:** migrate-init có `restart: on-failure`; serve KHÔNG; runbook recovery ghi (phase 5)
-- [ ] `docker compose build` thành công với 6 adapter
+- [x] `/healthz` 200 + `/readyz` 200 sau cold-start
+- [x] **F6:** doctor báo đúng **13** bảng; thiếu reconciliation_runs → bắt được
+- [x] **F9:** main.ts không còn migrate sub-command (xóa ở phase 1) → không execSync nội suy DSN; compose gọi CLI bin trực tiếp
+- [x] **F12:** serve chỉ chạy sau khi migrate ở HEAD (init completed_successfully)
+- [x] **F13:** migrate-init có `restart: on-failure`; serve KHÔNG; runbook recovery ghi (phase 5)
+- [x] `docker compose build` thành công với 6 adapter
 
 ## Risk Assessment
 

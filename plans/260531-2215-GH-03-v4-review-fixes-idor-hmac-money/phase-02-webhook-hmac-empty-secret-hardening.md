@@ -1,9 +1,9 @@
 ---
 phase: 2
-title: "Webhook HMAC empty-secret hardening"
-status: pending
+title: Webhook HMAC empty-secret hardening
+status: completed
 priority: P1
-effort: "2h"
+effort: 2h
 dependencies: []
 ---
 
@@ -36,9 +36,9 @@ Khắc phục finding **I1** (Important, gần Critical): 5 adapter HMAC lặp `
 4. Thêm test cho từng adapter: `secrets = [""]`, `[" "]`, `["\n"]`, `["", ""]` + chữ ký bất kỳ tính bằng key đó → verify trả `false`; và secret hợp lệ vẫn verify đúng (chống hồi quy).
 
 ## Success Criteria
-- [ ] Cả 6 adapter (5 + NowPayments) bỏ qua secret rỗng/whitespace và fail-closed khi không có secret hợp lệ
-- [ ] Test forge-with-empty/whitespace-secret trả `false` cho từng adapter
-- [ ] `pnpm build` toàn workspace pass; test adapter xanh
+- [x] Cả 6 adapter (5 + NowPayments) bỏ qua secret rỗng/whitespace và fail-closed khi không có secret hợp lệ
+- [x] Test forge-with-empty/whitespace-secret trả `false` cho từng adapter
+- [x] `pnpm build` toàn workspace pass; test adapter xanh
 
 ## Risk Assessment
 - Rủi ro thấp: thay đổi thuần phòng thủ, không đổi đường happy-path. Mitigation: test secret-hợp-lệ vẫn verify đúng để chứng minh không hồi quy.

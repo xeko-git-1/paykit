@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "PCI redaction + test fidelity + docs"
-status: pending
+status: completed
 priority: P2
 effort: "3-4h"
 dependencies: [1, 2, 3]
@@ -63,11 +63,11 @@ test "vacuous" (xanh nhưng không chứng minh gì) + đồng bộ docs với q
 
 ## Success Criteria
 
-- [ ] Admin refund characterization test khóa branch mapping + idempotency (F7 proof thật)
-- [ ] refund-ownership + webhook-isolation test fail khi protection bị gỡ (hết vacuous)
-- [ ] F13 resolved: (a) documented no-log-path + guard test, HOẶC (b) redaction helper wire vào log
-- [ ] label/discountCode: implement hoặc gỡ khỏi public contract (không advertise field chết)
-- [ ] Docs đồng bộ: mint JWT-gated/CLI, suspension defer, mode non-isolated, rate-limit soft
+- [x] Admin refund characterization test khóa branch mapping + idempotency (F7 proof thật)
+- [x] refund-ownership + webhook-isolation test fail khi protection bị gỡ (hết vacuous)
+- [x] F13 resolved: (a) documented no-log-path + guard test, HOẶC (b) redaction helper wire vào log
+- [x] label/discountCode: implement hoặc gỡ khỏi public contract (không advertise field chết)
+- [x] Docs đồng bộ: mint JWT-gated/CLI, suspension defer, mode non-isolated, rate-limit soft
 
 ## Risk Assessment
 

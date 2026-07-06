@@ -1,9 +1,9 @@
 ---
 phase: 1
-title: "Cross-tenant IDOR fix + idempotency-key migration"
-status: pending
+title: Cross-tenant IDOR fix + idempotency-key migration
+status: completed
 priority: P1
-effort: "4h"
+effort: 4h
 dependencies: []
 ---
 
@@ -47,12 +47,12 @@ Phụ (sepay): `sepay-route.ts:76-88` còn 2 lỗi đi kèm — thiếu guard `p
 10. Thêm test regression IDOR: tenant A tạo tx với key `K`; tenant B gọi cùng key `K` → KHÔNG thấy tx của A; replay của A với `K` vẫn trả tx cũ. **Finding I:** sau 013, tenant A+B cùng key cùng INSERT thành công (không 500 do constraint cũ sót lại).
 
 ## Success Criteria
-- [ ] `findByIdempotencyKey` không còn đường trả row của tenant khác (test chứng minh)
-- [ ] `findByProviderRef` có tenantId param hoặc comment cảnh báo rõ (finding J)
-- [ ] Migration 013 lên chạy sạch; down có guard/comment forward-only (finding H)
-- [ ] sepay-route replay dùng amount đã lưu, convert đúng micros→VND (finding G)
-- [ ] `v4-migrations-shape.test.ts` cập nhật 13 migration, xanh (finding C)
-- [ ] `pnpm --filter @vibecc/paykit-server build` pass; test regression IDOR xanh
+- [x] `findByIdempotencyKey` không còn đường trả row của tenant khác (test chứng minh)
+- [x] `findByProviderRef` có tenantId param hoặc comment cảnh báo rõ (finding J)
+- [x] Migration 013 lên chạy sạch; down có guard/comment forward-only (finding H)
+- [x] sepay-route replay dùng amount đã lưu, convert đúng micros→VND (finding G)
+- [x] `v4-migrations-shape.test.ts` cập nhật 13 migration, xanh (finding C)
+- [x] `pnpm --filter @vibecc/paykit-server build` pass; test regression IDOR xanh
 
 ## Risk Assessment
 - **Finding I:** `DROP CONSTRAINT IF EXISTS <ten_doan>` có thể silent no-op nếu tên lệch → constraint global-unique sót lại → tenant B INSERT key trùng → 500. Mitigation: bước 1 (lấy tên thật) BẮT BUỘC + test A/B cùng key INSERT thành công.

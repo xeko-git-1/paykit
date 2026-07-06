@@ -1,7 +1,7 @@
 ---
 phase: 6
 title: "Extract @vibecc/paykit-auth-core (decouple CLI from server HTTP layer)"
-status: pending
+status: completed
 priority: P2
 effort: "varies — refactor only, no new behavior"
 dependencies: [1]
@@ -93,11 +93,11 @@ behavior change, all existing tests must stay green.
 
 ## Success Criteria
 
-- [ ] `@vibecc/paykit-auth-core` exists; CLI imports it, not `@vibecc/paykit-server`
-- [ ] Boundary test re-enabled (CLI→server) and PASSES
-- [ ] auth-core entrypoint carries no Hono HTTP-layer dependency
-- [ ] All existing tests green (zero behavior change); docker build OK
-- [ ] server/workers/service unaffected (re-export keeps contracts stable)
+- [x] `@vibecc/paykit-auth-core` exists; CLI imports it, not `@vibecc/paykit-server`
+- [x] Boundary test re-enabled (CLI→server) and PASSES
+- [x] auth-core entrypoint carries no Hono HTTP-layer dependency
+- [x] All existing tests green (zero behavior change); docker build OK
+- [x] server/workers/service unaffected (re-export keeps contracts stable)
 
 ## Risk Assessment
 

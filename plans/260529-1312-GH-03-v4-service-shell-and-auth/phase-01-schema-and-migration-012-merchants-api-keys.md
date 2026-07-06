@@ -73,12 +73,12 @@ giữ nguyên 2 cột `tenant_id`/`owner_id` đang có.
 
 ## Success Criteria
 
-- [ ] `v4-migrations-shape.test.ts` FAIL trên tree hiện tại, PASS sau khi thêm file
-- [ ] 012 up tạo `merchants` + `api_keys` với UNIQUE(key_hash), FK, indexes
-- [ ] 012 down **rename-not-drop** (rollback không hủy key đang sống — F10)
-- [ ] `manifest.json` có entry 012 (KHÔNG `release-manifest.json`); ids ascending contiguous (F6)
-- [ ] Drizzle schema export; `paykit-server` build xanh
-- [ ] `paykit migrate` apply 012, `schema_migrations` ghi id `012`; re-run no-op
+- [x] `v4-migrations-shape.test.ts` FAIL trên tree hiện tại, PASS sau khi thêm file
+- [x] 012 up tạo `merchants` + `api_keys` với UNIQUE(key_hash), FK, indexes
+- [x] 012 down **rename-not-drop** (rollback không hủy key đang sống — F10)
+- [x] `manifest.json` có entry 012 (KHÔNG `release-manifest.json`); ids ascending contiguous (F6)
+- [x] Drizzle schema export; `paykit-server` build xanh
+- [x] `paykit migrate` apply 012, `schema_migrations` ghi id `012`; re-run no-op
 
 ## Risk Assessment
 

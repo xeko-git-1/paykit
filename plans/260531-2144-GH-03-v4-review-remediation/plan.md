@@ -1,7 +1,7 @@
 ---
 title: "Paykit V4.0 code-review remediation (refund money-path + auth wiring + ops hardening)"
 description: "Khắc phục các finding từ parallel code-review V4.0 (3 reviewers): 1 Critical money-path (refund idempotency), wiring/contract gaps (mint dead, openapi behind auth, rate-limit key), ops hardening (readyz leak, shutdown, docker, migrate), PCI redaction + test fidelity."
-status: pending
+status: completed
 priority: P1
 branch: "feat/v3-phase-03-nowpayments-adapter"
 tags: [v4, remediation, refund, auth, ops, pci, code-review]

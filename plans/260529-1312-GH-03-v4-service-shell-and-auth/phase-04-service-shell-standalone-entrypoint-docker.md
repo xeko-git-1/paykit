@@ -85,12 +85,12 @@ Request ─► Hono app
 
 ## Success Criteria
 
-- [ ] Config test: thiếu env critical → fail-fast; **D6: JWT secret từ `runtime_config` (vắng→seed, <32B→fail), KHÔNG đọc env**
-- [ ] `/healthz` 200 no-auth **không phụ thuộc DB**; `/readyz` có timeout, không hang khi DB chậm (F14)
-- [ ] `/v1/*` không key → 401; `/v1` vắng paykitAuth → 401 (F5)
-- [ ] **F2:** `/webhooks/*` top-level, route-isolation test xác nhận KHÔNG nằm dưới auth/rate-limit; IPN không 401/429
-- [ ] App curl được từ ngoài (any-lang) chỉ bằng API key — chứng minh portability
-- [ ] `docker build` xanh; container non-root; `docker compose up` healthy
+- [x] Config test: thiếu env critical → fail-fast; **D6: JWT secret từ `runtime_config` (vắng→seed, <32B→fail), KHÔNG đọc env**
+- [x] `/healthz` 200 no-auth **không phụ thuộc DB**; `/readyz` có timeout, không hang khi DB chậm (F14)
+- [x] `/v1/*` không key → 401; `/v1` vắng paykitAuth → 401 (F5)
+- [x] **F2:** `/webhooks/*` top-level, route-isolation test xác nhận KHÔNG nằm dưới auth/rate-limit; IPN không 401/429
+- [x] App curl được từ ngoài (any-lang) chỉ bằng API key — chứng minh portability
+- [x] `docker build` xanh; container non-root; `docker compose up` healthy
 
 ## Risk Assessment
 

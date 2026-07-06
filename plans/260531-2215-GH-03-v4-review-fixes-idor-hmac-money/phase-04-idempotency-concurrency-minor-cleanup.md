@@ -1,10 +1,11 @@
 ---
 phase: 4
-title: "Idempotency concurrency + minor cleanup"
-status: pending
+title: Idempotency concurrency + minor cleanup
+status: completed
 priority: P2
-effort: "4h"
-dependencies: [1]
+effort: 4h
+dependencies:
+  - 1
 ---
 
 # Phase 4: Idempotency concurrency + minor cleanup
@@ -59,13 +60,13 @@ Red-team finding B: insert-first naïve sẽ FAIL vì `responseStatus` là `NOT 
 8. Build + chạy test toàn server + adapter.
 
 ## Success Criteria
-- [ ] Hai request đồng thời cùng key chỉ một chạy handler; handler crash KHÔNG khoá vĩnh viễn (TTL-reclaim) — test concurrency + crash
-- [ ] Migration 014 lên/xuống sạch; `v4-migrations-shape.test.ts` count=14 xanh
-- [ ] `toBase62` injective; key ≥256-bit entropy
-- [ ] `amountUsd` >2 chữ số bị từ chối
-- [ ] Dead-code handler đã xóa, build pass
-- [ ] tenant-routes + idempotency-middleware dùng auth context; scoping test xanh
-- [ ] `pnpm build` toàn workspace pass; toàn bộ test xanh
+- [x] Hai request đồng thời cùng key chỉ một chạy handler; handler crash KHÔNG khoá vĩnh viễn (TTL-reclaim) — test concurrency + crash
+- [x] Migration 014 lên/xuống sạch; `v4-migrations-shape.test.ts` count=14 xanh
+- [x] `toBase62` injective; key ≥256-bit entropy
+- [x] `amountUsd` >2 chữ số bị từ chối
+- [x] Dead-code handler đã xóa, build pass
+- [x] tenant-routes + idempotency-middleware dùng auth context; scoping test xanh
+- [x] `pnpm build` toàn workspace pass; toàn bộ test xanh
 
 ## Risk Assessment
 - I2 thêm migration 014 + cột state → `pnpm test` migration-shape phải cập nhật cùng commit (finding C/B), nếu không đỏ.

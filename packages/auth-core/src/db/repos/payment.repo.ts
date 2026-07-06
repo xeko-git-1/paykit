@@ -57,6 +57,10 @@ export async function findByIdempotencyKey(
   });
 }
 
+// WARNING: not tenant-scoped. (provider, provider_ref) is globally unique, so a
+// lookup can return a row owned by another tenant. Safe only for trusted
+// server-side paths (e.g. webhook routing keyed on the provider's own ref).
+// Never expose this behind a tenant-facing request without adding a tenantId guard.
 export async function findByProviderRef(
   db: DbClient,
   provider: string,

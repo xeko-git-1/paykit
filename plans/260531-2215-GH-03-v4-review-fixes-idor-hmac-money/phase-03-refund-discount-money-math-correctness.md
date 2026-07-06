@@ -1,9 +1,9 @@
 ---
 phase: 3
-title: "Discount money-math correctness (I4)"
-status: pending
+title: Discount money-math correctness (I4)
+status: completed
 priority: P2
-effort: "1h"
+effort: 1h
 dependencies: []
 ---
 
@@ -34,8 +34,8 @@ Phase này giờ chỉ còn **I4**: discount % phân số bị `Math.round` làm
 4. Thêm test: pct=12.5 → số tiền đúng theo bps (không round lên 13%); pct=0.4 → vẫn giảm, không thành 0; pct=100 → effective=0; pct=0 → full.
 
 ## Success Criteria
-- [ ] Discount 12.5% / 0.4% / 100% / 0% tính đúng (test chứng minh)
-- [ ] `pnpm --filter @vibecc/paykit-server build` pass; `apply-discount.test.ts` xanh
+- [x] Discount 12.5% / 0.4% / 100% / 0% tính đúng (test chứng minh)
+- [x] `pnpm --filter @vibecc/paykit-server build` pass; `apply-discount.test.ts` xanh
 
 ## Risk Assessment
 - Thấp: thay đổi cục bộ một biểu thức. Clamp bps `[0,10000]` bắt buộc để tránh `BigInt(10000 - bps)` âm.

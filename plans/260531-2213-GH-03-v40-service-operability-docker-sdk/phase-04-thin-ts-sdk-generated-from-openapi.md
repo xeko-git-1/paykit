@@ -110,13 +110,13 @@ consumer:
 
 ## Success Criteria
 
-- [ ] `createPaykitClient({baseUrl, apiKey})` gọi được 4 endpoint (checkouts/balances/payments/refunds), type-safe
-- [ ] **F4:** `checkouts.create` dùng đúng DTO `{amountUsd?|amountVnd?, provider, discountCode?}` `.strict()` — không `amountMicros/currency`
-- [ ] Auth header tự gắn; error envelope → throw có `code`
-- [ ] **F11:** SDK KHÔNG expose mint (no `apiKeys.create`); spec snapshot filtered mint path
-- [ ] spec snapshot test chống drift qua `buildServiceApp().request("/v1/openapi.json")` (F15)
-- [ ] **F15:** runtime dep pin-exact + vetted; service là devDep cho snapshot test; lockfile committed
-- [ ] `paykit-sdk` build + test xanh; generator peer-compat OpenAPI 3.1 verified
+- [x] `createPaykitClient({baseUrl, apiKey})` gọi được 4 endpoint (checkouts/balances/payments/refunds), type-safe
+- [x] **F4:** `checkouts.create` dùng đúng DTO `{amountUsd?|amountVnd?, provider, discountCode?}` `.strict()` — không `amountMicros/currency`
+- [x] Auth header tự gắn; error envelope → throw có `code`
+- [x] **F11:** SDK KHÔNG expose mint (no `apiKeys.create`); spec snapshot filtered mint path
+- [x] spec snapshot test chống drift qua `buildServiceApp().request("/v1/openapi.json")` (F15)
+- [x] **F15:** runtime dep pin-exact + vetted; service là devDep cho snapshot test; lockfile committed
+- [x] `paykit-sdk` build + test xanh; generator peer-compat OpenAPI 3.1 verified
 
 ## Risk Assessment
 

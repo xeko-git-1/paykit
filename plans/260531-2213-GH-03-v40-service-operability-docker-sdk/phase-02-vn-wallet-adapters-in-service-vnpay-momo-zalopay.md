@@ -86,12 +86,12 @@ Dockerfile: COPY packages/{vnpay,momo,zalopay}-adapter (builder + runtime)
 
 ## Success Criteria
 
-- [ ] Env đủ creds VNPay/Momo/ZaloPay → adapter tương ứng được wire
-- [ ] Thiếu field bất kỳ của 1 provider → provider đó không enable (không crash)
-- [ ] Dockerfile build chứa 3 package (verify ở phase 3 docker build)
-- [ ] `config-validation` + `adapters-from-env-vn` test xanh
-- [ ] Service giờ wire 6 adapter (Stripe/SePay/NowPayments + VNPay/Momo/ZaloPay)
-- [ ] **F6:** Dockerfile COPY đủ 3 package × 2 stage; **F7:** lockfile regenerated + committed
+- [x] Env đủ creds VNPay/Momo/ZaloPay → adapter tương ứng được wire
+- [x] Thiếu field bất kỳ của 1 provider → provider đó không enable (không crash)
+- [x] Dockerfile build chứa 3 package (verify ở phase 3 docker build)
+- [x] `config-validation` + `adapters-from-env-vn` test xanh
+- [x] Service giờ wire 6 adapter (Stripe/SePay/NowPayments + VNPay/Momo/ZaloPay)
+- [x] **F6:** Dockerfile COPY đủ 3 package × 2 stage; **F7:** lockfile regenerated + committed
 
 ## Risk Assessment
 

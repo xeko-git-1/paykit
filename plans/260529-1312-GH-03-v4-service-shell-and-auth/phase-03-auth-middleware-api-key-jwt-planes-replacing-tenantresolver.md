@@ -90,14 +90,14 @@ không bao giờ resolve tenant từ request do caller kiểm soát.
 
 ## Success Criteria
 
-- [ ] Characterization test assert **repo gọi đúng `tenantId`** (không chỉ 200) — F9 proof thật
-- [ ] api-key middleware: 401 thiếu/sai/revoked; set tenant đúng khi hợp lệ
-- [ ] jwt middleware (F6): 401 cho expired/`alg:none`/non-HS256/thiếu iss-aud; **D6: secret từ `runtime_config`, boot fail nếu < 32 bytes / không seed được**
-- [ ] Plane separation enforced: sai-plane → 401
-- [ ] **F5:** `/v1` vắng `paykitAuth` → 401, KHÔNG fallback header
-- [ ] **F2:** `createPaykit` không `tenantResolver` (service mode) compile + resolve qua `authTenant(c)`; embedded mode (có resolver) vẫn xanh
-- [ ] **F11:** subscription routes documented OUT of service-mode V4.0 (embedded only)
-- [ ] Full `paykit-server` test suite xanh
+- [x] Characterization test assert **repo gọi đúng `tenantId`** (không chỉ 200) — F9 proof thật
+- [x] api-key middleware: 401 thiếu/sai/revoked; set tenant đúng khi hợp lệ
+- [x] jwt middleware (F6): 401 cho expired/`alg:none`/non-HS256/thiếu iss-aud; **D6: secret từ `runtime_config`, boot fail nếu < 32 bytes / không seed được**
+- [x] Plane separation enforced: sai-plane → 401
+- [x] **F5:** `/v1` vắng `paykitAuth` → 401, KHÔNG fallback header
+- [x] **F2:** `createPaykit` không `tenantResolver` (service mode) compile + resolve qua `authTenant(c)`; embedded mode (có resolver) vẫn xanh
+- [x] **F11:** subscription routes documented OUT of service-mode V4.0 (embedded only)
+- [x] Full `paykit-server` test suite xanh
 
 ## Risk Assessment
 

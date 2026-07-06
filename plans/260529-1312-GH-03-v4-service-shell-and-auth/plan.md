@@ -1,7 +1,7 @@
 ---
 title: "Paykit V4.0 — Service shell + Auth (API key + JWT)"
 description: "Pivot paykit từ embedded library (TS+Hono+Postgres) sang standalone service + thin SDK. V4.0 = keystone: thay TenantResolver bằng API-key auth + merchants table, JWT plane cho dashboard, public /v1 API + OpenAPI, Docker shell."
-status: pending
+status: completed
 priority: P1
 branch: "feat/v3-phase-03-nowpayments-adapter"
 tags: [v4, re-arch, service, auth, api-key, jwt, openapi, docker, security]

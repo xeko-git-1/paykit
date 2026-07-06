@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Ops hardening + lifecycle"
-status: pending
+status: completed
 priority: P2
 effort: "4-5h"
 dependencies: [2]
@@ -66,12 +66,12 @@ correctness. Không đụng business logic.
 
 ## Success Criteria
 
-- [ ] Partial creds → fail-fast rõ ràng; 0 provider → warn (không im lặng)
-- [ ] `/readyz` không rò pg connection + không hang khi DB chậm; `/healthz` vẫn no-DB
-- [ ] SIGTERM drain + pool.end + pool.on('error'); serve bắt bind error
-- [ ] `.dockerignore` ở repo root; migrate/doctor chạy được trong container (bin trên PATH + DB url qua env)
-- [ ] Admin secret compare timing-safe
-- [ ] Suspension gap + admin coupling + mode non-isolated DOCUMENTED (không enforce — đúng Q3)
+- [x] Partial creds → fail-fast rõ ràng; 0 provider → warn (không im lặng)
+- [x] `/readyz` không rò pg connection + không hang khi DB chậm; `/healthz` vẫn no-DB
+- [x] SIGTERM drain + pool.end + pool.on('error'); serve bắt bind error
+- [x] `.dockerignore` ở repo root; migrate/doctor chạy được trong container (bin trên PATH + DB url qua env)
+- [x] Admin secret compare timing-safe
+- [x] Suspension gap + admin coupling + mode non-isolated DOCUMENTED (không enforce — đúng Q3)
 
 ## Risk Assessment
 

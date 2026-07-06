@@ -61,11 +61,11 @@ pass legitimately). Report findings; only adjust if it is actually wrong. This h
 5. If Phase 02 merged, add BitPay to README matrix + installation.md.
 
 ## Todo
-- [ ] README status/version/package-list updated to V3 reality
-- [ ] Provider × currency × refund-mode matrix added
-- [ ] "Phase 11" docs placeholder replaced with real `docs/` links
-- [ ] Boundary-guard state verified + documented (edited only if proven wrong)
-- [ ] Cross-check installation.md adapter list
+- [x] README status/version/package-list updated to V3 reality
+- [x] Provider × currency × refund-mode matrix added
+- [x] "Phase 11" docs placeholder replaced with real `docs/` links
+- [x] Boundary-guard state verified + documented (edited only if proven wrong)
+- [x] Cross-check installation.md adapter list
 
 ## Success criteria
 - README no longer claims "V1 development"; lists all shipped packages + providers.

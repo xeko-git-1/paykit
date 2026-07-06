@@ -124,16 +124,16 @@ Service (main.ts) — wire BOTH planes on /v1:
 
 ## Success Criteria
 
-- [ ] **F10:** migration 013 thêm `api_keys.created_by`; up/down shape test xanh; **13-table count KHÔNG đổi** (ALTER cột)
-- [ ] `paykit merchant create` → merchant_id; `apikey mint` → `pk_` (once + warn) + ghi `created_by`; `jwt mint` → admin JWT
-- [ ] CLI mint enforce per-merchant cap (F10), KHÔNG bypass HTTP invariant
-- [ ] Scope lạ / merchant vắng / cap đạt → reject rõ ràng
-- [ ] **F3:** mount cả 2 plane trên `/v1/*`; `/v1/api-keys` reachable bằng admin JWT (scope-subset + cap)
-- [ ] **F3 coexistence:** api_key plane gọi mint → 403; api_key vẫn dùng `/v1/checkouts`; jwt mint OK
-- [ ] **F5:** CLI dùng Drizzle handle (không crash raw pg.Client)
-- [ ] **F9:** `main.ts` chỉ còn `serve` command (không execSync migrate/doctor)
-- [ ] **F7:** lockfile regenerated + committed; `pnpm install` xanh
-- [ ] Embedded mode KHÔNG đổi
+- [x] **F10:** migration 013 thêm `api_keys.created_by`; up/down shape test xanh; **13-table count KHÔNG đổi** (ALTER cột)
+- [x] `paykit merchant create` → merchant_id; `apikey mint` → `pk_` (once + warn) + ghi `created_by`; `jwt mint` → admin JWT
+- [x] CLI mint enforce per-merchant cap (F10), KHÔNG bypass HTTP invariant
+- [x] Scope lạ / merchant vắng / cap đạt → reject rõ ràng
+- [x] **F3:** mount cả 2 plane trên `/v1/*`; `/v1/api-keys` reachable bằng admin JWT (scope-subset + cap)
+- [x] **F3 coexistence:** api_key plane gọi mint → 403; api_key vẫn dùng `/v1/checkouts`; jwt mint OK
+- [x] **F5:** CLI dùng Drizzle handle (không crash raw pg.Client)
+- [x] **F9:** `main.ts` chỉ còn `serve` command (không execSync migrate/doctor)
+- [x] **F7:** lockfile regenerated + committed; `pnpm install` xanh
+- [x] Embedded mode KHÔNG đổi
 
 ## Risk Assessment
 

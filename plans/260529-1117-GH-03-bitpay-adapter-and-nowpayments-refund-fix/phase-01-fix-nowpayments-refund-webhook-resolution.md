@@ -83,10 +83,10 @@ router guard to fall back to `amountMicros` — that would mask future adapter o
 4. `pnpm --filter @vibecc/paykit-nowpayments build` + run nowpayments + server test files.
 
 ## Todo
-- [ ] `parseNpIpn` sets `refundAmountMicros` on `payment.refunded`
-- [ ] Adapter unit tests assert amount field
-- [ ] Server integration regression test: stuck row → `refunded` + 1 ledger entry
-- [ ] Adapter builds; targeted tests green; bundle budget still passes
+- [x] `parseNpIpn` sets `refundAmountMicros` on `payment.refunded`
+- [x] Adapter unit tests assert amount field
+- [x] Server integration regression test: stuck row → `refunded` + 1 ledger entry
+- [x] Adapter builds; targeted tests green; bundle budget still passes
 
 ## Success criteria
 - New regression test fails on current `main` (proves the bug) and passes after fix.

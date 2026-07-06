@@ -73,11 +73,11 @@ Deny-by-default: scope không khớp → 403; key không tồn tại/revoked →
 
 ## Success Criteria
 
-- [ ] Test FAIL trước, PASS sau implement
-- [ ] mint→hash→verify round-trip đúng; revoked key bị từ chối
-- [ ] `hasScope` deny-by-default (scopes rỗng = no access)
-- [ ] verify dùng timing-safe compare; không log secret
-- [ ] Build xanh; module < 200 dòng/file
+- [x] Test FAIL trước, PASS sau implement
+- [x] mint→hash→verify round-trip đúng; revoked key bị từ chối
+- [x] `hasScope` deny-by-default (scopes rỗng = no access)
+- [x] verify dùng timing-safe compare; không log secret
+- [x] Build xanh; module < 200 dòng/file
 
 ## Risk Assessment
 

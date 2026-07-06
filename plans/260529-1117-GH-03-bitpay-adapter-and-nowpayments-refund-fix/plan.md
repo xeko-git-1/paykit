@@ -1,7 +1,7 @@
 ---
 title: "Fix NowPayments async-refund resolution + BitPay adapter (V3 Phase 02) + docs sync"
 description: "Repair the broken pending_webhook→refunded webhook path, then build BitPay on the now-working infra, then sync stale README/docs."
-status: pending
+status: completed
 priority: P1
 effort: 9h
 branch: feat/v3-phase-03-nowpayments-adapter
@@ -30,9 +30,9 @@ must be fixed first or BitPay inherits it.
 
 | Phase | Title | Priority | Effort | Status | Depends on |
 |---|---|---|---|---|---|
-| 01 | [Fix NowPayments async-refund resolution + regression test](phase-01-fix-nowpayments-refund-webhook-resolution.md) | P1 | 3h | pending | — |
-| 02 | [BitPay adapter (V3 Phase 02)](phase-02-bitpay-adapter.md) | P2 | 4.5h | pending | 01 |
-| 03 | [README + docs reality sync (V1.5/V2/V3)](phase-03-readme-and-docs-reality-sync.md) | P3 | 1.5h | pending | — |
+| 01 | [Fix NowPayments async-refund resolution + regression test](phase-01-fix-nowpayments-refund-webhook-resolution.md) | P1 | 3h | completed | — |
+| 02 | [BitPay adapter (V3 Phase 02)](phase-02-bitpay-adapter.md) | P2 | 4.5h | completed | 01 |
+| 03 | [README + docs reality sync (V1.5/V2/V3)](phase-03-readme-and-docs-reality-sync.md) | P3 | 1.5h | completed | — |
 
 ## Sequencing rationale
 

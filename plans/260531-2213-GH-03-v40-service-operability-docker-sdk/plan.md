@@ -47,7 +47,7 @@ adapter), **thin TS SDK** từ OpenAPI, **CLI bootstrap** (`merchant create` + `
 | 3 | [Docker cold-start (migrate then serve) + doctor table-count fix](./phase-03-docker-cold-start-migrate-then-serve-doctor-table-count-fix.md) | ✅ Completed |
 | 4 | [Thin TS SDK generated from OpenAPI](./phase-04-thin-ts-sdk-generated-from-openapi.md) | ✅ Completed |
 | 5 | [Service-mode docs + end-to-end acceptance](./phase-05-service-mode-docs-end-to-end-acceptance.md) | ✅ Completed |
-| 6 | [Extract @vibecc/paykit-auth-core (deferred boundary fix)](./phase-06-extract-auth-core.md) | ⏸ Deferred |
+| 6 | [Extract @vibecc/paykit-auth-core (deferred boundary fix)](./phase-06-extract-auth-core.md) | ✅ Completed |
 
 ## Implementation outcome (2026-06-01)
 
@@ -56,6 +56,12 @@ Phases 1–5 implemented, cooked, and verified end-to-end. Full suite: **849 pas
 phase 6). Repo-wide typecheck clean. Docker cold-start verified for real
 (migrate→serve, `/healthz`+`/readyz` 200, bootstrap→mint→checkout through the
 container); e2e verified against a real throwaway Postgres.
+
+**Phase 6 completed (2026-06-11):** `@vibecc/paykit-auth-core` extracted (HTTP-free
+tier: db client, repos, schema, auth primitives). CLI now imports auth-core, not
+server. Boundary tests (cli→server, auth-core→server) re-enabled and green. Done in
+an isolated worktree, rebased onto the branch tip, fast-forwarded in. Full suite:
+**922 passed, 4 skipped**; repo-wide build clean.
 
 ### Deviations from plan (surfaced + decided during cook)
 

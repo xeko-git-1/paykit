@@ -1,14 +1,16 @@
 ---
-title: "Paykit V4 review fixes — cross-tenant IDOR + webhook HMAC + refund/discount money-math"
-description: ""
-status: pending
+title: >-
+  Paykit V4 review fixes — cross-tenant IDOR + webhook HMAC + refund/discount
+  money-math
+description: ''
+status: completed
 priority: P2
-branch: "feat/v3-phase-03-nowpayments-adapter"
+branch: feat/v3-phase-03-nowpayments-adapter
 tags: []
 blockedBy: []
 blocks: []
-created: "2026-05-31T15:28:55.636Z"
-createdBy: "ck:plan"
+created: '2026-05-31T15:28:55.636Z'
+createdBy: 'ck:plan'
 source: skill
 ---
 
@@ -38,15 +40,15 @@ Remediation cho các finding từ đợt code-review V4 (2026-05-31), đã qua r
 
 | Phase | Name | Status |
 |-------|------|--------|
-| 1 | [Cross-tenant IDOR fix + idempotency-key migration](./phase-01-cross-tenant-idor-fix-idempotency-key-migration.md) | Pending |
-| 2 | [Webhook HMAC empty-secret hardening](./phase-02-webhook-hmac-empty-secret-hardening.md) | Pending |
-| 3 | [Discount money-math correctness (I4) — I3 đã fix sẵn](./phase-03-refund-discount-money-math-correctness.md) | Pending |
-| 4 | [Idempotency concurrency + minor cleanup](./phase-04-idempotency-concurrency-minor-cleanup.md) | Pending (blockedBy: Phase 1) |
+| 1 | [Cross-tenant IDOR fix + idempotency-key migration](./phase-01-cross-tenant-idor-fix-idempotency-key-migration.md) | Completed |
+| 2 | [Webhook HMAC empty-secret hardening](./phase-02-webhook-hmac-empty-secret-hardening.md) | Completed |
+| 3 | [Discount money-math correctness (I4) — I3 đã fix sẵn](./phase-03-refund-discount-money-math-correctness.md) | Completed |
+| 4 | [Idempotency concurrency + minor cleanup](./phase-04-idempotency-concurrency-minor-cleanup.md) | Completed |
 
 ## Dependencies
 
 - Code-mục tiêu sinh ra từ plan `260529-1312-GH-03-v4-service-shell-and-auth` (V4 auth/service). Plan này sửa lỗi của output đó nhưng **không** block nó — V4 plan có thể đã đánh dấu xong; các fix ở đây áp lên cùng file.
-- Thay thế stub rỗng `260531-2144-GH-03-v4-review-remediation` (taxonomy cũ rộng hơn, gồm PCI/test-fidelity không có finding tương ứng). Stub đó nên archive/xoá để tránh trùng. Plan hiện tại chỉ gồm finding đã verify.
+- Song song với `260531-2144-GH-03-v4-review-remediation` (taxonomy rộng hơn: refund money-path + auth-wiring + ops + PCI/test-fidelity). Ban đầu tưởng 2144 là stub rỗng nên định archive; thực tế 2144 đã được implement đầy đủ (4 phase completed, code đã land). Hai plan bổ sung nhau, không trùng finding — giữ cả hai. Plan này chỉ gồm finding IDOR/HMAC/money-math đã verify.
 
 ## Verification (end-to-end)
 
