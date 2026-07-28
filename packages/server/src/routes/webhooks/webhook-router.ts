@@ -20,6 +20,7 @@ import type {
   PaymentProviderAdapter,
   ProviderRegistry,
 } from "@vibecc/paykit";
+import { microsStringToBigInt } from "@vibecc/paykit";
 import { and, eq } from "drizzle-orm";
 import type { Context } from "hono";
 import { Hono } from "hono";
@@ -34,6 +35,7 @@ import { paymentTransactions } from "@vibecc/paykit-auth-core/db/schema/payment-
 import type { PaykitEventHandlers } from "../../events/emitter.js";
 import { emitEvent } from "../../events/emitter.js";
 import { errorJson } from "../shared/response.js";
+import { evaluateSettlementAmount } from "./settlement-amount-guard.js";
 
 export interface WebhookRouterDeps {
   readonly db: DbClient;
@@ -146,6 +148,56 @@ async function handleWebhook(
         if (row.status !== "pending") return;
         if (evt.amountMicros === undefined || evt.currencyCode === undefined) return;
 
+        // Payer-controlled-amount rails (bank transfer): a memo match proves
+        // intent, not amount, so compare requested vs received before crediting.
+        // Exact-settling rails short-circuit and keep their verified path.
+        const settlement = evaluateSettlementAmount({
+          settlesExactAmount: adapter.settlesExactAmount !== false,
+          requestedMicros: row.amountMicros,
+          receivedMicros: evt.amountMicros,
+        });
+        if (settlement.decision === "underpaid") {
+          // Short transfer: no ledger move, status stays 'pending' so the admin
+          // can reconcile (or the payer can top up). Emitting no event keeps
+          // `completed` meaning paid-in-full for every downstream consumer.
+          deps.logger?.warn("payment underpaid — received < requested; not crediting", {
+            provider: adapter.id,
+            providerRef: evt.providerRef,
+            requestedMicros: settlement.requestedMicros,
+            receivedMicros: settlement.receivedMicros,
+            shortfallMicros: settlement.shortfallMicros,
+          });
+          deps.emitMetric?.("paykit_underpaid_received_total", { provider: adapter.id });
+          return;
+        }
+        if (settlement.decision === "unreadable_amount") {
+          // Neither amount can be trusted, so crediting would be guesswork.
+          // Quarantine for admin reconcile rather than leaving it pending: a
+          // malformed amount is a defect, not a payer action to wait on.
+          deps.logger?.warn("payment amount unreadable — quarantining without credit", {
+            provider: adapter.id,
+            providerRef: evt.providerRef,
+            unreadable: settlement.reason,
+          });
+          await updateTransactionStatus(tx, row.transactionId, "quarantine");
+          deps.emitMetric?.("paykit_amount_unreadable_total", { provider: adapter.id });
+          await releaseDiscountReservation(tx, row.metadataJson);
+          return;
+        }
+        if (settlement.decision === "overpaid") {
+          // Credit what was requested and leave the overage for manual
+          // reconciliation — the happy path must not block on generosity.
+          deps.logger?.warn("payment overpaid — crediting requested amount only", {
+            provider: adapter.id,
+            providerRef: evt.providerRef,
+            requestedMicros: settlement.requestedMicros,
+            receivedMicros: settlement.receivedMicros,
+            overageMicros: settlement.overageMicros,
+          });
+          deps.emitMetric?.("paykit_overpaid_total", { provider: adapter.id });
+        }
+        const creditMicros = settlement.creditMicros;
+
         // V3 Val D7 — onBeforeCredit OFAC/sanctions hook. Tenant-injected
         // screening; throwing quarantines without ledger touch. ACK 200 to
         // provider so retry storm doesn't compound a deliberate block.
@@ -174,7 +226,7 @@ async function handleWebhook(
           tenantId: row.tenantId,
           ownerId: row.ownerId,
           entryType: "credit",
-          amountMicros: evt.amountMicros,
+          amountMicros: creditMicros,
           currencyCode: evt.currencyCode,
           provider: adapter.id,
           sourceId: evt.providerRef,
@@ -186,12 +238,21 @@ async function handleWebhook(
           },
         });
         if (inserted) {
-          await applyDelta(tx, row.tenantId, evt.currencyCode, BigInt(evt.amountMicros));
+          await applyDelta(tx, row.tenantId, evt.currencyCode, microsStringToBigInt(creditMicros));
         }
         const updated = await updateTransactionStatus(tx, row.transactionId, "completed");
         if (updated !== undefined) {
           processedTxId = updated.transactionId;
           eventTypeProcessed = "payment.completed";
+        }
+        // Persist the provider-side payment id when it differs from provider_ref
+        // (NowPayments: refund keys on the numeric payment_id, which only arrives
+        // in this IPN — provider_ref holds order_id for the lookup above).
+        if (evt.providerPaymentId !== undefined) {
+          await tx
+            .update(paymentTransactions)
+            .set({ providerPaymentId: evt.providerPaymentId, updatedAt: new Date() })
+            .where(eq(paymentTransactions.transactionId, row.transactionId));
         }
         // Commit a discount reservation now that the payment is final. Guarded
         // by reserved > 0 in the repo so a resent webhook cannot double-count.

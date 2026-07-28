@@ -219,12 +219,17 @@ export async function executeRefund(
   const pendingId = reserveOutcome.pendingId;
   let refundResult: RefundResult;
   try {
+    // Prefer provider_payment_id when the provider's refund API keys on an id
+    // distinct from the checkout/webhook lookup key (NowPayments: refund needs
+    // the numeric payment_id, provider_ref holds order_id). Falls back to
+    // provider_ref for providers that refund by the same ref.
+    const refundRef = txRow.providerPaymentId ?? txRow.providerRef;
     refundResult = await adapter.refund({
       transactionId: txRow.transactionId,
       amountMicros,
       idempotencyKey,
       reason,
-      ...(txRow.providerRef !== null ? { providerRef: txRow.providerRef } : {}),
+      ...(refundRef !== null ? { providerRef: refundRef } : {}),
     });
   } catch (err) {
     logger?.warn("adapter.refund threw", {

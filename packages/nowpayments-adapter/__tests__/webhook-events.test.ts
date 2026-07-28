@@ -57,6 +57,9 @@ describe("parseNpIpn — payment.completed (full flow)", () => {
     expect(evt?.expectedAmountMicros).toBe("50000000");
     expect(evt?.currencyCode).toBe("USD");
     expect(evt?.eventId).toContain("nowpayments:tx-uuid-1");
+    // The numeric payment_id must surface as providerPaymentId so the server can
+    // stamp it on the row — refund keys on it, not on order_id (= provider_ref).
+    expect(evt?.providerPaymentId).toBe("5524759814");
   });
 });
 

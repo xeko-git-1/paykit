@@ -19,6 +19,12 @@ export const paymentTransactions = paykitSchema.table(
     currencyCode: text("currency_code").notNull().default("USD"),
     status: text("status").notNull().default("pending"),
     providerRef: text("provider_ref"),
+    // Provider-side payment id for refunds when it differs from provider_ref.
+    // NowPayments: provider_ref = order_id (webhook lookup key), but the refund
+    // API keys on NowPayments' numeric payment_id, which only arrives in the
+    // completion IPN. Stamped on payment.completed; null for providers that
+    // refund by provider_ref.
+    providerPaymentId: text("provider_payment_id"),
     idempotencyKey: text("idempotency_key"),
     metadataJson: jsonb("metadata_json").notNull().default({}),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

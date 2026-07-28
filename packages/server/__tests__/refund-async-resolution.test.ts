@@ -440,3 +440,65 @@ describe("webhook payment.refunded — releases reservation (BUG A)", () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// Tests — refund ref selection: provider_payment_id preferred over provider_ref
+// ---------------------------------------------------------------------------
+
+describe("executeRefund — refund ref selection (provider_payment_id vs provider_ref)", () => {
+  let store: ReturnType<typeof createAsyncRefundStore>;
+  let fakeDb: ReturnType<typeof createFakeDb>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    store = createAsyncRefundStore();
+    fakeDb = createFakeDb();
+    mockFindByProviderAndKey.mockImplementation(store.findReservation.bind(store));
+    mockFindLedgerBySourceId.mockImplementation(store.findLedger.bind(store));
+    mockSumActiveReservations.mockImplementation(store.sumActiveReservations.bind(store));
+    mockSumRefunds.mockImplementation(store.sumCommittedRefunds.bind(store));
+    mockCreatePendingRefund.mockImplementation(store.createReservation.bind(store));
+    mockAppendIdempotent.mockImplementation(store.appendLedger.bind(store));
+    mockMarkCompleted.mockImplementation(store.completeReservation.bind(store));
+    mockMarkFailed.mockImplementation(store.failReservation.bind(store));
+  });
+
+  it("passes provider_payment_id to the adapter when set (NowPayments: refund keys on numeric payment_id, not order_id)", async () => {
+    // provider_ref = order_id (the webhook lookup key); provider_payment_id =
+    // NowPayments' numeric id the refund API actually needs.
+    const txRow = makeTxRow({
+      providerRef: "order-id-tx-uuid",
+      providerPaymentId: "5524759814",
+    } as Partial<PaymentTransaction>);
+    const adapter = { refund: vi.fn().mockResolvedValue({ state: "pending_webhook" } as RefundResult) };
+    const registry = { get: () => adapter } as unknown as ProviderRegistry;
+    const deps: RefundCoreDeps = { db: fakeDb.db, registry };
+
+    await executeRefund(deps, ADMIN_ACTOR, {
+      txRow,
+      amountMicros: 1000000n,
+      idempotencyKey: "key-ref-select-1",
+      reason: "refund by payment_id",
+    });
+
+    expect(adapter.refund).toHaveBeenCalledTimes(1);
+    expect(adapter.refund.mock.calls[0]![0].providerRef).toBe("5524759814");
+  });
+
+  it("falls back to provider_ref when provider_payment_id is null (Stripe/VNPay refund by the same ref)", async () => {
+    const txRow = makeTxRow({ providerRef: "cs_test_session", provider: "stripe" });
+    const adapter = { refund: vi.fn().mockResolvedValue({ state: "completed", providerRefundId: "re_1" } as RefundResult) };
+    const registry = { get: () => adapter } as unknown as ProviderRegistry;
+    const deps: RefundCoreDeps = { db: fakeDb.db, registry };
+
+    await executeRefund(deps, ADMIN_ACTOR, {
+      txRow,
+      amountMicros: 1000000n,
+      idempotencyKey: "key-ref-select-2",
+      reason: "refund by provider_ref",
+    });
+
+    expect(adapter.refund).toHaveBeenCalledTimes(1);
+    expect(adapter.refund.mock.calls[0]![0].providerRef).toBe("cs_test_session");
+  });
+});

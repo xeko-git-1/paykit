@@ -105,6 +105,13 @@ export function parseNpIpn(payload: NpIpnPayload): NormalizedWebhookEvent | null
   // falling back to price_amount. Full-refund only; partial-refund IPNs deferred.
   const refundAmountMicros = type === "payment.refunded" ? (actually ?? expected) : undefined;
 
+  // NowPayments' refund API keys on its own numeric payment_id, not order_id.
+  // Surface it so the server can persist it on payment.completed for later refunds.
+  const providerPaymentId =
+    payload.payment_id !== undefined && payload.payment_id !== null
+      ? String(payload.payment_id)
+      : undefined;
+
   return {
     eventId,
     type,
@@ -112,6 +119,7 @@ export function parseNpIpn(payload: NpIpnPayload): NormalizedWebhookEvent | null
     ...(actually !== undefined ? { amountMicros: actually } : {}),
     ...(expected !== undefined ? { expectedAmountMicros: expected } : {}),
     ...(refundAmountMicros !== undefined ? { refundAmountMicros } : {}),
+    ...(providerPaymentId !== undefined ? { providerPaymentId } : {}),
     currencyCode,
     metadata: {
       paymentId: payload.payment_id,

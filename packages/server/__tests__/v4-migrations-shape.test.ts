@@ -13,6 +13,8 @@ const manifest = JSON.parse(readFileSync(resolve(MIGRATIONS_DIR, "manifest.json"
 };
 const m014Up = readFileSync(resolve(MIGRATIONS_DIR, "014_api_keys_created_by.up.sql"), "utf8");
 const m014Down = readFileSync(resolve(MIGRATIONS_DIR, "014_api_keys_created_by.down.sql"), "utf8");
+const m018Up = readFileSync(resolve(MIGRATIONS_DIR, "018_provider_payment_id.up.sql"), "utf8");
+const m018Down = readFileSync(resolve(MIGRATIONS_DIR, "018_provider_payment_id.down.sql"), "utf8");
 
 describe("V4 migration 012_merchants_and_api_keys — up", () => {
   it("creates paykit.merchants table", () => {
@@ -109,5 +111,30 @@ describe("V4.0 migration 014_api_keys_created_by", () => {
     expect(entry!.slug).toBe("api_keys_created_by");
     expect(entry!.up).toBe("014_api_keys_created_by.up.sql");
     expect(entry!.down).toBe("014_api_keys_created_by.down.sql");
+  });
+});
+
+describe("migration 018_provider_payment_id", () => {
+  it("up adds nullable provider_payment_id column to payment_transactions (ALTER, not a new table)", () => {
+    expect(m018Up).toMatch(
+      /ALTER TABLE paykit\.payment_transactions\s+ADD COLUMN provider_payment_id/i,
+    );
+    expect(m018Up).not.toMatch(/CREATE TABLE/i);
+    // Nullable so it is safe to add on a populated table (most providers never set it)
+    expect(m018Up).not.toMatch(/provider_payment_id\s+text\s+NOT NULL/i);
+  });
+
+  it("down drops the provider_payment_id column", () => {
+    expect(m018Down).toMatch(
+      /ALTER TABLE paykit\.payment_transactions\s+DROP COLUMN IF EXISTS provider_payment_id/i,
+    );
+  });
+
+  it("manifest entry 018 points to correct filenames", () => {
+    const entry = manifest.migrations.find((m) => m.id === "018");
+    expect(entry).toBeDefined();
+    expect(entry!.slug).toBe("provider_payment_id");
+    expect(entry!.up).toBe("018_provider_payment_id.up.sql");
+    expect(entry!.down).toBe("018_provider_payment_id.down.sql");
   });
 });

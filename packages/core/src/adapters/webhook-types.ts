@@ -34,5 +34,14 @@ export interface NormalizedWebhookEvent {
   readonly refundAmountMicros?: string;
   /** V3 payment.underpaid + payment.amount_mismatch — original charge amount. */
   readonly expectedAmountMicros?: string;
+  /**
+   * Provider-side payment identifier the refund API needs, when it differs from
+   * `providerRef` (the checkout/webhook lookup key). NowPayments: providerRef is
+   * order_id but the refund API keys on the numeric payment_id, which only
+   * arrives in the completion IPN. The server persists this on payment.completed
+   * so a later refund can supply the correct id. Omitted by providers that
+   * refund by providerRef.
+   */
+  readonly providerPaymentId?: string;
   readonly metadata: Record<string, unknown>;
 }
