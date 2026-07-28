@@ -55,7 +55,14 @@ export function mapInvoiceStatusToEventType(status: string | undefined): Webhook
   }
 }
 
-function priceMicros(amount: number | string | undefined): string | undefined {
+/**
+ * BitPay decimal amount (number or numeric string) → integer micros string.
+ * Returns undefined for absent/unparseable/negative input so callers can skip
+ * rather than move the ledger by a guessed amount. Shared with refund
+ * resolution: both paths must derive micros identically or a refund could debit
+ * a different magnitude than the credit it reverses.
+ */
+export function amountToMicros(amount: number | string | undefined): string | undefined {
   if (amount === undefined || amount === null || amount === "") return undefined;
   const n = typeof amount === "number" ? amount : Number(amount);
   if (!Number.isFinite(n) || n < 0) return undefined;
@@ -79,8 +86,8 @@ export function invoiceToEvent(invoice: BitpayInvoice): NormalizedWebhookEvent |
   const baseType = mapInvoiceStatusToEventType(invoice.status);
   if (baseType === null) return null;
 
-  const expected = priceMicros(invoice.price);
-  const actually = priceMicros(invoice.amountPaid ?? invoice.displayAmountPaid);
+  const expected = amountToMicros(invoice.price);
+  const actually = amountToMicros(invoice.amountPaid ?? invoice.displayAmountPaid);
 
   let type: WebhookEventType = baseType;
   if (baseType === "payment.completed" && invoice.exceptionStatus === "paidPartial") {

@@ -5,14 +5,20 @@
  *   POST /invoices          — create checkout (POS-facade token; no signing)
  *   GET  /invoices/:id      — fetch-back authoritative status (POS token)
  *   POST /refunds           — request refund (MERCHANT facade — ECDSA signed)
+ *   GET  /refunds/:id       — fetch-back authoritative refund (MERCHANT facade)
  *   GET  /invoices?dateStart=&dateEnd=&limit=&offset=  — list (MERCHANT facade)
  *
  * Webhook trust model (CRITICAL): BitPay does NOT sign its IPNs. The POSTed
  * body is an untrusted trigger only. Authentication is "fetch-back": the
- * adapter re-fetches GET /invoices/:id from BitPay and trusts that response.
+ * adapter re-fetches the resource from BitPay and trusts that response.
  * This is why the adapter implements the async `resolveWebhook` hook instead of
  * the sync verify+parse pair (verifyWebhookSignature/parseWebhookPayload are
  * implemented fail-closed so the sync path can never credit on unverified data).
+ *
+ * Two resources arrive on the same IPN endpoint: invoice notifications resolve
+ * via GET /invoices/:id, refund notifications via GET /refunds/:id (see
+ * refund-webhook.ts). They must be told apart before fetching, because a refund
+ * trigger's `data.id` is a refund id and would 404 against /invoices.
  *
  * Facade split: invoice create + fetch-back use the POS token (zero crypto).
  * Refunds and reconciliation listing require BitPay's MERCHANT facade, which
@@ -31,6 +37,7 @@ import {
   type RefundResult,
   UnsupportedCurrencyError,
 } from "@vibecc/paykit";
+import { extractRefundTriggerId, resolveRefundWebhook } from "./refund-webhook.js";
 import { type BitpayInvoice, invoiceToEvent } from "./webhook-events.js";
 
 /**
@@ -105,6 +112,27 @@ export function createBitpayAdapter(config: BitpayAdapterConfig): PaymentProvide
   const env = config.environment ?? "sandbox";
   const baseUrl = env === "production" ? PRODUCTION_BASE : SANDBOX_BASE;
   const fetcher = config.fetcher ?? fetch;
+
+  /**
+   * POS-facade fetch-back of the authoritative invoice. Returns null when the
+   * invoice cannot be read, so callers skip instead of acting on the untrusted
+   * IPN body. Shared by the invoice-status and refund paths — the refund path
+   * needs it to recover `orderId`, which is the only key the server can use to
+   * locate the payment row.
+   */
+  async function fetchInvoice(invoiceId: string): Promise<BitpayInvoice | null> {
+    const res = await fetcher(
+      `${baseUrl}/invoices/${encodeURIComponent(invoiceId)}?token=${encodeURIComponent(config.apiToken)}`,
+      { method: "GET", headers: { "X-Accept-Version": API_VERSION } },
+    );
+    if (!res.ok) return null;
+    try {
+      const json = (await res.json()) as BitpayEnvelope<BitpayInvoice>;
+      return json.data ?? (json as unknown as BitpayInvoice);
+    } catch {
+      return null;
+    }
+  }
 
   return {
     id,
@@ -185,18 +213,31 @@ export function createBitpayAdapter(config: BitpayAdapterConfig): PaymentProvide
       } catch {
         return null;
       }
+
+      // Refunds live on a separate BitPay resource whose `data.id` is a REFUND
+      // id, so it must be classified before the invoice path — fetching
+      // /invoices/<refundId> would 404 and drop the ledger debit.
+      const refundId = extractRefundTriggerId(trigger);
+      if (refundId !== undefined) {
+        return resolveRefundWebhook(
+          {
+            baseUrl,
+            apiToken: config.apiToken,
+            apiVersion: API_VERSION,
+            fetcher,
+            ...(config.merchantSigner ? { merchantSigner: config.merchantSigner } : {}),
+            fetchInvoice,
+          },
+          refundId,
+        );
+      }
+
       const invoiceId = extractInvoiceId(trigger);
       if (!invoiceId) return null;
 
       // Fetch-back: trust BitPay's API response, not the IPN body.
-      const res = await fetcher(
-        `${baseUrl}/invoices/${encodeURIComponent(invoiceId)}?token=${encodeURIComponent(config.apiToken)}`,
-        { method: "GET", headers: { "X-Accept-Version": API_VERSION } },
-      );
-      if (!res.ok) return null; // can't authenticate the event → skip (BitPay retries)
-
-      const json = (await res.json()) as BitpayEnvelope<BitpayInvoice>;
-      const invoice = json.data ?? (json as unknown as BitpayInvoice);
+      const invoice = await fetchInvoice(invoiceId);
+      if (invoice === null) return null; // can't authenticate → skip (BitPay retries)
       return invoiceToEvent(invoice);
     },
 
@@ -275,14 +316,16 @@ export function createBitpayAdapter(config: BitpayAdapterConfig): PaymentProvide
         };
       }
 
-      // BitPay creates refunds in status 'pending' and confirms asynchronously.
-      // Resolution to a ledger debit is via manual reconcile until the refund
-      // webhook shape is sandbox-verified (see package README open items).
+      // BitPay creates refunds in status 'pending' and confirms asynchronously,
+      // so no debit is written here. The refund IPN (resolveWebhook → refund
+      // fetch-back) emits payment.refunded once BitPay reports the money as
+      // actually sent, which is what moves the ledger.
       return {
         state: "pending_webhook",
         error: {
           providerCode: "REFUND_PENDING",
-          message: "BitPay refund accepted in 'pending'; confirm via reconcile until refund-webhook wiring lands",
+          message:
+            "BitPay refund accepted in 'pending'; ledger debit is written when the refund IPN reports it settled",
         },
       };
     },
