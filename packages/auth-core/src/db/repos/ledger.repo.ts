@@ -69,6 +69,9 @@ export async function appendLedgerEntryIdempotent(
     .values(insert)
     .onConflictDoNothing({
       target: [ledgerEntries.provider, ledgerEntries.sourceId, ledgerEntries.entryType],
+      // The unique index is partial (WHERE source_id IS NOT NULL); Postgres
+      // needs the same predicate to pick it as the arbiter, else 42P10.
+      where: sql`${ledgerEntries.sourceId} is not null`,
     })
     .returning();
   if (row) return { row, inserted: true };
