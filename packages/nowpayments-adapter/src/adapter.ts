@@ -148,11 +148,16 @@ export function createNowpaymentsAdapter(
       }
       const json = (await res.json()) as NpInvoiceResponse;
 
+      // Do NOT return the NP invoice id as providerSessionId. The IPN keys the
+      // payment on `order_id` (= transactionId), not the invoice id, so the
+      // server must store providerRef = transactionId for the webhook lookup to
+      // match. Omitting providerSessionId lets the server fall back to
+      // transactionId. (The invoice id is not needed downstream — refunds key
+      // on the IPN's payment_id, and reconciliation lists by order_id.)
       return {
         webUrl: json.invoice_url,
         qrUrl: json.invoice_url,
         expiresAt: new Date(Date.now() + CHECKOUT_EXPIRY_MS),
-        providerSessionId: String(json.id),
       };
     },
 

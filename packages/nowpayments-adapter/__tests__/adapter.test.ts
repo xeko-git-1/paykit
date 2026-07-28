@@ -77,7 +77,11 @@ describe("createCheckout", () => {
 
     expect(result.webUrl).toBe("https://nowpayments.io/invoice/abc");
     expect(result.qrUrl).toBe("https://nowpayments.io/invoice/abc");
-    expect(result.providerSessionId).toBe("4944017921");
+    // providerSessionId MUST be omitted so the server stores providerRef =
+    // transactionId. The IPN keys on order_id (= transactionId), not the NP
+    // invoice id — returning the invoice id here would break the webhook lookup
+    // and the payment would never credit.
+    expect(result.providerSessionId).toBeUndefined();
 
     const call = calls[0];
     expect(call).toBeDefined();
@@ -117,6 +121,48 @@ describe("createCheckout", () => {
     });
     const body = JSON.parse(calls[0]?.body ?? "{}");
     expect(body.order_id).toBe("round-trip-id");
+  });
+
+  it("checkout providerRef (server-stored) matches the webhook providerRef the IPN yields", async () => {
+    // The server stores providerRef = providerSessionId ?? transactionId. The
+    // webhook router later looks up the payment row by that stored providerRef.
+    // This test ties both ends together: whatever the server would store at
+    // checkout MUST equal evt.providerRef the IPN parses out — otherwise the
+    // FOR UPDATE lookup returns no row and the payment never credits.
+    const TX_ID = "a0000000-0000-4000-8000-000000000042";
+    const { fetcher } = mockFetch(() => ({
+      status: 200,
+      // NP returns a numeric invoice id distinct from our transactionId.
+      body: JSON.stringify({ id: 4944017921, invoice_url: "https://np/i/abc" }),
+    }));
+    const adapter = makeAdapter(fetcher);
+
+    const checkout = await adapter.createCheckout({
+      transactionId: TX_ID,
+      tenantId: "t",
+      ownerId: "o",
+      amountMicros: 50_000_000n,
+      currencyCode: "USD",
+    });
+    // Mirror the server's persistence rule (checkout-router / v1 router).
+    const storedProviderRef = checkout.providerSessionId ?? TX_ID;
+
+    // The IPN NP sends back on completion echoes order_id = transactionId.
+    const evt = adapter.parseWebhookPayload(
+      JSON.stringify({
+        payment_id: 4944017921,
+        payment_status: "finished",
+        order_id: TX_ID,
+        price_amount: 50,
+        price_currency: "usd",
+        actually_paid: 50,
+      }),
+      {},
+    );
+
+    expect(evt?.type).toBe("payment.completed");
+    expect(storedProviderRef).toBe(evt?.providerRef);
+    expect(storedProviderRef).toBe(TX_ID);
   });
 });
 
