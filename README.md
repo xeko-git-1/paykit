@@ -27,8 +27,10 @@
 | VNPay | `@vibecc/paykit-vnpay` | VND | sync |
 | Momo | `@vibecc/paykit-momo` | VND | sync |
 | ZaloPay | `@vibecc/paykit-zalopay` | VND | 2-step async (poll) |
-| NowPayments | `@vibecc/paykit-nowpayments` | USD | async (`pending_webhook`) |
+| NowPayments | `@vibecc/paykit-nowpayments` | USD | async (`pending_webhook`) — multi-chain USDT (BEP20/TRC20/ERC20/Polygon) via `payCurrency` |
+| Cryptomus | `@vibecc/paykit-cryptomus` | USD | async (`pending_webhook`) — multi-chain USDT, signed webhook (MD5) |
 | BitPay | `@vibecc/paykit-bitpay` | USD | async (`pending_webhook`) — refund needs an injected merchant ECDSA signer; not yet sandbox-verified end-to-end |
+| Binance Pay | `@vibecc/paykit-binance` | USD | async (`pending_webhook`) — off-chain merchant account; no public sandbox, not yet verified end-to-end |
 
 ## What it doesn't do (yet)
 
@@ -48,7 +50,7 @@
 ### Two ways to run
 
 - **Embedded (V1–V3):** `import { createPaykit }` into your own Hono app, supply a `TenantResolver`. Quickstart below.
-- **Standalone service (V4):** run `@vibecc/paykit-service` as a container — config + API-key auth via env, no app code. Migrate-then-serve cold start, 6 wired adapters (Stripe / SePay / NowPayments / VNPay / Momo / ZaloPay), `/v1` HTTP API, CLI bootstrap, and a thin TypeScript SDK. See [service-mode-setup.md](docs/service-mode-setup.md).
+- **Standalone service (V4):** run `@vibecc/paykit-service` as a container — config + API-key auth via env, no app code. Migrate-then-serve cold start, 8 wired adapters (Stripe / SePay / NowPayments / VNPay / Momo / ZaloPay / Cryptomus / Binance Pay; BitPay is embedded-only), `/v1` HTTP API, CLI bootstrap, and a thin TypeScript SDK. See [service-mode-setup.md](docs/service-mode-setup.md).
 
 ## Quickstart (preview — V1 not yet published)
 
@@ -80,6 +82,7 @@ app.route("/admin/billing", paykit.adminRoutes());
 See `docs/`:
 
 - [Installation](docs/installation.md) — setup, DB provisioning, adapter install
+- [Integration guide (bilingual EN/VI)](docs/integration-guide.md) — per-provider env vars, multi-chain USDT, new-project setup, i18n
 - [Service mode (V4)](docs/service-mode-setup.md) — Docker cold-start, CLI bootstrap, `/v1` API + TypeScript SDK
 - [V4 acceptance tests](docs/v4-acceptance-tests.md) — cold-start → bootstrap → mint → checkout checklist
 - [Refund flows](docs/refund-flows.md) — per-provider refund capabilities + `pending_webhook` state
