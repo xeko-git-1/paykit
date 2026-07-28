@@ -30,6 +30,21 @@ export interface PaymentProviderAdapter {
   readonly supportedCurrencies: readonly CurrencyCode[];
   readonly checkoutMode: CheckoutMode;
 
+  /**
+   * Whether the rail guarantees the settled amount equals the requested amount.
+   *
+   * `false` for rails where the PAYER types the amount and the transaction is
+   * matched by memo/reference (bank transfer: SePay/VietQR) — a memo match
+   * proves intent, not amount, so the server compares requested vs received
+   * before crediting and routes a shortfall to `payment.underpaid` instead of
+   * `completed`.
+   *
+   * Omitted / `true` for provider-controlled rails (card, redirect, deeplink)
+   * where the amount is fixed at checkout and cannot drift. Defaulting to
+   * exact-settling keeps existing adapters on their verified credit path.
+   */
+  readonly settlesExactAmount?: boolean;
+
   createCheckout(input: CreateCheckoutInput): Promise<CheckoutResult>;
 
   verifyWebhookSignature(rawBody: string, headers: Record<string, string>): boolean;

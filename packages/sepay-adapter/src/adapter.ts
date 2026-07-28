@@ -93,6 +93,11 @@ export function createSepayAdapter(config: SepayAdapterConfig): PaymentProviderA
     displayName: "SePay",
     supportedCurrencies: ["VND"],
     checkoutMode: "qr",
+    // Bank transfer: the payer types the amount in their banking app and the
+    // transfer is matched back by memo. A memo match therefore proves intent,
+    // not amount — the server must compare requested vs received before
+    // crediting. See settlement-amount-guard in the server package.
+    settlesExactAmount: false,
 
     async createCheckout(input: CreateCheckoutInput): Promise<CheckoutResult> {
       if (input.currencyCode !== "VND") {
