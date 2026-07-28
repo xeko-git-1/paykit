@@ -6,6 +6,8 @@
  *   - unsigned-webhook fail-closed: verifyWebhookSignature=false, parseWebhookPayload=null
  *   - resolveWebhook fetch-back: trigger → GET /invoices/:id → authoritative event
  *   - resolveWebhook skip cases: bad JSON, missing id, non-2xx fetch-back
+ *   - refund IPN resolution: refund trigger → GET /refunds/:id + GET /invoices/:id
+ *     → payment.refunded carrying refundAmountMicros + providerRef=orderId
  *   - refund facade split: no signer → failed; with signer → pending_webhook
  *   - fetchTransactions: no signer → []; with signer → settled records
  */
@@ -246,6 +248,226 @@ describe("resolveWebhook — fetch-back authoritative verification", () => {
     const adapter = makeAdapter(fetcher);
     const evt = await adapter.resolveWebhook?.(JSON.stringify({ data: { id: "inv-err" } }), {});
     expect(evt).toBeNull();
+  });
+});
+
+describe("resolveWebhook — refund IPN resolution", () => {
+  const INVOICE_ID = "inv-ref-1";
+  const ORDER_ID = "tx-refund-1";
+
+  /**
+   * Serves the two authoritative fetch-backs a refund trigger performs:
+   * GET /refunds/:refundId then GET /invoices/:invoiceId.
+   */
+  function refundFetch(
+    refund: Record<string, unknown>,
+    invoice: Record<string, unknown> | null = {
+      id: INVOICE_ID,
+      orderId: ORDER_ID,
+      status: "complete",
+      price: 50,
+      currency: "USD",
+    },
+  ): { fetcher: typeof fetch; calls: MockCall[] } {
+    return mockFetch(({ url }) => {
+      if (url.includes("/refunds/")) {
+        return { status: 200, body: JSON.stringify({ data: refund }) };
+      }
+      if (url.includes("/invoices/")) {
+        if (invoice === null) return { status: 404, body: "{}" };
+        return { status: 200, body: JSON.stringify({ data: invoice }) };
+      }
+      return { status: 404, body: "{}" };
+    });
+  }
+
+  const REFUND_IPN = JSON.stringify({
+    event: { code: 7003, name: "refund_success" },
+    data: { id: "refund-1", invoice: INVOICE_ID, status: "success", amount: 50, currency: "USD" },
+  });
+
+  it("emits payment.refunded with refundAmountMicros + providerRef=orderId", async () => {
+    const { fetcher, calls } = refundFetch({
+      id: "refund-1",
+      invoice: INVOICE_ID,
+      status: "success",
+      amount: 50,
+      currency: "USD",
+    });
+    const adapter = makeAdapter(fetcher, { merchantSigner: STUB_SIGNER });
+
+    const evt = await adapter.resolveWebhook?.(REFUND_IPN, {});
+
+    expect(evt?.type).toBe("payment.refunded");
+    // Must be the invoice orderId (= paykit transactionId) or the server cannot
+    // find the payment row and no debit is written.
+    expect(evt?.providerRef).toBe(ORDER_ID);
+    // Without refundAmountMicros the router's refund branch early-returns.
+    expect(evt?.refundAmountMicros).toBe("50000000");
+    expect(evt?.currencyCode).toBe("USD");
+
+    // Authenticated by fetch-back on BOTH resources, not by the IPN body.
+    expect(calls.some((c) => c.method === "GET" && c.url.includes("/refunds/refund-1"))).toBe(true);
+    expect(calls.some((c) => c.method === "GET" && c.url.includes(`/invoices/${INVOICE_ID}`))).toBe(
+      true,
+    );
+  });
+
+  it("carries the partial amount, not the invoice price", async () => {
+    const { fetcher } = refundFetch({
+      id: "refund-2",
+      invoice: INVOICE_ID,
+      status: "success",
+      amount: 12.34,
+      currency: "USD",
+    });
+    const adapter = makeAdapter(fetcher, { merchantSigner: STUB_SIGNER });
+    const evt = await adapter.resolveWebhook?.(REFUND_IPN, {});
+    expect(evt?.type).toBe("payment.refunded");
+    expect(evt?.refundAmountMicros).toBe("12340000");
+    expect(evt?.providerRef).toBe(ORDER_ID);
+  });
+
+  it("trusts the fetched refund status, NOT the IPN body (forged success ignored)", async () => {
+    // IPN claims success; the authoritative refund is still pending → no debit.
+    const { fetcher } = refundFetch({
+      id: "refund-3",
+      invoice: INVOICE_ID,
+      status: "pending",
+      amount: 50,
+      currency: "USD",
+    });
+    const adapter = makeAdapter(fetcher, { merchantSigner: STUB_SIGNER });
+    const evt = await adapter.resolveWebhook?.(REFUND_IPN, {});
+    expect(evt).toBeNull();
+  });
+
+  it.each(["created", "pending", "failure", "cancelled", "declined"])(
+    "returns null for non-final refund status '%s' (default-deny)",
+    async (status) => {
+      const { fetcher } = refundFetch({
+        id: "refund-4",
+        invoice: INVOICE_ID,
+        status,
+        amount: 50,
+        currency: "USD",
+      });
+      const adapter = makeAdapter(fetcher, { merchantSigner: STUB_SIGNER });
+      const evt = await adapter.resolveWebhook?.(REFUND_IPN, {});
+      expect(evt).toBeNull();
+    },
+  );
+
+  it("returns null when the refund carries no readable amount (never guess a debit)", async () => {
+    const { fetcher } = refundFetch({
+      id: "refund-5",
+      invoice: INVOICE_ID,
+      status: "success",
+      currency: "USD",
+    });
+    const adapter = makeAdapter(fetcher, { merchantSigner: STUB_SIGNER });
+    const evt = await adapter.resolveWebhook?.(REFUND_IPN, {});
+    expect(evt).toBeNull();
+  });
+
+  it("returns null for a preview refund (a quote, not an executed debit)", async () => {
+    const { fetcher } = refundFetch({
+      id: "refund-6",
+      invoice: INVOICE_ID,
+      status: "success",
+      amount: 50,
+      currency: "USD",
+      preview: true,
+    });
+    const adapter = makeAdapter(fetcher, { merchantSigner: STUB_SIGNER });
+    const evt = await adapter.resolveWebhook?.(REFUND_IPN, {});
+    expect(evt).toBeNull();
+  });
+
+  it("returns null when the invoice fetch-back fails (no orderId → no lookup key)", async () => {
+    const { fetcher } = refundFetch(
+      { id: "refund-7", invoice: INVOICE_ID, status: "success", amount: 50, currency: "USD" },
+      null,
+    );
+    const adapter = makeAdapter(fetcher, { merchantSigner: STUB_SIGNER });
+    const evt = await adapter.resolveWebhook?.(REFUND_IPN, {});
+    expect(evt).toBeNull();
+  });
+
+  it("returns null when refund currency contradicts the invoice currency", async () => {
+    // Ambiguous denomination — debiting would move an unknown magnitude.
+    const { fetcher } = refundFetch({
+      id: "refund-8",
+      invoice: INVOICE_ID,
+      status: "success",
+      amount: 50,
+      currency: "EUR",
+    });
+    const adapter = makeAdapter(fetcher, { merchantSigner: STUB_SIGNER });
+    const evt = await adapter.resolveWebhook?.(REFUND_IPN, {});
+    expect(evt).toBeNull();
+  });
+
+  it("skips without a merchant signer (refund resource cannot be authenticated)", async () => {
+    const { fetcher, calls } = refundFetch({
+      id: "refund-9",
+      invoice: INVOICE_ID,
+      status: "success",
+      amount: 50,
+      currency: "USD",
+    });
+    const adapter = makeAdapter(fetcher); // no signer
+    const evt = await adapter.resolveWebhook?.(REFUND_IPN, {});
+    expect(evt).toBeNull();
+    expect(calls).toHaveLength(0); // never attempts an unsignable merchant call
+  });
+
+  it("does not route an invoice IPN through refund resolution", async () => {
+    const { fetcher, calls } = mockFetch(({ url }) => {
+      if (url.includes("/invoices/inv-plain")) {
+        return {
+          status: 200,
+          body: JSON.stringify({
+            data: {
+              id: "inv-plain",
+              orderId: "tx-plain",
+              status: "confirmed",
+              price: 25,
+              currency: "USD",
+              amountPaid: 25,
+            },
+          }),
+        };
+      }
+      return { status: 404, body: "{}" };
+    });
+    const adapter = makeAdapter(fetcher, { merchantSigner: STUB_SIGNER });
+    const evt = await adapter.resolveWebhook?.(
+      JSON.stringify({ event: { code: 1003, name: "invoice_confirmed" }, data: { id: "inv-plain" } }),
+      {},
+    );
+    expect(evt?.type).toBe("payment.completed");
+    expect(evt?.providerRef).toBe("tx-plain");
+    expect(calls.some((c) => c.url.includes("/refunds"))).toBe(false);
+  });
+
+  it("classifies a refund IPN that omits the event envelope via data.invoice", async () => {
+    // Envelope shape is not sandbox-verified, so the data.invoice back-reference
+    // is an independent signal that the resource is a refund, not an invoice.
+    const { fetcher } = refundFetch({
+      id: "refund-10",
+      invoice: INVOICE_ID,
+      status: "success",
+      amount: 50,
+      currency: "USD",
+    });
+    const adapter = makeAdapter(fetcher, { merchantSigner: STUB_SIGNER });
+    const evt = await adapter.resolveWebhook?.(
+      JSON.stringify({ data: { id: "refund-10", invoice: INVOICE_ID } }),
+      {},
+    );
+    expect(evt?.type).toBe("payment.refunded");
+    expect(evt?.providerRef).toBe(ORDER_ID);
   });
 });
 
