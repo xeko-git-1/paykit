@@ -73,6 +73,17 @@ const envSchema = z.object({
   CRYPTOMUS_RETURN_URL: z.string().optional(),
   CRYPTOMUS_CALLBACK_URL: z.string().optional(),
 
+  // Binance Pay (off-chain, funds settle inside Binance wallets) — enabled when
+  // api key + secret + webhook public key are all present. The public key is
+  // `certPublic` from POST /binancepay/openapi/certificates; without it no
+  // webhook can be verified, so it is required rather than optional.
+  BINANCE_API_KEY: z.string().optional(),
+  BINANCE_API_SECRET: z.string().optional(),
+  BINANCE_WEBHOOK_PUBLIC_KEY: z.string().optional(),
+  BINANCE_RETURN_URL: z.string().optional(),
+  BINANCE_CANCEL_URL: z.string().optional(),
+  BINANCE_WEBHOOK_URL: z.string().optional(),
+
   // Admin guard secret (env-based for V4.0; dashboard JWT is V4.4)
   ADMIN_SECRET: z.string().optional(),
 });
@@ -142,6 +153,16 @@ export interface ServiceConfig {
         network?: string;
         returnUrl?: string;
         callbackUrl?: string;
+      }
+    | undefined;
+  readonly binance:
+    | {
+        apiKey: string;
+        apiSecret: string;
+        webhookPublicKey: string;
+        returnUrl?: string;
+        cancelUrl?: string;
+        webhookUrl?: string;
       }
     | undefined;
   readonly adminSecret: string | undefined;
@@ -324,6 +345,31 @@ export function parseServiceConfig(env: Record<string, string | undefined>): Ser
     }),
   );
 
+  const binance = resolveProviderCreds(
+    "Binance Pay",
+    {
+      BINANCE_API_KEY: parsed.BINANCE_API_KEY,
+      BINANCE_API_SECRET: parsed.BINANCE_API_SECRET,
+      // Required, not optional: without Binance's public key every webhook
+      // fails signature verification, so a paid order would never be credited.
+      BINANCE_WEBHOOK_PUBLIC_KEY: parsed.BINANCE_WEBHOOK_PUBLIC_KEY,
+    },
+    () => ({
+      apiKey: parsed.BINANCE_API_KEY!,
+      apiSecret: parsed.BINANCE_API_SECRET!,
+      webhookPublicKey: parsed.BINANCE_WEBHOOK_PUBLIC_KEY!,
+      ...(parsed.BINANCE_RETURN_URL !== undefined && parsed.BINANCE_RETURN_URL !== ""
+        ? { returnUrl: parsed.BINANCE_RETURN_URL }
+        : {}),
+      ...(parsed.BINANCE_CANCEL_URL !== undefined && parsed.BINANCE_CANCEL_URL !== ""
+        ? { cancelUrl: parsed.BINANCE_CANCEL_URL }
+        : {}),
+      ...(parsed.BINANCE_WEBHOOK_URL !== undefined && parsed.BINANCE_WEBHOOK_URL !== ""
+        ? { webhookUrl: parsed.BINANCE_WEBHOOK_URL }
+        : {}),
+    }),
+  );
+
   return {
     databaseUrl: parsed.DATABASE_URL,
     port: parsed.PORT,
@@ -334,6 +380,7 @@ export function parseServiceConfig(env: Record<string, string | undefined>): Ser
     momo,
     zalopay,
     cryptomus,
+    binance,
     adminSecret: parsed.ADMIN_SECRET,
   };
 }

@@ -56,6 +56,12 @@ importers:
         specifier: ^4.6.0
         version: 4.12.22
 
+  packages/binance-adapter:
+    devDependencies:
+      '@vibecc/paykit':
+        specifier: workspace:*
+        version: link:../core
+
   packages/bitpay-adapter:
     devDependencies:
       '@vibecc/paykit':
@@ -198,6 +204,9 @@ importers:
       '@vibecc/paykit':
         specifier: workspace:*
         version: link:../core
+      '@vibecc/paykit-binance':
+        specifier: workspace:*
+        version: link:../binance-adapter
       '@vibecc/paykit-cli':
         specifier: workspace:*
         version: link:../cli
