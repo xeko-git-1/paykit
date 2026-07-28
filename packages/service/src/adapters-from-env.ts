@@ -78,6 +78,26 @@ export async function buildAdaptersFromConfig(
     );
   }
 
+  if (config.binance) {
+    const { createBinanceAdapter } = await import("@vibecc/paykit-binance");
+    adapters.push(
+      createBinanceAdapter({
+        apiKey: config.binance.apiKey,
+        apiSecret: config.binance.apiSecret,
+        webhookPublicKey: config.binance.webhookPublicKey,
+        ...(config.binance.returnUrl !== undefined
+          ? { returnUrl: config.binance.returnUrl }
+          : {}),
+        ...(config.binance.cancelUrl !== undefined
+          ? { cancelUrl: config.binance.cancelUrl }
+          : {}),
+        ...(config.binance.webhookUrl !== undefined
+          ? { webhookUrl: config.binance.webhookUrl }
+          : {}),
+      }),
+    );
+  }
+
   if (config.vnpay) {
     const { createVnpayAdapter } = await import("@vibecc/paykit-vnpay");
     adapters.push(
