@@ -146,6 +146,13 @@ export function createBitpayAdapter(config: BitpayAdapterConfig): PaymentProvide
       const json = (await res.json()) as BitpayEnvelope<BitpayInvoice & { url?: string; expirationTime?: number }>;
       const invoice = json.data ?? (json as unknown as BitpayInvoice & { url?: string; expirationTime?: number });
 
+      // Do NOT return the BitPay invoice id as providerSessionId. Both the
+      // credit path (resolveWebhook → invoiceToEvent) and reconciliation
+      // (fetchTransactions) key the payment on `orderId` (= transactionId), not
+      // the invoice id. Storing the invoice id here would make the webhook
+      // lookup miss and the payment would never credit. Omitting it lets the
+      // server fall back to transactionId. (The invoice id survives in the
+      // webhook event metadata for refund/audit use.)
       return {
         webUrl: invoice.url ?? "",
         qrUrl: invoice.url ?? "",
@@ -153,7 +160,6 @@ export function createBitpayAdapter(config: BitpayAdapterConfig): PaymentProvide
           typeof invoice.expirationTime === "number"
             ? new Date(invoice.expirationTime)
             : new Date(Date.now() + 15 * 60 * 1000),
-        providerSessionId: String(invoice.id ?? ""),
       };
     },
 

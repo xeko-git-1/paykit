@@ -71,13 +71,55 @@ describe("createCheckout", () => {
 
     expect(result.webUrl).toBe("https://test.bitpay.com/invoice?id=inv-123");
     expect(result.qrUrl).toBe("https://test.bitpay.com/invoice?id=inv-123");
-    expect(result.providerSessionId).toBe("inv-123");
+    // providerSessionId MUST be omitted so the server stores providerRef =
+    // transactionId. The webhook (invoiceToEvent) and reconciliation
+    // (fetchTransactions) both key on orderId (= transactionId), not the BitPay
+    // invoice id — returning the invoice id here would break the webhook lookup
+    // and the payment would never credit.
+    expect(result.providerSessionId).toBeUndefined();
 
     const body = JSON.parse(calls[0]?.body ?? "{}");
     expect(calls[0]?.url).toContain("/invoices");
     expect(body.price).toBe(50);
     expect(body.currency).toBe("USD");
     expect(body.orderId).toBe("tx-uuid-1");
+  });
+
+  it("keeps providerRef consistent: checkout fallback == webhook providerRef (round-trip)", async () => {
+    // The invariant that the credit flow depends on: the value the server stores
+    // as providerRef at checkout time must equal evt.providerRef the webhook
+    // later parses. With providerSessionId omitted, the server falls back to
+    // transactionId; BitPay echoes it as invoice.orderId in the fetched-back
+    // invoice, and invoiceToEvent surfaces it as providerRef.
+    const TX_ID = "round-trip-tx-1";
+    const { fetcher } = mockFetch(({ url }) => {
+      if (url.includes("/invoices/inv-rt")) {
+        return {
+          status: 200,
+          body: JSON.stringify({
+            data: { id: "inv-rt", orderId: TX_ID, status: "confirmed", price: 10, currency: "USD", amountPaid: 10 },
+          }),
+        };
+      }
+      return {
+        status: 200,
+        body: JSON.stringify({ data: { id: "inv-rt", url: "https://test.bitpay.com/invoice?id=inv-rt" } }),
+      };
+    });
+    const adapter = makeAdapter(fetcher);
+
+    const checkout = await adapter.createCheckout({
+      transactionId: TX_ID,
+      tenantId: "t",
+      ownerId: "o",
+      amountMicros: 10_000_000n,
+      currencyCode: "USD",
+    });
+    // Mirror the server: providerRef = providerSessionId ?? transactionId
+    const storedProviderRef = checkout.providerSessionId ?? TX_ID;
+
+    const evt = await adapter.resolveWebhook?.(JSON.stringify({ data: { id: "inv-rt" } }), {});
+    expect(evt?.providerRef).toBe(storedProviderRef);
   });
 
   it("rejects non-USD currency", async () => {
