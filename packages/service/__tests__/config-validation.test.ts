@@ -144,6 +144,66 @@ describe("parseServiceConfig", () => {
     expect(config.sepay).toBeUndefined();
     expect(config.nowpayments).toBeUndefined();
   });
+
+  it("leaves nowpayments.payCurrency unset so the customer picks any USDT chain", async () => {
+    const { parseServiceConfig } = await import("../src/config.js");
+    const env = {
+      DATABASE_URL: "postgres://localhost/paykit",
+      NOWPAYMENTS_API_KEY: "np-key",
+      NOWPAYMENTS_IPN_SECRET: "np-secret",
+    };
+    const config = parseServiceConfig(env);
+    expect(config.nowpayments?.payCurrency).toBeUndefined();
+  });
+
+  it("forces a single USDT chain when NOWPAYMENTS_PAY_CURRENCY is set (BEP20)", async () => {
+    const { parseServiceConfig } = await import("../src/config.js");
+    const env = {
+      DATABASE_URL: "postgres://localhost/paykit",
+      NOWPAYMENTS_API_KEY: "np-key",
+      NOWPAYMENTS_IPN_SECRET: "np-secret",
+      NOWPAYMENTS_PAY_CURRENCY: "usdtbsc",
+    };
+    const config = parseServiceConfig(env);
+    expect(config.nowpayments?.payCurrency).toBe("usdtbsc");
+  });
+
+  it("enables cryptomus when merchant id + payment api key are present", async () => {
+    const { parseServiceConfig } = await import("../src/config.js");
+    const env = {
+      DATABASE_URL: "postgres://localhost/paykit",
+      CRYPTOMUS_MERCHANT_ID: "merchant-uuid",
+      CRYPTOMUS_PAYMENT_API_KEY: "cm-key",
+    };
+    const config = parseServiceConfig(env);
+    expect(config.cryptomus?.merchantId).toBe("merchant-uuid");
+    expect(config.cryptomus?.paymentApiKey).toBe("cm-key");
+    // Optional chain pin left unset → customer picks any USDT chain.
+    expect(config.cryptomus?.network).toBeUndefined();
+  });
+
+  it("pins the cryptomus chain when CRYPTOMUS_NETWORK is set (BEP20)", async () => {
+    const { parseServiceConfig } = await import("../src/config.js");
+    const env = {
+      DATABASE_URL: "postgres://localhost/paykit",
+      CRYPTOMUS_MERCHANT_ID: "merchant-uuid",
+      CRYPTOMUS_PAYMENT_API_KEY: "cm-key",
+      CRYPTOMUS_NETWORK: "bsc",
+      CRYPTOMUS_TO_CURRENCY: "USDT",
+    };
+    const config = parseServiceConfig(env);
+    expect(config.cryptomus?.network).toBe("bsc");
+    expect(config.cryptomus?.toCurrency).toBe("USDT");
+  });
+
+  it("fails fast when cryptomus has merchant id but no payment api key", async () => {
+    const { parseServiceConfig } = await import("../src/config.js");
+    const env = {
+      DATABASE_URL: "postgres://localhost/paykit",
+      CRYPTOMUS_MERCHANT_ID: "merchant-uuid",
+    };
+    expect(() => parseServiceConfig(env)).toThrow(/Incomplete Cryptomus/i);
+  });
 });
 
 describe("createJwtSecretLoader (race-safe seed)", () => {

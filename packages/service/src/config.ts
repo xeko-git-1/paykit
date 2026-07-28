@@ -34,6 +34,10 @@ const envSchema = z.object({
   NOWPAYMENTS_API_KEY: z.string().optional(),
   NOWPAYMENTS_IPN_SECRET: z.string().optional(),
   NOWPAYMENTS_ENVIRONMENT: z.enum(["sandbox", "production"]).optional(),
+  // Optional: force a single pay currency/chain (e.g. usdtbsc=BEP20,
+  // usdttrc20=TRC20, usdterc20=ERC20, usdtmatic=Polygon). Leave unset to let
+  // the customer pick the coin+chain on the NowPayments checkout page.
+  NOWPAYMENTS_PAY_CURRENCY: z.string().optional(),
 
   // VNPay (VN bank/QR) — enabled when all required creds present
   VNPAY_TMN_CODE: z.string().optional(),
@@ -57,6 +61,17 @@ const envSchema = z.object({
   ZALOPAY_RETURN_URL: z.string().optional(),
   ZALOPAY_CALLBACK_URL: z.string().optional(),
   ZALOPAY_ENVIRONMENT: z.enum(["sandbox", "production"]).optional(),
+
+  // Cryptomus (multi-chain USDT gateway) — enabled when merchant + api key present
+  CRYPTOMUS_MERCHANT_ID: z.string().optional(),
+  CRYPTOMUS_PAYMENT_API_KEY: z.string().optional(),
+  // Optional: pin a settlement coin (e.g. USDT) and/or chain (bsc=BEP20,
+  // tron=TRC20, eth=ERC20, polygon). Leave unset to let the customer pick
+  // coin+chain on the Cryptomus pay page.
+  CRYPTOMUS_TO_CURRENCY: z.string().optional(),
+  CRYPTOMUS_NETWORK: z.string().optional(),
+  CRYPTOMUS_RETURN_URL: z.string().optional(),
+  CRYPTOMUS_CALLBACK_URL: z.string().optional(),
 
   // Admin guard secret (env-based for V4.0; dashboard JWT is V4.4)
   ADMIN_SECRET: z.string().optional(),
@@ -87,6 +102,7 @@ export interface ServiceConfig {
         apiKey: string;
         ipnSecret: string;
         environment: "sandbox" | "production";
+        payCurrency?: string;
       }
     | undefined;
   readonly vnpay:
@@ -116,6 +132,16 @@ export interface ServiceConfig {
         returnUrl: string;
         callbackUrl: string;
         environment: "sandbox" | "production";
+      }
+    | undefined;
+  readonly cryptomus:
+    | {
+        merchantId: string;
+        paymentApiKey: string;
+        toCurrency?: string;
+        network?: string;
+        returnUrl?: string;
+        callbackUrl?: string;
       }
     | undefined;
   readonly adminSecret: string | undefined;
@@ -207,6 +233,13 @@ export function parseServiceConfig(env: Record<string, string | undefined>): Ser
       apiKey: parsed.NOWPAYMENTS_API_KEY!,
       ipnSecret: parsed.NOWPAYMENTS_IPN_SECRET!,
       environment: parsed.NOWPAYMENTS_ENVIRONMENT ?? ("production" as const),
+      // Optional. Leave unset so the customer picks any USDT chain (BEP20/TRC20/
+      // ERC20/…) on the NowPayments page; set to force one chain, e.g.
+      // 'usdtbsc' (BEP20), 'usdttrc20', 'usdterc20', 'usdtmatic'.
+      ...(parsed.NOWPAYMENTS_PAY_CURRENCY !== undefined &&
+      parsed.NOWPAYMENTS_PAY_CURRENCY !== ""
+        ? { payCurrency: parsed.NOWPAYMENTS_PAY_CURRENCY }
+        : {}),
     }),
   );
 
@@ -265,6 +298,32 @@ export function parseServiceConfig(env: Record<string, string | undefined>): Ser
     }),
   );
 
+  const cryptomus = resolveProviderCreds(
+    "Cryptomus",
+    {
+      CRYPTOMUS_MERCHANT_ID: parsed.CRYPTOMUS_MERCHANT_ID,
+      CRYPTOMUS_PAYMENT_API_KEY: parsed.CRYPTOMUS_PAYMENT_API_KEY,
+    },
+    () => ({
+      merchantId: parsed.CRYPTOMUS_MERCHANT_ID!,
+      paymentApiKey: parsed.CRYPTOMUS_PAYMENT_API_KEY!,
+      // All optional. Leave to_currency/network unset so the customer picks any
+      // USDT chain (BEP20/TRC20/ERC20/…) on the Cryptomus page; set to pin one.
+      ...(parsed.CRYPTOMUS_TO_CURRENCY !== undefined && parsed.CRYPTOMUS_TO_CURRENCY !== ""
+        ? { toCurrency: parsed.CRYPTOMUS_TO_CURRENCY }
+        : {}),
+      ...(parsed.CRYPTOMUS_NETWORK !== undefined && parsed.CRYPTOMUS_NETWORK !== ""
+        ? { network: parsed.CRYPTOMUS_NETWORK }
+        : {}),
+      ...(parsed.CRYPTOMUS_RETURN_URL !== undefined && parsed.CRYPTOMUS_RETURN_URL !== ""
+        ? { returnUrl: parsed.CRYPTOMUS_RETURN_URL }
+        : {}),
+      ...(parsed.CRYPTOMUS_CALLBACK_URL !== undefined && parsed.CRYPTOMUS_CALLBACK_URL !== ""
+        ? { callbackUrl: parsed.CRYPTOMUS_CALLBACK_URL }
+        : {}),
+    }),
+  );
+
   return {
     databaseUrl: parsed.DATABASE_URL,
     port: parsed.PORT,
@@ -274,6 +333,7 @@ export function parseServiceConfig(env: Record<string, string | undefined>): Ser
     vnpay,
     momo,
     zalopay,
+    cryptomus,
     adminSecret: parsed.ADMIN_SECRET,
   };
 }

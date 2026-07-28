@@ -49,6 +49,31 @@ export async function buildAdaptersFromConfig(
         apiKey: config.nowpayments.apiKey,
         ipnSecret: config.nowpayments.ipnSecret,
         environment: config.nowpayments.environment,
+        ...(config.nowpayments.payCurrency !== undefined
+          ? { payCurrency: config.nowpayments.payCurrency }
+          : {}),
+      }),
+    );
+  }
+
+  if (config.cryptomus) {
+    const { createCryptomusAdapter } = await import("@vibecc/paykit-cryptomus");
+    adapters.push(
+      createCryptomusAdapter({
+        merchantId: config.cryptomus.merchantId,
+        paymentApiKey: config.cryptomus.paymentApiKey,
+        ...(config.cryptomus.toCurrency !== undefined
+          ? { toCurrency: config.cryptomus.toCurrency }
+          : {}),
+        ...(config.cryptomus.network !== undefined
+          ? { network: config.cryptomus.network }
+          : {}),
+        ...(config.cryptomus.returnUrl !== undefined
+          ? { returnUrl: config.cryptomus.returnUrl }
+          : {}),
+        ...(config.cryptomus.callbackUrl !== undefined
+          ? { callbackUrl: config.cryptomus.callbackUrl }
+          : {}),
       }),
     );
   }

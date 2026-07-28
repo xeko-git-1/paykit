@@ -89,6 +89,12 @@ importers:
 
   packages/core: {}
 
+  packages/cryptomus-adapter:
+    devDependencies:
+      '@vibecc/paykit':
+        specifier: workspace:*
+        version: link:../core
+
   packages/momo-adapter:
     devDependencies:
       '@vibecc/paykit':
@@ -195,6 +201,9 @@ importers:
       '@vibecc/paykit-cli':
         specifier: workspace:*
         version: link:../cli
+      '@vibecc/paykit-cryptomus':
+        specifier: workspace:*
+        version: link:../cryptomus-adapter
       '@vibecc/paykit-momo':
         specifier: workspace:*
         version: link:../momo-adapter
