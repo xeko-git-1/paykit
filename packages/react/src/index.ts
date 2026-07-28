@@ -26,8 +26,11 @@ export {
 } from "./components/subscriptions/index.js";
 export {
   PAYKIT_I18N_KEYS,
+  PAYKIT_I18N_VI,
   type PaykitI18nKey,
+  type PaykitLocale,
   defaultTranslator,
+  makeTranslator,
   type Translator,
 } from "./i18n/keys.js";
 export { formatMicros } from "./lib/format-money.js";
