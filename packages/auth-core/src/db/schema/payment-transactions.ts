@@ -15,7 +15,9 @@ export const paymentTransactions = paykitSchema.table(
     tenantId: uuid("tenant_id").notNull(),
     ownerId: uuid("owner_id").notNull(),
     provider: text("provider").notNull(),
-    amountMicros: numeric("amount_micros", { precision: 20, scale: 6 }).notNull(),
+    // Integer micros. Scale 0 because a fractional micro has no meaning here;
+    // see the money helpers in core for the parse/format contract.
+    amountMicros: numeric("amount_micros", { precision: 30, scale: 0 }).notNull(),
     currencyCode: text("currency_code").notNull().default("USD"),
     status: text("status").notNull().default("pending"),
     providerRef: text("provider_ref"),

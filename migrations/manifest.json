@@ -128,6 +128,20 @@
       "up": "018_provider_payment_id.up.sql",
       "down": "018_provider_payment_id.down.sql",
       "description": "Add payment_transactions.provider_payment_id — captured from the webhook on credit so async-refund providers (NowPayments) can call their refund API with the provider-native payment id, distinct from provider_ref (which keys the webhook lookup on order_id)"
+    },
+    {
+      "id": "019",
+      "slug": "money_integer_micros",
+      "up": "019_money_integer_micros.up.sql",
+      "down": "019_money_integer_micros.down.sql",
+      "description": "Money columns NUMERIC(20,6) -> NUMERIC(30,0): micros have always meant whole integers, so the storage now says so and a fractional write is rejected by the database instead of silently truncated by whichever reader gets there first. Fails loudly if any pre-existing row already holds fractional micros rather than rounding it"
+    },
+    {
+      "id": "020",
+      "slug": "money_and_currency_invariants",
+      "up": "020_money_and_currency_invariants.up.sql",
+      "down": "020_money_and_currency_invariants.down.sql",
+      "description": "Money CHECK constraints (payment/refund amount > 0, ledger amount <> 0, ISO-4217 currency shape), the screening_pending payment status, and paykit.screening_jobs — the durable handoff that keeps the tenant-supplied compliance screening call outside the crediting transaction and its row lock"
     }
   ]
 }

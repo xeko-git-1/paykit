@@ -16,7 +16,8 @@ export const ledgerEntries = paykitSchema.table("ledger_entries", {
   tenantId: uuid("tenant_id").notNull(),
   ownerId: uuid("owner_id").notNull(),
   entryType: text("entry_type").notNull(),
-  amountMicros: numeric("amount_micros", { precision: 20, scale: 6 }).notNull(),
+  // Integer micros, signed: refund and debit entries are stored negative.
+  amountMicros: numeric("amount_micros", { precision: 30, scale: 0 }).notNull(),
   currencyCode: text("currency_code").notNull(),
   provider: text("provider"),
   sourceId: text("source_id"),
