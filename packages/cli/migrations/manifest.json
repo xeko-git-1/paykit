@@ -121,6 +121,13 @@
       "up": "017_discount_reserved.up.sql",
       "down": "017_discount_reserved.down.sql",
       "description": "Add discounts.reserved so the cap counts completed payments: checkout reserves, payment webhook commits (times_redeemed++) or releases on failure; reserved+times_redeemed bounds in-flight checkouts under the cap"
+    },
+    {
+      "id": "018",
+      "slug": "provider_payment_id",
+      "up": "018_provider_payment_id.up.sql",
+      "down": "018_provider_payment_id.down.sql",
+      "description": "Add payment_transactions.provider_payment_id — captured from the webhook on credit so async-refund providers (NowPayments) can call their refund API with the provider-native payment id, distinct from provider_ref (which keys the webhook lookup on order_id)"
     }
   ]
 }
