@@ -88,3 +88,66 @@ export class SecretFetchError extends PaykitError {
     this.name = "SecretFetchError";
   }
 }
+
+/**
+ * A money column value could not be read as whole micros — malformed, or
+ * carrying a fractional part that would have to be truncated to be usable.
+ * Truncation moves money silently, so parsing fails instead.
+ */
+export class InvalidMicrosError extends PaykitError {
+  constructor(message: string) {
+    super("INVALID_MICROS", message);
+    this.name = "InvalidMicrosError";
+  }
+}
+
+/**
+ * An amount that must be strictly positive (a charge, a refund request) was
+ * zero or negative. Ledger entries are exempt: a refund entry is negative by
+ * design.
+ */
+export class NonPositiveAmountError extends PaykitError {
+  constructor(message: string) {
+    super("NON_POSITIVE_AMOUNT", message);
+    this.name = "NonPositiveAmountError";
+  }
+}
+
+/** A currency code is not a supported ISO-4217 alpha-3 code paykit accepts. */
+export class InvalidCurrencyCodeError extends PaykitError {
+  constructor(message: string) {
+    super("INVALID_CURRENCY_CODE", message);
+    this.name = "InvalidCurrencyCodeError";
+  }
+}
+
+/**
+ * Compliance screening could not reach a verdict — the screening service was
+ * unreachable, timed out, or answered unusably. The payment stays unresolved
+ * and the job is retried; it is never credited on an absent verdict.
+ */
+export class ScreeningUnavailableError extends PaykitError {
+  constructor(message: string) {
+    super("SCREENING_UNAVAILABLE", message);
+    this.name = "ScreeningUnavailableError";
+  }
+}
+
+/**
+ * Compliance screening rejected the payment. Terminal for the credit path: the
+ * payment is quarantined for manual review, ledger untouched.
+ */
+export class ScreeningRejectedError extends PaykitError {
+  constructor(message: string) {
+    super("SCREENING_REJECTED", message);
+    this.name = "ScreeningRejectedError";
+  }
+}
+
+/** A discount percent fell outside [0, 100], or was not a finite number. */
+export class DiscountPercentOutOfRangeError extends PaykitError {
+  constructor(message: string) {
+    super("DISCOUNT_PERCENT_OUT_OF_RANGE", message);
+    this.name = "DiscountPercentOutOfRangeError";
+  }
+}

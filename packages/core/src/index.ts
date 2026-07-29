@@ -19,9 +19,15 @@ export {
   AmountMismatchError,
   CurrencyMismatchError,
   DiscountConsumeFailedError,
+  DiscountPercentOutOfRangeError,
   DiscountResolverError,
+  InvalidCurrencyCodeError,
+  InvalidMicrosError,
+  NonPositiveAmountError,
   PaykitError,
   RefundExceedsBalanceError,
+  ScreeningRejectedError,
+  ScreeningUnavailableError,
   SecretFetchError,
   TenantResolutionError,
   UnsupportedCurrencyError,
@@ -31,9 +37,16 @@ export {
 
 // Money helpers
 export {
+  assertPositiveMicros,
+  assertSameCurrency,
+  assertSupportedCurrencyCode,
+  formatMicros,
+  isSupportedCurrencyCode,
   microsStringToBigInt,
   microsStringToNumber,
+  parseMicros,
   stripeUsdAmountToMicros,
+  SUPPORTED_CURRENCY_CODES,
   vndToMicros,
 } from "./money/index.js";
 
