@@ -17,9 +17,9 @@
  * Gated by PAYKIT_E2E_DATABASE_URL, matching the service cold-start e2e.
  */
 import type { AppliedDiscount } from "@vibecc/paykit";
-import { paykitDbSchema, type DbClient } from "@vibecc/paykit-server";
-import { drizzle } from "drizzle-orm/node-postgres";
+import { type DbClient, paykitDbSchema } from "@vibecc/paykit-server";
 import { sql } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { applyDiscountInTx } from "../src/routes/checkout/apply-discount.js";
