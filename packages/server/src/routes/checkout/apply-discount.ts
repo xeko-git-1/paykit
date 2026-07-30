@@ -72,7 +72,10 @@ export async function resolveDiscount(opts: {
 }
 
 /** Full-price result, used for every path where no discount is applied. */
-function fullPrice(amountMicros: bigint, reason: DiscountOutcome["reason"]): DiscountOutcome {
+function fullPrice(
+  amountMicros: bigint,
+  reason: NonNullable<DiscountOutcome["reason"]>,
+): DiscountOutcome {
   return {
     applied: false,
     discount: null,
