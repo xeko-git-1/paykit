@@ -50,6 +50,15 @@ export {
   vndToMicros,
 } from "./money/index.js";
 
+// Compliance screening contract
+export type {
+  OnBeforeCreditHook,
+  ScreeningDecision,
+  ScreeningRequest,
+  ScreeningService,
+} from "./compliance/index.js";
+export { screeningServiceFromOnBeforeCredit } from "./compliance/index.js";
+
 // Secrets
 export { EnvSecretProvider } from "./secrets/provider.js";
 export type { SecretProvider } from "./secrets/provider.js";

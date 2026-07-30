@@ -144,6 +144,18 @@ export class ScreeningRejectedError extends PaykitError {
   }
 }
 
+/**
+ * Compliance screening wants a human to decide. Not a rejection and not a
+ * clearance: the payment is held (quarantined) and surfaced for review rather
+ * than retried, because retrying cannot change the answer.
+ */
+export class ScreeningManualReviewRequiredError extends PaykitError {
+  constructor(message: string) {
+    super("SCREENING_MANUAL_REVIEW_REQUIRED", message);
+    this.name = "ScreeningManualReviewRequiredError";
+  }
+}
+
 /** A discount percent fell outside [0, 100], or was not a finite number. */
 export class DiscountPercentOutOfRangeError extends PaykitError {
   constructor(message: string) {
