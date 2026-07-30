@@ -1,32 +1,9 @@
--- Revert the money invariants and the screening handoff.
+-- Revert the money invariants.
 --
--- Reversibility: dropping a CHECK constraint never touches data, so the amount
--- and currency reverts are non-destructive. Dropping screening_jobs DOES lose
--- data — the audit trail of screening verdicts and any not-yet-decided job.
--- Only roll back when no screening is in flight; a payment left in
--- 'screening_pending' has to be reconciled first (see the status revert below).
-
-DROP TABLE IF EXISTS paykit.screening_jobs;
-
--- Revert the status enum to its prior set.
---
--- WARNING: any payment_transactions row still in 'screening_pending' violates
--- the restored CHECK and makes this statement fail. That is deliberate: such a
--- row is a paid, uncredited payment. Decide each one (credit → 'completed', or
--- hold → 'quarantine') before rolling back.
-ALTER TABLE paykit.payment_transactions
-  DROP CONSTRAINT IF EXISTS payment_transactions_status_check;
-ALTER TABLE paykit.payment_transactions
-  ADD CONSTRAINT payment_transactions_status_check
-    CHECK (status IN (
-      'pending',
-      'completed',
-      'failed',
-      'refunded',
-      'expired',
-      'quarantine',
-      'refund_pending_webhook'
-    ));
+-- Reversibility: dropping a CHECK constraint never touches data, so every
+-- statement here is non-destructive and safe to re-run. Rows that violate the
+-- reverted rules (a zero amount, a lowercase currency) become writable again;
+-- nothing already stored is rewritten.
 
 ALTER TABLE paykit.pending_refunds
   DROP CONSTRAINT IF EXISTS pending_refunds_currency_code_iso4217;
