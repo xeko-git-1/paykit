@@ -19,6 +19,7 @@ import {
   type PaykitError,
   type PaymentProviderAdapter,
   ProviderRegistry,
+  type ScreeningService,
   type TenantResolver,
 } from "@vibecc/paykit";
 import { Hono } from "hono";
@@ -65,11 +66,30 @@ export interface PaykitConfig {
   readonly onAdminAction?: (action: AdminAuditAction) => void | Promise<void>;
   readonly logger?: PaykitLogger;
   /**
-   * V3 (Val Session 2 D7) — BYOC OFAC/sanctions screening hook for crypto
-   * webhooks. Fires before credit; throwing quarantines the transaction.
-   * Default no-op. See docs/compliance-onbeforecredit.md.
+   * BYOC OFAC/sanctions screening hook for crypto webhooks. Resolving allows the
+   * credit; throwing quarantines the payment. Default no-op.
+   * See docs/compliance-onbeforecredit.md.
+   *
+   * The hook is no longer called from inside the crediting transaction — the
+   * payment is parked and the hook runs once that transaction has committed, so a
+   * slow hook no longer holds a payment row lock and a pooled connection. The
+   * observable outcomes (credited, or quarantined on throw) are unchanged; what
+   * changed is that they can now land a moment after the webhook is ACKed.
+   *
+   * Prefer `screeningService` for new integrations: a hook cannot distinguish
+   * "this payment is not allowed" from "I could not find out", so a throw is
+   * always treated as the former and never retried.
    */
   readonly onBeforeCredit?: (evt: NormalizedWebhookEvent) => Promise<void>;
+  /**
+   * Compliance screening service — the successor to `onBeforeCredit`.
+   *
+   * Returns an explicit verdict (`clear` / `reject` / `manual_review`) and may
+   * throw to mean "no answer", which retries with backoff instead of deciding.
+   * Called outside the crediting transaction. Takes precedence when both this and
+   * `onBeforeCredit` are set.
+   */
+  readonly screeningService?: ScreeningService;
   /** Optional metrics emitter — see paykit_credit_blocked_total etc. */
   readonly emitMetric?: (
     name: string,
@@ -170,6 +190,9 @@ export async function createPaykit(config: PaykitConfig): Promise<Paykit> {
         ...(logger !== undefined ? { logger } : {}),
         ...(config.onBeforeCredit !== undefined
           ? { onBeforeCredit: config.onBeforeCredit }
+          : {}),
+        ...(config.screeningService !== undefined
+          ? { screeningService: config.screeningService }
           : {}),
         ...(config.emitMetric !== undefined ? { emitMetric: config.emitMetric } : {}),
       });

@@ -20,7 +20,8 @@ import type {
   PaymentProviderAdapter,
   ProviderRegistry,
 } from "@vibecc/paykit";
-import { microsStringToBigInt } from "@vibecc/paykit";
+import type { ScreeningService } from "@vibecc/paykit";
+import { microsStringToBigInt, screeningServiceFromOnBeforeCredit } from "@vibecc/paykit";
 import { and, eq } from "drizzle-orm";
 import type { Context } from "hono";
 import { Hono } from "hono";
@@ -30,10 +31,12 @@ import { commitReservation, releaseReservation } from "@vibecc/paykit-auth-core/
 import { appendLedgerEntryIdempotent } from "@vibecc/paykit-auth-core/db/repos/ledger.repo.js";
 import { updateTransactionStatus } from "@vibecc/paykit-auth-core/db/repos/payment.repo.js";
 import { findActiveByTransaction, markCompleted } from "@vibecc/paykit-auth-core/db/repos/pending-refund.repo.js";
+import { enqueueScreeningJob } from "@vibecc/paykit-auth-core/db/repos/screening-job.repo.js";
 import { tryRecordWebhookEvent } from "@vibecc/paykit-auth-core/db/repos/webhook-event.repo.js";
 import { paymentTransactions } from "@vibecc/paykit-auth-core/db/schema/payment-transactions.js";
 import type { PaykitEventHandlers } from "../../events/emitter.js";
 import { emitEvent } from "../../events/emitter.js";
+import { processNextScreeningJob } from "../../services/screening-runner.js";
 import { errorJson } from "../shared/response.js";
 import { evaluateSettlementAmount } from "./settlement-amount-guard.js";
 
@@ -52,6 +55,15 @@ export interface WebhookRouterDeps {
    * Lens here. See docs/compliance-onbeforecredit.md for reference impls.
    */
   readonly onBeforeCredit?: (evt: NormalizedWebhookEvent) => Promise<void>;
+  /**
+   * Compliance screening service, called OUTSIDE this transaction.
+   *
+   * When either this or `onBeforeCredit` is configured, `payment.completed`
+   * parks the payment in `screening_pending` and enqueues a job instead of
+   * crediting inline; the screening runner applies the verdict. Leaving both
+   * unset keeps the original inline credit path exactly as it was.
+   */
+  readonly screeningService?: ScreeningService;
   /** Optional metrics counter emitter — default no-op. */
   readonly emitMetric?: (
     name: string,
@@ -119,6 +131,9 @@ async function handleWebhook(
 
   let processedTxId: string | null = null;
   let eventTypeProcessed: NormalizedWebhookEvent["type"] | null = null;
+  // Set when this delivery parked a payment for screening, so the verdict can be
+  // attempted once the transaction has committed and released its row lock.
+  let screeningEnqueued = false;
 
   // Capture in local const so TS narrowing works inside the transaction closure.
   const evt: NormalizedWebhookEvent = event;
@@ -198,25 +213,54 @@ async function handleWebhook(
         }
         const creditMicros = settlement.creditMicros;
 
-        // V3 Val D7 — onBeforeCredit OFAC/sanctions hook. Tenant-injected
-        // screening; throwing quarantines without ledger touch. ACK 200 to
-        // provider so retry storm doesn't compound a deliberate block.
-        if (deps.onBeforeCredit) {
-          try {
-            await deps.onBeforeCredit(evt);
-          } catch (err) {
-            deps.logger?.warn("onBeforeCredit rejected payment — quarantining", {
-              provider: adapter.id,
-              providerRef: evt.providerRef,
-              reason: err instanceof Error ? err.message : String(err),
-            });
-            await updateTransactionStatus(tx, row.transactionId, "quarantine");
-            deps.emitMetric?.("paykit_credit_blocked_total", { provider: adapter.id });
-            // Quarantine is terminal for this payment — it will never complete,
-            // so free any discount reservation rather than stranding the slot.
-            await releaseDiscountReservation(tx, row.metadataJson);
-            return;
-          }
+        // The webhook's currency must match the currency the payment was priced
+        // in. Wallets are keyed (tenant_id, currency_code), so an event claiming
+        // a different currency does not fail on its own — it credits a DIFFERENT
+        // wallet, which reads downstream as the customer never having paid while
+        // a phantom balance appears in a currency they never used.
+        if (evt.currencyCode !== row.currencyCode) {
+          deps.logger?.warn("webhook currency does not match transaction — quarantining", {
+            provider: adapter.id,
+            providerRef: evt.providerRef,
+            transactionCurrency: row.currencyCode,
+            eventCurrency: evt.currencyCode,
+          });
+          await updateTransactionStatus(tx, row.transactionId, "quarantine");
+          deps.emitMetric?.("paykit_currency_mismatch_total", { provider: adapter.id });
+          // Terminal for this payment — free any discount reservation.
+          await releaseDiscountReservation(tx, row.metadataJson);
+          return;
+        }
+
+        // Compliance screening is an outbound call to a tenant-supplied service.
+        // It must not run here: this transaction holds a FOR UPDATE lock on the
+        // payment row (taken above) plus a pooled connection, and a slow
+        // screening provider would hold both for its entire latency while every
+        // redelivery of this webhook queues behind the lock.
+        //
+        // Instead the payment is parked in a durable state and a job is enqueued;
+        // the verdict is applied by the screening runner in a separate
+        // transaction. The park is what makes this crash-safe — a process death
+        // before the verdict leaves a claimable job, not a lost payment.
+        if (deps.screeningService !== undefined || deps.onBeforeCredit !== undefined) {
+          await parkForScreening(tx, row.transactionId);
+          await enqueueScreeningJob(tx, {
+            transactionId: row.transactionId,
+            tenantId: row.tenantId,
+            ownerId: row.ownerId,
+            provider: adapter.id,
+            // Same ledger idempotency key the inline credit would have used, so
+            // the deferred credit still collapses with a provider resend.
+            sourceId: evt.providerRef,
+            creditMicros,
+            currencyCode: row.currencyCode,
+            eventJson: { ...evt },
+          });
+          deps.emitMetric?.("paykit_screening_pending_total", { provider: adapter.id });
+          screeningEnqueued = true;
+          // The discount reservation stays held: the payment is not resolved yet,
+          // and the verdict path commits or releases it.
+          return;
         }
 
         // RT F1 idempotent ledger write — UNIQUE (provider, source_id, entry_type)
@@ -398,7 +442,81 @@ async function handleWebhook(
     }
   }
 
+  // 7. Screening verdict, attempted only now that the transaction has committed
+  // and the payment row lock is gone. Doing it here rather than only from a cron
+  // keeps the common case (a screening service that answers quickly) as fast as
+  // the previous inline hook was, without the row lock being held across the call.
+  //
+  // Every failure mode is swallowed deliberately: the job row is the durable
+  // record, so an error here means the verdict lands on a later attempt, while
+  // returning non-2xx would make the provider redeliver an event that was already
+  // processed. The payment stays uncredited in the meantime, which is the safe
+  // direction — a screening that has not answered must never read as permission.
+  if (screeningEnqueued) {
+    const screeningService = resolveScreeningService(deps);
+    if (screeningService !== undefined) {
+      try {
+        await processNextScreeningJob({
+          db: deps.db,
+          screeningService,
+          ...(deps.logger !== undefined ? { logger: deps.logger } : {}),
+          ...(deps.emitMetric !== undefined ? { emitMetric: deps.emitMetric } : {}),
+        });
+      } catch (err) {
+        deps.logger?.warn("screening verdict deferred — job left for a later attempt", {
+          provider: adapter.id,
+          providerRef: evt.providerRef,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+  }
+
   return c.json({ received: true });
+}
+
+/**
+ * The screening service to apply verdicts with.
+ *
+ * An explicit `screeningService` wins; otherwise the legacy `onBeforeCredit` hook
+ * is adapted onto the same contract so tenants configured the old way keep the
+ * behaviour they have (a throw quarantines the payment) without having to change
+ * anything. Returns undefined when neither is configured, in which case nothing
+ * was ever enqueued.
+ */
+function resolveScreeningService(deps: WebhookRouterDeps): ScreeningService | undefined {
+  if (deps.screeningService !== undefined) return deps.screeningService;
+  if (deps.onBeforeCredit !== undefined) {
+    return screeningServiceFromOnBeforeCredit(deps.onBeforeCredit);
+  }
+  return undefined;
+}
+
+/**
+ * Park a payment in `screening_pending`, guarded on it still being `pending`.
+ *
+ * The guard makes the park itself the exactly-once gate: two concurrent
+ * deliveries of the same completion event cannot both park (and therefore both
+ * enqueue), and a payment that some other path already moved on from is left
+ * alone. Written here rather than through the status repo because the repo's
+ * transition helper is shared with paths that must not be able to reach this
+ * state.
+ */
+async function parkForScreening(
+  tx: DbClient,
+  transactionId: string,
+): Promise<{ transactionId: string } | undefined> {
+  const [parked] = await tx
+    .update(paymentTransactions)
+    .set({ status: "screening_pending", updatedAt: new Date() })
+    .where(
+      and(
+        eq(paymentTransactions.transactionId, transactionId),
+        eq(paymentTransactions.status, "pending"),
+      ),
+    )
+    .returning({ transactionId: paymentTransactions.transactionId });
+  return parked;
 }
 
 // ---------------------------------------------------------------------------

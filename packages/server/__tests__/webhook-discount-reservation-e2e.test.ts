@@ -8,6 +8,12 @@
  * The reservation move happens inside the webhook transaction, keyed only on
  * the tx row's metadata, so it stays dormant for any checkout that did not
  * reserve a paykit.discounts code.
+ *
+ * One case deliberately does NOT resolve the reservation here: when compliance
+ * screening is configured, the payment is parked rather than decided, so the
+ * promo slot has to stay held until a verdict exists. Releasing it at park time
+ * would free the slot for a payment that may still be credited. The verdict
+ * transaction owns that decision — see screening-verdict-reservation.test.ts.
  */
 import type { NormalizedWebhookEvent, PaymentProviderAdapter, ProviderRegistry } from "@vibecc/paykit";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -23,6 +29,15 @@ vi.mock("@vibecc/paykit-auth-core/db/repos/payment.repo.js", () => ({ updateTran
 vi.mock("@vibecc/paykit-auth-core/db/repos/discount.repo.js", () => ({
   commitReservation: vi.fn(),
   releaseReservation: vi.fn(),
+}));
+// Screening turns payment.completed into a park + enqueue. Claiming returns
+// nothing so the post-commit drain is a no-op: this file is about the
+// reservation, and the verdict path has its own tests.
+vi.mock("@vibecc/paykit-auth-core/db/repos/screening-job.repo.js", () => ({
+  enqueueScreeningJob: vi.fn(),
+  claimNextScreeningJob: vi.fn(),
+  markScreeningDecided: vi.fn(),
+  markScreeningRetryable: vi.fn(),
 }));
 
 import { buildWebhookRouter } from "../src/routes/webhooks/webhook-router.js";
@@ -67,11 +82,23 @@ function chainable(rows: unknown[]) {
   return chain;
 }
 
+/** Drizzle update chain, used by the screening park (UPDATE ... RETURNING). */
+function updateChain(returned: unknown[]) {
+  const chain: Record<string, unknown> = {};
+  chain.set = () => chain;
+  chain.where = () => chain;
+  chain.returning = async () => returned;
+  return chain;
+}
+
 function makeDb() {
+  const tx = {
+    select: () => chainable([txRow()]),
+    update: () => updateChain([{ transactionId: txRow().transactionId }]),
+  };
   return {
     select: () => chainable([txRow()]),
-    transaction: async (fn: (tx: unknown) => Promise<unknown>) =>
-      fn({ select: () => chainable([txRow()]) }),
+    transaction: async (fn: (t: unknown) => Promise<unknown>) => fn(tx),
   } as never;
 }
 
@@ -168,7 +195,7 @@ describe("webhook discount reservation lifecycle", () => {
     expect(mRelease).not.toHaveBeenCalled();
   });
 
-  it("releases the reservation when onBeforeCredit quarantines the payment", async () => {
+  it("holds the reservation when the payment is parked for screening", async () => {
     event = {
       type: "payment.completed",
       eventId: "evt-q-1",
@@ -177,14 +204,20 @@ describe("webhook discount reservation lifecycle", () => {
       currencyCode: "VND",
       metadata: {},
     } as NormalizedWebhookEvent;
-    await post({
+    const res = await post({
       onBeforeCredit: async () => {
         throw new Error("sanctioned");
       },
     });
-    // Quarantined → never completes → reservation freed, not committed.
-    expect(mRelease).toHaveBeenCalledWith(expect.anything(), "disc-1");
+    expect(res.status).toBe(200);
+    // The webhook no longer knows the outcome: the screening call happens after
+    // this transaction commits. Neither resolving the slot is correct yet —
+    // committing would consume it for a payment that may be rejected, releasing
+    // would free it for one that may still be credited.
     expect(mCommit).not.toHaveBeenCalled();
+    expect(mRelease).not.toHaveBeenCalled();
+    // And the payment was parked, not credited.
+    expect(mAppend).not.toHaveBeenCalled();
   });
 
   it("releases the reservation on payment.amount_mismatch (quarantine)", async () => {
