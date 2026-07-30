@@ -141,7 +141,7 @@
       "slug": "money_and_currency_invariants",
       "up": "020_money_and_currency_invariants.up.sql",
       "down": "020_money_and_currency_invariants.down.sql",
-      "description": "Money CHECK constraints (payment/refund amount > 0, ledger amount <> 0, ISO-4217 currency shape), the screening_pending payment status, and paykit.screening_jobs — the durable handoff that keeps the tenant-supplied compliance screening call outside the crediting transaction and its row lock"
+      "description": "Money CHECK constraints: payment and refund reservation amounts strictly positive, ledger entry amounts nonzero, ISO-4217 alpha-3 shape on every currency_code column that keys a wallet"
     }
   ]
 }
