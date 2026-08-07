@@ -12,8 +12,17 @@
  * Race-safety rests on Postgres's atomic INSERT ... ON CONFLICT DO NOTHING:
  * exactly one concurrent INSERT for a given PK returns a row. An in_flight row
  * carries a short TTL so a crashed handler cannot wedge the key permanently.
+ *
+ * That TTL is why a claim needs an OWNER, not just a state. A handler slower than
+ * the TTL loses its claim to a reclaiming request, and both claims look identical
+ * to a guard that only checks `state = 'in_flight'` — so the slow handler's
+ * finalize lands on the new claimant's row and a caller polling the key reads the
+ * wrong request's response. Every claim therefore carries a `claimToken`, and
+ * finalize and release both guard on it: a claim that was taken away matches
+ * nothing and its owner is told so.
  */
-import { and, eq, lt } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
+import { and, eq, lt, sql } from "drizzle-orm";
 import type { DbOrTx } from "../client.js";
 import {
   type IdempotencyRecord,
@@ -43,8 +52,15 @@ export interface ClaimInput {
 }
 
 export type ClaimResult =
-  /** We won the claim and inserted an in_flight row — caller runs the handler. */
-  | { readonly outcome: "claimed" }
+  /**
+   * We won the claim — caller runs the handler.
+   *
+   * `claimToken` must be passed back to `finalizeIdempotency` /
+   * `releaseIdempotency`. It is what proves the claim is still ours: without it
+   * those calls would match whichever claim currently holds the key, including
+   * one belonging to a different request.
+   */
+  | { readonly outcome: "claimed"; readonly claimToken: string }
   /** A finalized response already exists — caller replays it. */
   | { readonly outcome: "replay"; readonly record: IdempotencyRecord }
   /** Another request holds an active in_flight claim — caller returns 409. */
@@ -59,6 +75,10 @@ export async function claimIdempotency(db: DbOrTx, input: ClaimInput): Promise<C
   const now = input.now ?? new Date();
   const inFlightExpiry = new Date(now.getTime() + IN_FLIGHT_TTL_SECONDS * 1000);
 
+  // Generated here rather than defaulted by the database so the value is known
+  // before the write returns, and so a reclaim below can use the same mechanism.
+  const claimToken = randomUUID();
+
   const placeholder: NewIdempotencyRecord = {
     tenantId: input.tenantId,
     idempotencyKey: input.key,
@@ -66,6 +86,8 @@ export async function claimIdempotency(db: DbOrTx, input: ClaimInput): Promise<C
     routePath: input.routePath,
     requestBodyHash: input.bodyHash,
     state: "in_flight",
+    claimToken,
+    claimGeneration: 1,
     responseStatus: null,
     responseBodyJson: {},
     expiresAt: inFlightExpiry,
@@ -77,7 +99,7 @@ export async function claimIdempotency(db: DbOrTx, input: ClaimInput): Promise<C
     .values(placeholder)
     .onConflictDoNothing()
     .returning();
-  if (won) return { outcome: "claimed" };
+  if (won) return { outcome: "claimed", claimToken: won.claimToken };
 
   // A row already exists. Inspect it.
   const [existing] = await db
@@ -106,6 +128,11 @@ export async function claimIdempotency(db: DbOrTx, input: ClaimInput): Promise<C
         routePath: input.routePath,
         requestBodyHash: input.bodyHash,
         state: "in_flight",
+        // A NEW token. This is what makes the previous claimant's finalize match
+        // nothing: it still guards on the token it was given, which no longer
+        // names the live claim.
+        claimToken,
+        claimGeneration: sql`${idempotencyRecords.claimGeneration} + 1`,
         responseStatus: null,
         responseBodyJson: {},
         expiresAt: inFlightExpiry,
@@ -118,7 +145,9 @@ export async function claimIdempotency(db: DbOrTx, input: ClaimInput): Promise<C
         ),
       )
       .returning();
-    return reclaimed ? { outcome: "claimed" } : { outcome: "in_flight" };
+    return reclaimed
+      ? { outcome: "claimed", claimToken: reclaimed.claimToken }
+      : { outcome: "in_flight" };
   }
 
   if (existing.requestBodyHash !== input.bodyHash) {
@@ -133,19 +162,26 @@ export async function claimIdempotency(db: DbOrTx, input: ClaimInput): Promise<C
 export interface FinalizeInput {
   readonly tenantId: string;
   readonly key: string;
+  /** The token returned by the claim being finalized. */
+  readonly claimToken: string;
   readonly responseStatus: number;
   readonly responseBody: Record<string, unknown>;
   readonly ttlSeconds?: number;
 }
 
 /**
- * Mark our claimed row as done with the handler's response and a 24h replay TTL.
+ * Record the handler's response against the claim that produced it.
  *
- * Guarded by state='in_flight' so it only finalizes a row we still own: if the
- * handler outran the in_flight TTL and another request reclaimed the key, this
- * matches nothing and returns null rather than overwriting the racer's row with
- * a stale response. The caller treats null as "claim lost" — the mutation
- * already happened, so it must NOT surface that as an error.
+ * Guarded on `claim_token`, not on `state = 'in_flight'`. The state alone cannot
+ * tell two claimants apart: a handler that outlives the in-flight TTL loses its
+ * claim to a reclaiming request, and the reclaimed row is *also* `in_flight`, so
+ * a state-only guard matched it and wrote the slow handler's response into the new
+ * claimant's row. A caller polling that key then read one request's response as
+ * the outcome of another's.
+ *
+ * Returns null when the claim was lost. That is not an error the caller may
+ * surface: its mutation did happen, so a failure response would be a lie. The
+ * caller's own response still goes back to its own client.
  */
 export async function finalizeIdempotency(
   db: DbOrTx,
@@ -164,6 +200,7 @@ export async function finalizeIdempotency(
       and(
         eq(idempotencyRecords.tenantId, input.tenantId),
         eq(idempotencyRecords.idempotencyKey, input.key),
+        eq(idempotencyRecords.claimToken, input.claimToken),
         eq(idempotencyRecords.state, "in_flight"),
       ),
     )
@@ -172,23 +209,33 @@ export async function finalizeIdempotency(
 }
 
 /**
- * Drop our in_flight placeholder after a failed handler so the key can be
- * retried immediately. Scoped to state='in_flight' so it never deletes another
- * request's finalized response.
+ * Drop our own in-flight placeholder after a failed handler, so the key can be
+ * retried straight away instead of waiting out its TTL.
+ *
+ * Guarded on `claim_token` for the same reason as the finalize: without it, a slow
+ * handler's rollback DELETEd the live claim of whichever request had reclaimed the
+ * key, and a third request then re-ran the mutation against a key that looked
+ * untouched.
+ *
+ * Returns whether a row was removed, so a caller that wants to can tell "released
+ * my claim" from "my claim was already gone".
  */
 export async function releaseIdempotency(
   db: DbOrTx,
-  input: { tenantId: string; key: string },
-): Promise<void> {
-  await db
+  input: { tenantId: string; key: string; claimToken: string },
+): Promise<boolean> {
+  const deleted = await db
     .delete(idempotencyRecords)
     .where(
       and(
         eq(idempotencyRecords.tenantId, input.tenantId),
         eq(idempotencyRecords.idempotencyKey, input.key),
+        eq(idempotencyRecords.claimToken, input.claimToken),
         eq(idempotencyRecords.state, "in_flight"),
       ),
-    );
+    )
+    .returning({ key: idempotencyRecords.idempotencyKey });
+  return deleted.length > 0;
 }
 
 export async function sweepExpired(db: DbOrTx, before: Date): Promise<number> {
