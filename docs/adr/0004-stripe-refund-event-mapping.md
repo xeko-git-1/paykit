@@ -88,23 +88,28 @@ Stripe docs: `payment_intent_data` là "a subset of parameters to be passed to P
 một lần, update PaymentIntent sau đó không lan truyền). Nhờ đó refund webhook resolve được internal
 transaction id qua Charge, kể cả refund tạo từ Dashboard.
 
-**3. Mở rộng `NormalizedRefundEvent` trong core.**
+**3. Mang `providerRefundId` trên `NormalizedWebhookEvent` (đã sửa so với bản đầu).**
 
-Không nhồi thêm field optional vào `NormalizedWebhookEvent`. Contract riêng:
+Bản đầu của ADR này chọn một contract riêng `NormalizedRefundEvent` và nói rõ "không nhồi thêm field
+optional vào `NormalizedWebhookEvent`". Quyết định đó bị đảo khi bắt đầu implement, vì hai lý do
+kiểm chứng được trên code:
 
-```ts
-type NormalizedRefundEvent = {
-  provider: string;
-  providerEventId: string;
-  providerRefundId: string;        // refund.id — idempotency source
-  providerPaymentRef: string;      // payment_intent / charge id
-  internalTransactionId?: string;  // từ metadata khi có
-  refundAmountMicros: bigint;      // delta, KHÔNG phải cumulative
-  currencyCode: string;
-  status: "pending" | "succeeded" | "failed" | "cancelled";
-  occurredAt: Date;
-};
-```
+- Contract riêng cần **adapter method mới** để adapter phát ra kiểu event mới. Ràng buộc tương thích
+  (plan §5) là `PaymentProviderAdapter` chỉ được thêm method **optional**, và
+  `core/__tests__/adapter-interface.test.ts` chốt shape đó. Method optional nghĩa là adapter chưa port
+  vẫn đi đường cũ.
+- Năm adapter đang phát `payment.refunded` qua `NormalizedWebhookEvent`: stripe, nowpayments, bitpay,
+  cryptomus, binance. Đường cũ chính là đường có lỗi mất tiền. Làm contract mới song song ⇒ lỗi vẫn
+  còn nguyên ở mọi adapter chưa port, tức là sửa 1/5 và để 4/5 nguyên vẹn.
+
+Nên `providerRefundId` là field optional trên `NormalizedWebhookEvent`. Một field, mọi adapter dùng
+ngay được, và adapter chưa cung cấp nó thì server xử lý bảo toàn (coi như nhiều nhất một refund cho
+mỗi payment) thay vì cộng dồn sai.
+
+Các field còn lại của contract dự kiến không cần thiết: `refundAmountMicros` + `currencyCode` +
+`providerRef` đã có; `internalTransactionId` nằm trong `metadata`; `status` không cần vì adapter chỉ
+phát `payment.refunded` khi refund đã thật sự chuyển tiền — trạng thái trung gian là việc của bảng
+`refunds`, không phải của event.
 
 **4. Ledger `source_id` cho refund = `refund:{providerRefundId}`.** Hai partial refund khác nhau có
 `refund.id` khác nhau ⇒ hai entry. Refund cùng id đến hai lần (retry, hoặc trùng giữa đường API và
@@ -138,13 +143,14 @@ ràng hơn.
   (mapping sang reconciliation, không sinh ledger) trong ít nhất một minor version.
 - Payment cũ tạo trước thay đổi này không có metadata trên Charge. Refund của chúng vẫn phải resolve
   được qua `payment_intent` → session lookup; cần đường fallback, không được vỡ.
-- `NormalizedRefundEvent` là contract mới trong core ⇒ mọi adapter có refund phải map sang. Adapter chưa
-  hỗ trợ thì giữ đường cũ cho tới khi được port (contract test sẽ đánh dấu capability).
+- `providerRefundId` là field optional ⇒ type system không buộc adapter nào phải điền. Adapter chưa
+  điền vẫn biên dịch được và vẫn chạy như trước; refund của nó bị coi là tối đa một refund mỗi payment.
+  Đây là cái giá của việc không phá adapter contract: bù lại bằng contract test đánh dấu capability,
+  chứ không bằng compiler.
 
 ## Consequences
 
-- `packages/core`: thêm `NormalizedRefundEvent`, mở rộng adapter contract (optional method để không phá
-  adapter hiện có).
+- `packages/core`: thêm `providerRefundId?` vào `NormalizedWebhookEvent`. Adapter contract không đổi.
 - `packages/stripe-adapter`: thêm `payment_intent_data.metadata` khi tạo session; map họ Refund event;
   `charge.refunded` chuyển sang đường reconciliation.
 - `packages/server`: webhook router xử lý refund event qua đường mới; `refund-core.ts` đổi `source_id`
