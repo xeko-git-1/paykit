@@ -15,77 +15,77 @@
       "slug": "internal_id",
       "up": "002_internal_id.up.sql",
       "down": "002_internal_id.down.sql",
-      "description": "V1.5 — Add internal_id UUID column for cross-provider ID mapping (ZaloPay app_trans_id format vs paykit UUID)"
+      "description": "V1.5 \u2014 Add internal_id UUID column for cross-provider ID mapping (ZaloPay app_trans_id format vs paykit UUID)"
     },
     {
       "id": "003",
       "slug": "pending_refunds",
       "up": "003_pending_refunds.up.sql",
       "down": "003_pending_refunds.down.sql",
-      "description": "V1.5 — pending_refunds table for ZaloPay 2-step refund (PROCESSING state); reconciler polls until completed/failed/timed_out"
+      "description": "V1.5 \u2014 pending_refunds table for ZaloPay 2-step refund (PROCESSING state); reconciler polls until completed/failed/timed_out"
     },
     {
       "id": "004",
       "slug": "customers",
       "up": "004_customers.up.sql",
       "down": "004_customers.down.sql",
-      "description": "V2 — paykit.customers table; (tenant_id, provider) PK; provider_customer_id length-bounded (RT 15i)"
+      "description": "V2 \u2014 paykit.customers table; (tenant_id, provider) PK; provider_customer_id length-bounded (RT 15i)"
     },
     {
       "id": "005",
       "slug": "subscriptions",
       "up": "005_subscriptions.up.sql",
       "down": "005_subscriptions.down.sql",
-      "description": "V2 — paykit.subscriptions cache; status TEXT (RT F3); UNIQUE(provider,provider_subscription_id) (RT F10); last_event_created (RT F9)"
+      "description": "V2 \u2014 paykit.subscriptions cache; status TEXT (RT F3); UNIQUE(provider,provider_subscription_id) (RT F10); last_event_created (RT F9)"
     },
     {
       "id": "006",
       "slug": "subscription_events",
       "up": "006_subscription_events.up.sql",
       "down": "006_subscription_events.down.sql",
-      "description": "V2 — paykit.subscription_events append-only via trigger + REVOKE on paykit_app role (RT 15j)"
+      "description": "V2 \u2014 paykit.subscription_events append-only via trigger + REVOKE on paykit_app role (RT 15j)"
     },
     {
       "id": "007",
       "slug": "idempotency_records",
       "up": "007_idempotency_records.up.sql",
       "down": "007_idempotency_records.down.sql",
-      "description": "V2 — paykit.idempotency_records tenant-scoped Idempotency-Key replay store with 24h TTL (RT F6)"
+      "description": "V2 \u2014 paykit.idempotency_records tenant-scoped Idempotency-Key replay store with 24h TTL (RT F6)"
     },
     {
       "id": "008",
       "slug": "runtime_config",
       "up": "008_runtime_config.up.sql",
       "down": "008_runtime_config.down.sql",
-      "description": "V2 — paykit.runtime_config key-value toggles with TTL; first user webhook_strict_v2 canary auto-flip (Val S4 Q3)"
+      "description": "V2 \u2014 paykit.runtime_config key-value toggles with TTL; first user webhook_strict_v2 canary auto-flip (Val S4 Q3)"
     },
     {
       "id": "009",
       "slug": "ledger_v2_columns",
       "up": "009_ledger_v2_columns.up.sql",
       "down": "009_ledger_v2_columns.down.sql",
-      "description": "V2 — ledger_entries.provider + .source_id + UNIQUE (provider, source_id, entry_type) for Stripe-resend dedup (RT F1); extend entry_type CHECK with subscription_credit/refund_debit/dispute_debit/credit_note_debit"
+      "description": "V2 \u2014 ledger_entries.provider + .source_id + UNIQUE (provider, source_id, entry_type) for Stripe-resend dedup (RT F1); extend entry_type CHECK with subscription_credit/refund_debit/dispute_debit/credit_note_debit"
     },
     {
       "id": "010",
       "slug": "v3_payment_status_quarantine",
       "up": "010_v3_payment_status_quarantine.up.sql",
       "down": "010_v3_payment_status_quarantine.down.sql",
-      "description": "v0.2.1 hotfix — extend payment_transactions.status enum with 'quarantine' for V3 amount_mismatch path (Val Session 1 D3)"
+      "description": "v0.2.1 hotfix \u2014 extend payment_transactions.status enum with 'quarantine' for V3 amount_mismatch path (Val Session 1 D3)"
     },
     {
       "id": "011",
       "slug": "v3_payment_status_refund_pending_webhook",
       "up": "011_v3_payment_status_refund_pending_webhook.up.sql",
       "down": "011_v3_payment_status_refund_pending_webhook.down.sql",
-      "description": "V3 Phase 03 — extend payment_transactions.status enum with 'refund_pending_webhook' for NowPayments / BitPay async refund UX (Val Session 2 D8)"
+      "description": "V3 Phase 03 \u2014 extend payment_transactions.status enum with 'refund_pending_webhook' for NowPayments / BitPay async refund UX (Val Session 2 D8)"
     },
     {
       "id": "012",
       "slug": "merchants_and_api_keys",
       "up": "012_merchants_and_api_keys.up.sql",
       "down": "012_merchants_and_api_keys.down.sql",
-      "description": "V4 — merchants + api_keys tables for API-key authentication; merchant_id is root tenant entity"
+      "description": "V4 \u2014 merchants + api_keys tables for API-key authentication; merchant_id is root tenant entity"
     },
     {
       "id": "013",
@@ -99,7 +99,7 @@
       "slug": "api_keys_created_by",
       "up": "014_api_keys_created_by.up.sql",
       "down": "014_api_keys_created_by.down.sql",
-      "description": "V4.0 — add api_keys.created_by (nullable TEXT) for mint attribution; records acting principal (CLI operator or jwt-plane admin)"
+      "description": "V4.0 \u2014 add api_keys.created_by (nullable TEXT) for mint attribution; records acting principal (CLI operator or jwt-plane admin)"
     },
     {
       "id": "015",
@@ -113,7 +113,7 @@
       "slug": "discounts",
       "up": "016_discounts.up.sql",
       "down": "016_discounts.down.sql",
-      "description": "paykit.discounts — tenant-scoped promo codes (percent, redemption cap, expiry) for the public checkout API; race-safe consume guards the redemption cap"
+      "description": "paykit.discounts \u2014 tenant-scoped promo codes (percent, redemption cap, expiry) for the public checkout API; race-safe consume guards the redemption cap"
     },
     {
       "id": "017",
@@ -127,7 +127,7 @@
       "slug": "provider_payment_id",
       "up": "018_provider_payment_id.up.sql",
       "down": "018_provider_payment_id.down.sql",
-      "description": "Add payment_transactions.provider_payment_id — captured from the webhook on credit so async-refund providers (NowPayments) can call their refund API with the provider-native payment id, distinct from provider_ref (which keys the webhook lookup on order_id)"
+      "description": "Add payment_transactions.provider_payment_id \u2014 captured from the webhook on credit so async-refund providers (NowPayments) can call their refund API with the provider-native payment id, distinct from provider_ref (which keys the webhook lookup on order_id)"
     },
     {
       "id": "019",
@@ -148,14 +148,14 @@
       "slug": "screening_jobs",
       "up": "021_screening_jobs.up.sql",
       "down": "021_screening_jobs.down.sql",
-      "description": "The screening_pending payment status and paykit.screening_jobs — the durable handoff that keeps the tenant-supplied compliance screening call outside the crediting transaction, so a slow third-party endpoint no longer holds a payment row lock and a pooled connection for the length of its HTTP request"
+      "description": "The screening_pending payment status and paykit.screening_jobs \u2014 the durable handoff that keeps the tenant-supplied compliance screening call outside the crediting transaction, so a slow third-party endpoint no longer holds a payment row lock and a pooled connection for the length of its HTTP request"
     },
     {
       "id": "022",
       "slug": "refunds",
       "up": "022_refunds.up.sql",
       "down": "022_refunds.down.sql",
-      "description": "The paykit.refunds aggregate and the partially_refunded payment status — a refund gains its own identity and lifecycle so the ledger can be keyed per refund instead of per payment (which made every partial refund after the first collide with the first and skip its balance delta), and so a payment refunded in part is no longer recorded as refunded in full"
+      "description": "The paykit.refunds aggregate and the partially_refunded payment status \u2014 a refund gains its own identity and lifecycle so the ledger can be keyed per refund instead of per payment (which made every partial refund after the first collide with the first and skip its balance delta), and so a payment refunded in part is no longer recorded as refunded in full"
     },
     {
       "id": "023",
@@ -163,6 +163,13 @@
       "up": "023_reconciliation_run_status.up.sql",
       "down": "023_reconciliation_run_status.down.sql",
       "description": "reconciliation_runs.status gains 'partial' and 'skipped'. Both were previously recorded as 'failed', which conflated three different outcomes: a run where some providers reconciled and others errored, a run that never started because another instance held the lock, and a run where nothing reconciled at all. On a multi-instance deployment that made healthy lock contention look like a stream of failures"
+    },
+    {
+      "id": "024",
+      "slug": "idempotency_claim_token",
+      "up": "024_idempotency_claim_token.up.sql",
+      "down": "024_idempotency_claim_token.down.sql",
+      "description": "claim_token and claim_generation on paykit.idempotency_records \u2014 the ownership proof a finalize needs, so a claimant whose handler outlived the in-flight TTL cannot write its response into the claim a later request now holds, nor delete that claim on rollback"
     }
   ]
 }
