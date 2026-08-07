@@ -322,23 +322,34 @@ Thay đổi có breaking behaviour (phải document, không im lặng):
 
 ## 6. Migration allocation (khóa trước để tránh collision)
 
-Bảng dưới đây phản ánh **trạng thái thật của repo**, không phải phân bổ dự kiến ban đầu. Hai id đầu
-đã đổi nội dung so với bản thiết kế: `screening_pending` đi cùng bảng `screening_jobs` ở `021` (thay
-vì `026`) vì cả hai là một thay đổi không thể tách — thêm status mà không có bảng thì payment không
-có nơi nào để chờ verdict. Các state lifecycle còn lại (`provider_creating`, `awaiting_payment`,
-`partially_refunded`) dồn sang `022` cùng workstream cần chúng.
+Bảng dưới đây phản ánh **trạng thái thật của repo**, không phải phân bổ dự kiến ban đầu. Ba id đã
+đổi nội dung so với bản thiết kế, mỗi lần vì cùng một lý do: một status mới và bảng mà status đó dựa
+vào không tách được thành hai migration.
+
+- `021`: `screening_pending` đi cùng bảng `screening_jobs` (thiết kế ban đầu đặt status ở `026`) —
+  thêm status mà không có bảng thì payment không có nơi nào để chờ verdict.
+- `022`: `refunds` + `partially_refunded` (thiết kế đặt bảng ở `026`, status ở `022`) — không có
+  amount per-refund thì không có gì để so với captured amount, nên status không biểu diễn được.
+- `023`: `reconciliation_run_status` (thiết kế đặt ở `027`) — kéo lên vì cùng workstream với `022`
+  và không phụ thuộc migration nào ở giữa. Hai cột `cursor_json` / `provider` **không** nằm trong
+  `023`: chưa có code nào đọc chúng, và thêm cột không ai dùng là đúng loại schema drift phần
+  pagination sẽ phải sửa lại. Chúng đi cùng migration của pagination.
+
+`provider_creating` và `awaiting_payment` chưa landed — chúng thuộc workstream checkout
+idempotency (F6), không phải refund.
 
 | id | slug | trạng thái | nội dung |
 |---|---|---|---|
 | 019 | `money_integer_micros` | **đã landed** | `NUMERIC(20,6)` → `NUMERIC(30,0)` + pre-check fail-loud |
 | 020 | `money_and_currency_invariants` | **đã landed** | CHECK amount > 0 / <> 0 + ISO-4217 shape trên mọi cột currency khóa ví |
 | 021 | `screening_jobs` | **đã landed** | status `screening_pending` + bảng `screening_jobs` |
-| 022 | `payment_status_lifecycle` | còn lại | thêm `provider_creating`, `awaiting_payment`, `partially_refunded` vào CHECK |
-| 023 | `idempotency_claim_token` | còn lại | `claim_token uuid`, `claim_generation int`, index |
-| 024 | `checkout_provider_request` | còn lại | `provider_request_id`, `provider_created_at` trên payment_transactions |
-| 025 | `webhook_inbox` | còn lại | bảng `webhook_inbox` + index + backfill từ `webhook_events` |
-| 026 | `refunds` | còn lại | bảng `refunds` + UNIQUE + backfill từ `pending_refunds`/ledger |
-| 027 | `reconciliation_run_status` | còn lại | thêm `partial`, `skipped` vào CHECK + `cursor_json`, `provider` |
+| 022 | `refunds` | **đã landed** | bảng `refunds` + UNIQUE + status `partially_refunded` + backfill từ `pending_refunds`/ledger |
+| 023 | `reconciliation_run_status` | **đã landed** | thêm `partial`, `skipped` vào CHECK |
+| 024 | `payment_status_lifecycle` | còn lại | thêm `provider_creating`, `awaiting_payment` vào CHECK |
+| 025 | `idempotency_claim_token` | còn lại | `claim_token uuid`, `claim_generation int`, index |
+| 026 | `checkout_provider_request` | còn lại | `provider_request_id`, `provider_created_at` trên payment_transactions |
+| 027 | `webhook_inbox` | còn lại | bảng `webhook_inbox` + index + backfill từ `webhook_events` |
+| 028 | `reconciliation_cursor` | còn lại | `cursor_json`, `provider` + index (đi cùng pagination) |
 
 Mỗi migration: `NNN_<domain_slug>.up.sql` + `.down.sql` + entry trong `migrations/manifest.json`.
 **Không** đưa số phase / mã finding vào tên file hay comment SQL (rule
