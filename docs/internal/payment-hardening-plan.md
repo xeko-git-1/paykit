@@ -334,6 +334,11 @@ vào không tách được thành hai migration.
   và không phụ thuộc migration nào ở giữa. Hai cột `cursor_json` / `provider` **không** nằm trong
   `023`: chưa có code nào đọc chúng, và thêm cột không ai dùng là đúng loại schema drift phần
   pagination sẽ phải sửa lại. Chúng đi cùng migration của pagination.
+- `024`: `idempotency_claim_token` (thiết kế đặt ở `025`) — kéo lên vì F7 tự chứa trong
+  `idempotency.repo.ts` + middleware, không chờ workstream nào. Không có index đi kèm như thiết kế
+  dự kiến: `claim_token` chỉ xuất hiện trong `WHERE` **kèm** primary key `(tenant_id,
+  idempotency_key)`, nên lookup đã dùng PK — index riêng trên `claim_token` sẽ không bao giờ được
+  chọn và chỉ thêm chi phí ghi.
 
 `provider_creating` và `awaiting_payment` chưa landed — chúng thuộc workstream checkout
 idempotency (F6), không phải refund.
@@ -345,8 +350,8 @@ idempotency (F6), không phải refund.
 | 021 | `screening_jobs` | **đã landed** | status `screening_pending` + bảng `screening_jobs` |
 | 022 | `refunds` | **đã landed** | bảng `refunds` + UNIQUE + status `partially_refunded` + backfill từ `pending_refunds`/ledger |
 | 023 | `reconciliation_run_status` | **đã landed** | thêm `partial`, `skipped` vào CHECK |
-| 024 | `payment_status_lifecycle` | còn lại | thêm `provider_creating`, `awaiting_payment` vào CHECK |
-| 025 | `idempotency_claim_token` | còn lại | `claim_token uuid`, `claim_generation int`, index |
+| 024 | `idempotency_claim_token` | **đã landed** | `claim_token uuid` NOT NULL + `claim_generation int` |
+| 025 | `payment_status_lifecycle` | còn lại | thêm `provider_creating`, `awaiting_payment` vào CHECK |
 | 026 | `checkout_provider_request` | còn lại | `provider_request_id`, `provider_created_at` trên payment_transactions |
 | 027 | `webhook_inbox` | còn lại | bảng `webhook_inbox` + index + backfill từ `webhook_events` |
 | 028 | `reconciliation_cursor` | còn lại | `cursor_json`, `provider` + index (đi cùng pagination) |
@@ -513,10 +518,9 @@ Agent 6 phải:
 | 8 workstream, 6 branch sửa `manifest.json` | Trung bình | Allocation khóa trước ở §6; orchestrator resolve union+sort |
 | `webhook-router.ts` bị 3 agent cần | Trung bình | Agent 0 tách file trước, merge đầu tiên |
 | Test hiện tại mock DB → sửa lock mà test vẫn pass giả | Cao | Agent 6 bắt buộc dùng PG thật cho concurrency; không nhận PR lock nào chỉ có unit test mock |
-| `onBeforeCredit` đổi thời điểm gọi (breaking) | Trung bình | ADR-0004 + document ở upgrade guide; giữ signature |
+| `onBeforeCredit` đổi thời điểm gọi (breaking) | Trung bình | **đã xử lý** — hook chạy ở screening worker ngoài transaction; boundary + yêu cầu drain ghi ở `docs/compliance-onbeforecredit.md`; signature giữ nguyên |
 | Backfill `refunds` từ ledger thiếu `provider_refund_id` | Thấp | Cột nullable; reconciler bù dần |
 | `pending` ≡ `awaiting_payment` trong 1 release | Trung bình | Compat shim ở transition module + test cả hai giá trị |
-| 018 chưa commit (`packages/cli/migrations/*` untracked + manifest modified) | Thấp | Commit hoặc regenerate bằng `pnpm --filter cli build` trước khi tạo worktree — nếu không, worktree mới thiếu bản copy |
 
 ---
 
