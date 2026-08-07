@@ -77,7 +77,15 @@ export async function findByProviderRef(
 export async function updateTransactionStatus(
   db: DbOrTx,
   transactionId: string,
-  status: "pending" | "completed" | "failed" | "refunded" | "expired" | "quarantine" | "refund_pending_webhook",
+  status:
+    | "pending"
+    | "completed"
+    | "failed"
+    | "refunded"
+    | "partially_refunded"
+    | "expired"
+    | "quarantine"
+    | "refund_pending_webhook",
   providerRef?: string,
 ): Promise<PaymentTransaction | undefined> {
   const update: { status: typeof status; updatedAt: Date; providerRef?: string } = {
