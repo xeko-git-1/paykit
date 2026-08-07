@@ -24,6 +24,7 @@ import {
   type ProviderRegistry,
   TenantResolutionError,
   type TenantResolver,
+  usdToMicros,
   vndToMicros,
 } from "@vibecc/paykit";
 import { eq } from "drizzle-orm";
@@ -102,7 +103,7 @@ async function handleCheckout(
     if (parsed.amountUsd === undefined) {
       return errorJson(c, 400, "VALIDATION_ERROR", "amountUsd required for USD provider");
     }
-    amountMicros = BigInt(Math.round(parsed.amountUsd * 100)) * 10_000n;
+    amountMicros = usdToMicros(parsed.amountUsd);
   } else if (currency === "VND") {
     if (parsed.amountVnd === undefined) {
       return errorJson(c, 400, "VALIDATION_ERROR", "amountVnd required for VND provider");

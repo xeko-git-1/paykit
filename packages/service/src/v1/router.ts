@@ -9,6 +9,7 @@
  *   POST /v1/api-keys    [jwt plane ONLY, key:manage] + scope-subset + DB cap
  */
 import type { AppliedDiscount, ProviderRegistry } from "@vibecc/paykit";
+import { usdToMicros, vndToMicros } from "@vibecc/paykit";
 import {
   type DbClient,
   type PaykitAuthContext,
@@ -87,12 +88,15 @@ export function buildV1Router(deps: V1RouterDeps): Hono {
       if (parsed.amountUsd === undefined) {
         return errorJson(c, 400, "VALIDATION_ERROR", "amountUsd required for USD provider");
       }
-      amountMicros = BigInt(Math.round(parsed.amountUsd * 100)) * 10_000n;
+      amountMicros = usdToMicros(parsed.amountUsd);
     } else if (currency === "VND") {
       if (parsed.amountVnd === undefined) {
         return errorJson(c, 400, "VALIDATION_ERROR", "amountVnd required for VND provider");
       }
-      amountMicros = BigInt(parsed.amountVnd) * 1_000_000n;
+      // Was `BigInt(parsed.amountVnd) * 1_000_000n`, which skipped the integer
+      // check `vndToMicros` performs: a fractional dong reached BigInt() and threw
+      // a RangeError, surfacing as a 500 instead of a validation error.
+      amountMicros = vndToMicros(parsed.amountVnd);
     } else {
       return errorJson(c, 400, "UNSUPPORTED_CURRENCY", `unsupported: ${currency}`);
     }
