@@ -6,6 +6,7 @@ import type { DbClient, DbOrTx } from "../client.js";
 import {
   type NewReconciliationRun,
   type ReconciliationRun,
+  type ReconciliationRunStatus,
   reconciliationRuns,
 } from "../schema/reconciliation-runs.js";
 
@@ -16,10 +17,20 @@ export async function startRun(db: DbOrTx, startedAt: Date): Promise<Reconciliat
   return row;
 }
 
+/**
+ * Close a run with the status it actually reached.
+ *
+ * `partial` and `skipped` are distinct outcomes and must not be folded into
+ * `failed`. A run that reconciled four providers and lost one is not the same as a
+ * run that reconciled nothing, and a run that found the lock held did no work at
+ * all — reporting either as `failed` makes the audit trail unable to answer
+ * "was this window reconciled?", and makes contention indistinguishable from a
+ * genuine error on a dashboard.
+ */
 export async function completeRun(
   db: DbOrTx,
   runId: string,
-  status: "completed" | "failed",
+  status: Exclude<ReconciliationRunStatus, "running">,
   summaryJson: Record<string, unknown>,
 ): Promise<ReconciliationRun | undefined> {
   const [row] = await db

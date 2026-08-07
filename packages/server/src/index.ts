@@ -45,6 +45,7 @@ export {
   pendingRefundState,
   reconciliationRuns,
   type ReconciliationRun,
+  type ReconciliationRunStatus,
   type Refund,
   refunds,
   type RefundStatus,

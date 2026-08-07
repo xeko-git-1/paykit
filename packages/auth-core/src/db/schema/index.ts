@@ -33,6 +33,7 @@ export {
   type NewReconciliationRun,
   reconciliationRuns,
   type ReconciliationRun,
+  type ReconciliationRunStatus,
 } from "./reconciliation-runs.js";
 export {
   type NewRefund,
