@@ -47,6 +47,7 @@ export {
   parseMicros,
   stripeUsdAmountToMicros,
   SUPPORTED_CURRENCY_CODES,
+  usdToMicros,
   vndToMicros,
 } from "./money/index.js";
 
