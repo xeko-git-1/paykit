@@ -50,6 +50,10 @@ export {
   vndToMicros,
 } from "./money/index.js";
 
+// Refund-derived payment status — one comparison, shared by every write path
+export type { RefundedPaymentStatus } from "./payments/index.js";
+export { isRefundableStatus, refundedPaymentStatus } from "./payments/index.js";
+
 // Compliance screening contract
 export type {
   OnBeforeCreditHook,

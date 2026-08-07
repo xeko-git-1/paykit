@@ -43,5 +43,20 @@ export interface NormalizedWebhookEvent {
    * refund by providerRef.
    */
   readonly providerPaymentId?: string;
+  /**
+   * The provider's own identifier for the refund this event reports.
+   *
+   * Required to process a refund correctly, and not interchangeable with
+   * `providerRef`: `providerRef` names the PAYMENT, so keying a refund on it
+   * makes every refund of one payment look like the same refund. The ledger is
+   * unique on (provider, source_id, entry_type), so the second partial refund
+   * then collides with the first and its balance move is skipped — the money
+   * stays in the wallet while the caller sees success.
+   *
+   * Omitted only by providers that do not name their refunds. Such a refund
+   * cannot be told apart from a redelivery of an earlier one, so the server
+   * treats it as at most one refund per payment.
+   */
+  readonly providerRefundId?: string;
   readonly metadata: Record<string, unknown>;
 }
