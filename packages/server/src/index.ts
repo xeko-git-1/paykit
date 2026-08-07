@@ -31,6 +31,7 @@ export {
   type NewPaymentTransaction,
   type NewPendingRefund,
   type NewReconciliationRun,
+  type NewRefund,
   type NewRuntimeConfig,
   type NewScreeningJob,
   type NewSubscription,
@@ -44,6 +45,10 @@ export {
   pendingRefundState,
   reconciliationRuns,
   type ReconciliationRun,
+  type Refund,
+  refunds,
+  type RefundStatus,
+  type RefundTerminalFailure,
   type RuntimeConfig,
   runtimeConfig,
   type ScreeningDecidedState,
@@ -96,7 +101,10 @@ export {
   type SecretLoaderDeps,
 } from "./auth/jwt-middleware.js";
 export { JWT_ISSUER, JWT_AUDIENCE } from "@vibecc/paykit-auth-core/auth/jwt-claims.js";
-export { mintAdminJwt, type MintAdminJwtOpts } from "@vibecc/paykit-auth-core/auth/mint-admin-jwt.js";
+export {
+  mintAdminJwt,
+  type MintAdminJwtOpts,
+} from "@vibecc/paykit-auth-core/auth/mint-admin-jwt.js";
 export {
   authPlaneDispatcher,
   type AuthPlaneDispatcherDeps,
@@ -118,6 +126,7 @@ export * as merchantRepo from "@vibecc/paykit-auth-core/db/repos/merchant.repo.j
 export * as paymentRepo from "@vibecc/paykit-auth-core/db/repos/payment.repo.js";
 export * as pendingRefundRepo from "@vibecc/paykit-auth-core/db/repos/pending-refund.repo.js";
 export * as reconciliationRepo from "@vibecc/paykit-auth-core/db/repos/reconciliation.repo.js";
+export * as refundRepo from "@vibecc/paykit-auth-core/db/repos/refund.repo.js";
 export * as runtimeConfigRepo from "@vibecc/paykit-auth-core/db/repos/runtime-config.repo.js";
 export * as screeningJobRepo from "@vibecc/paykit-auth-core/db/repos/screening-job.repo.js";
 export * as subscriptionRepo from "@vibecc/paykit-auth-core/db/repos/subscription.repo.js";
