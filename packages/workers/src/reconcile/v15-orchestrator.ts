@@ -4,10 +4,16 @@
  * Iterates over all adapters in the ProviderRegistry; for each, calls
  * `adapter.fetchTransactions(window)` and diffs against paykit's snapshot.
  *
- * 3-level run status (red-team F10):
- *   - 'completed': all adapters succeeded
- *   - 'partial':   some adapters threw or timed out; others succeeded
- *   - 'failed':    fatal error (lock acquisition, DB issue)
+ * Run status carries four distinct outcomes, because an operator reading the audit
+ * trail has to be able to tell them apart:
+ *   - 'completed': every adapter reconciled
+ *   - 'partial':   some adapters reconciled, some did not — the window is covered
+ *                  except for the named providers
+ *   - 'failed':    no adapter reconciled; the window was not covered at all and
+ *                  the next run must cover it again
+ *   - 'skipped':   another instance held the lock, so this invocation did no work.
+ *                  Not an error: it is the expected outcome of running on a
+ *                  schedule across several instances.
  *
  * Pending refunds (ZaloPay PROCESSING) polled in same run via `pollPendingRefunds`.
  */
@@ -15,6 +21,7 @@ import type { ProviderRegistry } from "@vibecc/paykit";
 import {
   type DbClient,
   type PaymentTransaction,
+  type ReconciliationRunStatus,
   balanceRepo,
   ledgerRepo,
   paymentTransactions,
@@ -47,7 +54,15 @@ export interface ReconcileV15Deps {
 export interface ReconcileV15Result {
   readonly summary: ReconciliationSummary | null;
   readonly skipped: false | "lock_held";
-  readonly status: "completed" | "partial" | "failed";
+  /**
+   * What the run actually achieved.
+   *
+   * `skipped` is its own outcome, distinct from `failed`: another instance held
+   * the lock, so this run did no work and nothing went wrong. Reporting it as
+   * `failed` makes normal multi-instance contention page an operator, and makes
+   * the alert that should fire on a real failure untrustworthy.
+   */
+  readonly status: Exclude<ReconciliationRunStatus, "running">;
 }
 
 const DEFAULT_PENDING_STALE_MS = 5 * 60 * 1000;
@@ -63,13 +78,17 @@ export async function reconcileV15(
 
   const acquired = await tryAcquireReconcileLock(db);
   if (!acquired) {
-    return { summary: null, skipped: "lock_held", status: "failed" };
+    return { summary: null, skipped: "lock_held", status: "skipped" };
   }
 
-  try {
-    const startedAt = new Date();
-    const run = await reconciliationRepo.startRun(db, startedAt);
+  // Opened before the try so the catch below can close it. A run row left in
+  // `running` never resolves: it is indistinguishable from a run still in
+  // progress, so the next invocation cannot tell whether this window was
+  // reconciled, and a stuck-run alert built on `running` fires forever.
+  const startedAt = new Date();
+  const run = await reconciliationRepo.startRun(db, startedAt);
 
+  try {
     // Snapshot paykit transactions in window (all providers)
     const paykitRows = (await db
       .select()
@@ -116,16 +135,29 @@ export async function reconcileV15(
     // Poll pending_refunds in same run
     const pendingResults = await pollPendingRefunds(deps, opts);
 
-    // Compute final run status
-    const hasFailures = Object.keys(adapterErrors).length > 0;
-    const runStatus: "completed" | "partial" =
-      hasFailures || pendingResults.failed > 0 ? "partial" : "completed";
+    // The run's outcome, distinguishing "some of it worked" from "none of it did".
+    //
+    // Every adapter failing is not the same as one failing: the first means the
+    // window was not reconciled at all and the next run must cover it again, the
+    // second means the window is reconciled except for one provider. Collapsing
+    // both into one status leaves an operator unable to tell which happened.
+    const failedAdapters = Object.keys(adapterErrors).length;
+    const allAdaptersFailed = adapters.length > 0 && failedAdapters === adapters.length;
+    const anythingFailed = failedAdapters > 0 || pendingResults.failed > 0;
+    const runStatus: Exclude<ReconciliationRunStatus, "running" | "skipped"> = allAdaptersFailed
+      ? "failed"
+      : anythingFailed
+        ? "partial"
+        : "completed";
 
     const summary: ReconciliationSummary = {
       runId: run.runId,
       startedAt,
       completedAt: new Date(),
-      status: "completed",
+      // The status the run actually reached. This was hardcoded `completed`, so
+      // the summary stored in the audit trail claimed success even for a run that
+      // lost every provider.
+      status: runStatus,
       window: { since, until },
       perProvider,
       discrepancies: allDiscrepancies,
@@ -139,14 +171,31 @@ export async function reconcileV15(
       pendingRefunds: pendingResults,
     };
 
-    await reconciliationRepo.completeRun(
-      db,
-      run.runId,
-      runStatus === "partial" ? "failed" : "completed",
-      summaryJson,
-    );
+    // Stored as-is. Mapping `partial` onto `failed` here is what made a run that
+    // reconciled four providers out of five indistinguishable from one that
+    // reconciled nothing.
+    await reconciliationRepo.completeRun(db, run.runId, runStatus, summaryJson);
 
     return { summary, skipped: false, status: runStatus };
+  } catch (err) {
+    // Close the run row before rethrowing. Without this the row stays `running`
+    // for good: nothing else ever revisits it, so the audit trail shows a
+    // reconciliation that started and never ended, and a monitor counting
+    // in-flight runs climbs by one on every crash.
+    try {
+      await reconciliationRepo.completeRun(db, run.runId, "failed", {
+        error: err instanceof Error ? err.message : String(err),
+        window: { since: since.toISOString(), until: until.toISOString() },
+      });
+    } catch (closeErr) {
+      // The database is likely the reason the run failed at all. Log and let the
+      // original error propagate — replacing it with this one would hide the cause.
+      logger?.warn("Reconciler: could not record the failed run", {
+        runId: run.runId,
+        error: closeErr instanceof Error ? closeErr.message : String(closeErr),
+      });
+    }
+    throw err;
   } finally {
     await releaseReconcileLock(db);
   }

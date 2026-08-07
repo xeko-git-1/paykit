@@ -6,6 +6,8 @@
  * BigInt to JSON.
  */
 
+import type { ReconciliationRunStatus } from "@vibecc/paykit-server";
+
 export type DiscrepancyType =
   | "matched"
   | "paykit_missing" // provider has tx, paykit doesn't
@@ -35,7 +37,14 @@ export interface ReconciliationSummary {
   readonly runId: string;
   readonly startedAt: Date;
   readonly completedAt: Date | null;
-  readonly status: "running" | "completed" | "failed";
+  /**
+   * Reuses the run-status vocabulary from the reconciliation_runs table, so the
+   * summary written into `summary_json` cannot describe an outcome the row itself
+   * is unable to hold. `partial` and `skipped` matter here for the same reason
+   * they matter on the row: a run that lost one provider out of four still
+   * reconciled four, and a run that found the lock held did no work at all.
+   */
+  readonly status: ReconciliationRunStatus;
   readonly window: { readonly since: Date; readonly until: Date };
   readonly perProvider: Record<string, PerProviderStats>;
   readonly discrepancies: readonly Discrepancy[];
