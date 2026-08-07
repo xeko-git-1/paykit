@@ -24,7 +24,7 @@
  *   - Retries (same idempotency key) return existing result without re-evaluating gate
  */
 import type { ProviderRegistry, RefundResult } from "@vibecc/paykit";
-import { eq } from "drizzle-orm";
+import { isRefundableStatus, parseMicros, refundedPaymentStatus } from "@vibecc/paykit";
 import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
 import { applyDelta } from "@vibecc/paykit-auth-core/db/repos/balance.repo.js";
 import {
@@ -41,6 +41,7 @@ import {
 } from "@vibecc/paykit-auth-core/db/repos/pending-refund.repo.js";
 import { paymentTransactions } from "@vibecc/paykit-auth-core/db/schema/payment-transactions.js";
 import type { PaymentTransaction } from "@vibecc/paykit-auth-core/db/schema/payment-transactions.js";
+import { eq } from "drizzle-orm";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -77,7 +78,8 @@ export type RefundCoreResult =
 // ---------------------------------------------------------------------------
 
 type ReserveSuccess = { kind: "reserved"; pendingId: string };
-type ReserveDedup = { kind: "dedup_completed"; entryId: string }
+type ReserveDedup =
+  | { kind: "dedup_completed"; entryId: string }
   | { kind: "dedup_pending"; pendingId: string }
   | { kind: "dedup_failed"; pendingId: string };
 type ReserveRejected = { kind: "exceeds_remaining"; remaining: bigint };
@@ -103,10 +105,12 @@ export async function executeRefund(
     return { state: "provider_unknown", provider: txRow.provider };
   }
 
-  // Defense-in-depth: a fully-refunded transaction must not accept further refunds.
-  // Guards the over-refund window if a reservation is ever released without a
-  // corresponding committed ledger entry (e.g. race between webhook + reconciler).
-  if (txRow.status === "refunded") {
+  // Only a payment that still holds money can give any back. `partially_refunded`
+  // deliberately passes: some of its money is still there, and how much is decided
+  // under the lock below. Anything else — never credited, quarantined, expired,
+  // already fully refunded — has nothing available, and the shared predicate keeps
+  // that judgement identical to the webhook path's.
+  if (!isRefundableStatus(txRow.status)) {
     return { state: "exceeds_remaining", remaining: 0n, requested: amountMicros };
   }
 
@@ -209,10 +213,19 @@ export async function executeRefund(
     return { state: "pending", pendingId: reserveOutcome.pendingId };
   }
   if (reserveOutcome.kind === "dedup_failed") {
-    return { state: "failed", statusCode: 502, code: "PROVIDER_REFUND_FAILED", message: "Prior refund attempt failed" };
+    return {
+      state: "failed",
+      statusCode: 502,
+      code: "PROVIDER_REFUND_FAILED",
+      message: "Prior refund attempt failed",
+    };
   }
   if (reserveOutcome.kind === "exceeds_remaining") {
-    return { state: "exceeds_remaining", remaining: reserveOutcome.remaining, requested: amountMicros };
+    return {
+      state: "exceeds_remaining",
+      remaining: reserveOutcome.remaining,
+      requested: amountMicros,
+    };
   }
 
   // ─── PSP call — outside the lock ──────────────────────────────────────────
@@ -240,7 +253,12 @@ export async function executeRefund(
     await db.transaction(async (tx) => {
       await markFailed(tx, pendingId, { error: err instanceof Error ? err.message : String(err) });
     });
-    return { state: "failed", statusCode: 502, code: "PROVIDER_REFUND_ERROR", message: "Provider refund call failed" };
+    return {
+      state: "failed",
+      statusCode: 502,
+      code: "PROVIDER_REFUND_ERROR",
+      message: "Provider refund call failed",
+    };
   }
 
   // ─── TX2: Finalize based on PSP result ─────────────────────────────────────
@@ -343,18 +361,23 @@ async function finalizeRefund(
     if (inserted) {
       await applyDelta(tx, txRow.tenantId, txRow.currencyCode, -amountMicros);
 
-      // Check if cumulative refunds now cover the full original amount
+      // Derive the payment's status from the total that actually moved, so a
+      // partial refund is recorded as partial. Marking it fully `refunded` would
+      // also make the remainder unrefundable, because the gate above refuses a
+      // payment that is not in a refundable status.
       const totalRefundedStr = await sumRefundsByOriginalTransaction(tx, {
         tenantId: txRow.tenantId,
         currencyCode: txRow.currencyCode,
         originalTransactionId: txRow.transactionId,
       });
-      const totalRefunded = BigInt(totalRefundedStr.split(".")[0] ?? "0"); // negative
-      // totalRefunded is negative; if |totalRefunded| >= original, tx is fully refunded
-      if (-totalRefunded >= originalMicros) {
+      // Ledger refund entries are stored negative; the comparison is in
+      // magnitudes, so the sign is dropped here.
+      const totalRefunded = -parseMicros(totalRefundedStr);
+      const nextStatus = refundedPaymentStatus(originalMicros, totalRefunded);
+      if (nextStatus !== "completed") {
         await tx
           .update(paymentTransactions)
-          .set({ status: "refunded", updatedAt: new Date() })
+          .set({ status: nextStatus, updatedAt: new Date() })
           .where(eq(paymentTransactions.transactionId, txRow.transactionId));
       }
     }
@@ -368,7 +391,9 @@ async function finalizeRefund(
   return {
     state: "completed" as const,
     entryId: ledgerWrite.entry.entryId,
-    ...(refundResult.providerRefundId !== undefined ? { providerRefundId: refundResult.providerRefundId } : {}),
+    ...(refundResult.providerRefundId !== undefined
+      ? { providerRefundId: refundResult.providerRefundId }
+      : {}),
     inserted: ledgerWrite.inserted,
   };
 }

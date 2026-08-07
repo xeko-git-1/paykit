@@ -25,6 +25,7 @@ vi.mock("@vibecc/paykit-auth-core/db/repos/webhook-event.repo.js", () => ({
 }));
 vi.mock("@vibecc/paykit-auth-core/db/repos/ledger.repo.js", () => ({
   appendLedgerEntryIdempotent: vi.fn(),
+  sumRefundsByOriginalTransaction: vi.fn(),
 }));
 vi.mock("@vibecc/paykit-auth-core/db/repos/balance.repo.js", () => ({
   applyDelta: vi.fn(),
@@ -40,11 +41,13 @@ vi.mock("@vibecc/paykit-auth-core/db/repos/refund.repo.js", () => ({
   createRefund: vi.fn(),
   findByProviderRefundId: vi.fn(),
   markSucceeded: vi.fn(),
-  sumSucceededByTransaction: vi.fn(),
 }));
 
 import { applyDelta } from "@vibecc/paykit-auth-core/db/repos/balance.repo.js";
-import { appendLedgerEntryIdempotent } from "@vibecc/paykit-auth-core/db/repos/ledger.repo.js";
+import {
+  appendLedgerEntryIdempotent,
+  sumRefundsByOriginalTransaction,
+} from "@vibecc/paykit-auth-core/db/repos/ledger.repo.js";
 import { updateTransactionStatus } from "@vibecc/paykit-auth-core/db/repos/payment.repo.js";
 import {
   findActiveByTransaction,
@@ -54,7 +57,6 @@ import {
   createRefund,
   findByProviderRefundId,
   markSucceeded,
-  sumSucceededByTransaction,
 } from "@vibecc/paykit-auth-core/db/repos/refund.repo.js";
 import { tryRecordWebhookEvent } from "@vibecc/paykit-auth-core/db/repos/webhook-event.repo.js";
 import { buildWebhookRouter } from "../src/routes/webhooks/webhook-router.js";
@@ -68,7 +70,14 @@ const mUpdateStatus = updateTransactionStatus as ReturnType<typeof vi.fn>;
 const mCreateRefund = createRefund as ReturnType<typeof vi.fn>;
 const mFindByRefundId = findByProviderRefundId as ReturnType<typeof vi.fn>;
 const mMarkSucceeded = markSucceeded as ReturnType<typeof vi.fn>;
-const mSumSucceeded = sumSucceededByTransaction as ReturnType<typeof vi.fn>;
+/**
+ * The refunded total comes from the LEDGER, not from the refund table, so the
+ * admin path and this path agree: the admin path writes a ledger entry without a
+ * refund row, and summing the refund table would miss it and under-report how much
+ * has been returned. Ledger refund entries are stored negative, hence the signs in
+ * the values these tests return.
+ */
+const mSumRefunded = sumRefundsByOriginalTransaction as ReturnType<typeof vi.fn>;
 
 const TX_ID = "a0000000-0000-4000-8000-000000000001";
 const REFUND_ID = "d0000000-0000-4000-8000-00000000000d";
@@ -166,7 +175,7 @@ beforeEach(() => {
   mFindByRefundId.mockReset().mockResolvedValue(undefined);
   mMarkSucceeded.mockReset().mockResolvedValue({ refundId: REFUND_ID, status: "succeeded" });
   // Refunded total AFTER this refund settled — the handler reads it back.
-  mSumSucceeded.mockReset().mockResolvedValue("1000000");
+  mSumRefunded.mockReset().mockResolvedValue("-1000000");
 });
 
 describe("webhook payment.refunded — the money move", () => {
@@ -217,14 +226,14 @@ describe("webhook payment.refunded — the money move", () => {
 
 describe("webhook payment.refunded — the resulting payment status", () => {
   it("is partially_refunded when the refunded total is below the captured amount", async () => {
-    mSumSucceeded.mockResolvedValue("1000000"); // of 5_000_000
+    mSumRefunded.mockResolvedValue("-1000000"); // of 5_000_000
     await post();
     expect(mUpdateStatus).toHaveBeenCalledWith(expect.anything(), TX_ID, "partially_refunded");
   });
 
   it("is refunded once the refunded total reaches the captured amount", async () => {
     event = refundEvent("4000000");
-    mSumSucceeded.mockResolvedValue("5000000");
+    mSumRefunded.mockResolvedValue("-5000000");
     await post();
     expect(mUpdateStatus).toHaveBeenCalledWith(expect.anything(), TX_ID, "refunded");
   });
@@ -232,7 +241,7 @@ describe("webhook payment.refunded — the resulting payment status", () => {
   it("is refunded when a provider returns marginally more than was captured", async () => {
     // Providers do occasionally return a rounding unit extra. Treating that as a
     // defect would strand the payment in partially_refunded forever.
-    mSumSucceeded.mockResolvedValue("5000001");
+    mSumRefunded.mockResolvedValue("-5000001");
     await post();
     expect(mUpdateStatus).toHaveBeenCalledWith(expect.anything(), TX_ID, "refunded");
   });
@@ -266,7 +275,7 @@ describe("webhook payment.refunded — events that must not move money", () => {
   });
 
   it("accepts a further refund on an already partially-refunded payment", async () => {
-    mSumSucceeded.mockResolvedValue("2000000");
+    mSumRefunded.mockResolvedValue("-2000000");
     await post({ ...TX_ROW, status: "partially_refunded" });
     expect(mAppend).toHaveBeenCalledTimes(1);
     expect(mUpdateStatus).toHaveBeenCalledWith(expect.anything(), TX_ID, "partially_refunded");

@@ -19,7 +19,10 @@ import { isRefundableStatus, parseMicros, refundedPaymentStatus } from "@vibecc/
 import type { NormalizedWebhookEvent } from "@vibecc/paykit";
 import type { DbOrTx } from "@vibecc/paykit-auth-core/db/client.js";
 import { applyDelta } from "@vibecc/paykit-auth-core/db/repos/balance.repo.js";
-import { appendLedgerEntryIdempotent } from "@vibecc/paykit-auth-core/db/repos/ledger.repo.js";
+import {
+  appendLedgerEntryIdempotent,
+  sumRefundsByOriginalTransaction,
+} from "@vibecc/paykit-auth-core/db/repos/ledger.repo.js";
 import { updateTransactionStatus } from "@vibecc/paykit-auth-core/db/repos/payment.repo.js";
 import {
   findActiveByTransaction,
@@ -29,7 +32,6 @@ import {
   createRefund,
   findByProviderRefundId,
   markSucceeded,
-  sumSucceededByTransaction,
 } from "@vibecc/paykit-auth-core/db/repos/refund.repo.js";
 import type { PaymentTransaction } from "@vibecc/paykit-auth-core/db/schema/payment-transactions.js";
 
@@ -225,14 +227,16 @@ export async function applyRefundEvent(
     await markCompleted(tx, reservation.pendingId);
   }
 
-  // Derive the payment's status from what has actually been refunded, rather than
-  // assuming any refund is a full one.
-  const refundedTotal = parseMicros(
-    await sumSucceededByTransaction(tx, {
-      transactionId: row.transactionId,
-      currencyCode: row.currencyCode,
-    }),
-  );
+  // Derive the payment's status from what has actually been refunded. Both paths
+  // that write refund ledger entries (webhook here, admin in refund-core) use the
+  // same ledger sum, so the total is complete regardless of which path was used.
+  const totalRefundedStr = await sumRefundsByOriginalTransaction(tx, {
+    tenantId: row.tenantId,
+    currencyCode: row.currencyCode,
+    originalTransactionId: row.transactionId,
+  });
+  // Ledger refund entries are stored negative; negate to get the positive total.
+  const refundedTotal = -parseMicros(totalRefundedStr);
   const nextStatus = refundedPaymentStatus(parseMicros(row.amountMicros), refundedTotal);
   if (nextStatus === "completed") {
     // Unreachable in practice: a refund just succeeded, so the total is positive.
