@@ -28,7 +28,8 @@ export const pendingRefunds = paykitSchema.table("pending_refunds", {
   provider: text("provider").notNull(),
   providerRefundId: text("provider_refund_id"),
   idempotencyKey: text("idempotency_key").notNull(),
-  amountMicros: numeric("amount_micros", { precision: 20, scale: 6 }).notNull(),
+  // Integer micros, positive: the amount reserved for this refund attempt.
+  amountMicros: numeric("amount_micros", { precision: 30, scale: 0 }).notNull(),
   currencyCode: text("currency_code").notNull(),
   reason: text("reason").notNull(),
   state: text("state").notNull().default("queued"),
