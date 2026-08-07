@@ -149,6 +149,13 @@
       "up": "021_screening_jobs.up.sql",
       "down": "021_screening_jobs.down.sql",
       "description": "The screening_pending payment status and paykit.screening_jobs — the durable handoff that keeps the tenant-supplied compliance screening call outside the crediting transaction, so a slow third-party endpoint no longer holds a payment row lock and a pooled connection for the length of its HTTP request"
+    },
+    {
+      "id": "022",
+      "slug": "refunds",
+      "up": "022_refunds.up.sql",
+      "down": "022_refunds.down.sql",
+      "description": "The paykit.refunds aggregate and the partially_refunded payment status — a refund gains its own identity and lifecycle so the ledger can be keyed per refund instead of per payment (which made every partial refund after the first collide with the first and skip its balance delta), and so a payment refunded in part is no longer recorded as refunded in full"
     }
   ]
 }
