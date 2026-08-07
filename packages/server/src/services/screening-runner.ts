@@ -30,12 +30,15 @@ import {
   releaseReservation,
 } from "@vibecc/paykit-auth-core/db/repos/discount.repo.js";
 import { appendLedgerEntryIdempotent } from "@vibecc/paykit-auth-core/db/repos/ledger.repo.js";
+import { findByProviderRef } from "@vibecc/paykit-auth-core/db/repos/payment.repo.js";
 import {
   claimNextScreeningJob,
   markScreeningDecided,
   markScreeningRetryable,
 } from "@vibecc/paykit-auth-core/db/repos/screening-job.repo.js";
 import type { ScreeningJob } from "@vibecc/paykit-auth-core/db/schema/screening-jobs.js";
+import type { PaykitEventHandlers } from "../events/emitter.js";
+import { emitEvent } from "../events/emitter.js";
 import {
   MAX_SCREENING_ATTEMPTS,
   screeningAttemptsExhausted,
@@ -46,6 +49,13 @@ import { creditScreenedPayment, quarantineScreenedPayment } from "./screening-ve
 export interface ScreeningRunnerDeps {
   readonly db: DbClient;
   readonly screeningService: ScreeningService;
+  /**
+   * Lifecycle handlers. `payment.completed` fires from here rather than from the
+   * webhook when screening is configured: the webhook only parks the payment, so
+   * at that point there is nothing to announce. A consumer listening for
+   * completion must still hear about a payment that screening later cleared.
+   */
+  readonly events?: PaykitEventHandlers;
   /**
    * Bound on one screening call. A tenant service that never returns would
    * otherwise hold its claim until the lease expires and then be retried
@@ -148,7 +158,7 @@ export async function processNextScreeningJob(
     // would otherwise either credit a payment whose job still looks claimable
     // (double credit risk, bounded only by the ledger unique index) or mark a
     // job cleared without the money having moved.
-    await creditScreenedPayment(deps.db, job, {
+    const { applied } = await creditScreenedPayment(deps.db, job, {
       appendLedgerEntryIdempotent,
       applyDelta,
       markScreeningDecided,
@@ -157,6 +167,11 @@ export async function processNextScreeningJob(
       now: now(),
     });
     deps.emitMetric?.("paykit_credit_screened_total", { provider: job.provider });
+    // Emitted only when this caller won the status transition. A duplicated
+    // verdict is a no-op on the money, so it has to be a no-op on the event too:
+    // a consumer that fulfils an order on payment.completed would otherwise
+    // fulfil it twice.
+    if (applied) await emitCompleted(deps, job);
     return { result: "credited", transactionId: job.transactionId };
   }
 
@@ -248,6 +263,29 @@ async function scheduleRetry(
   });
   deps.emitMetric?.("paykit_screening_retry_total", { provider: job.provider });
   return { result: "retry_scheduled", transactionId: job.transactionId, nextAttemptAt };
+}
+
+/**
+ * Announce a screened payment as completed, after its credit transaction has
+ * committed.
+ *
+ * The row is re-read rather than reconstructed from the job: handlers receive the
+ * persisted transaction, and its status is only `completed` once the verdict
+ * transaction landed. Reading it here also means the handler cannot observe a
+ * payment that a rolled-back transaction never credited.
+ *
+ * `emitEvent` already swallows handler throws, and a missing row is treated as
+ * nothing to announce — neither can undo money that is already committed.
+ */
+async function emitCompleted(deps: ScreeningRunnerDeps, job: ScreeningJob): Promise<void> {
+  if (deps.events === undefined) return;
+  const row = await findByProviderRef(deps.db, job.provider, job.sourceId);
+  if (row === undefined) return;
+  await emitEvent(
+    deps.events,
+    { type: "payment.completed", transaction: row },
+    deps.logger ?? { warn: () => {} },
+  );
 }
 
 /**

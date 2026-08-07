@@ -459,6 +459,9 @@ async function handleWebhook(
         await processNextScreeningJob({
           db: deps.db,
           screeningService,
+          // The verdict path owns payment.completed for a screened payment: the
+          // park above had nothing to announce yet.
+          events: deps.events,
           ...(deps.logger !== undefined ? { logger: deps.logger } : {}),
           ...(deps.emitMetric !== undefined ? { emitMetric: deps.emitMetric } : {}),
         });
