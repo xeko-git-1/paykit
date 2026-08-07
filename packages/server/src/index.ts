@@ -32,6 +32,7 @@ export {
   type NewPendingRefund,
   type NewReconciliationRun,
   type NewRuntimeConfig,
+  type NewScreeningJob,
   type NewSubscription,
   type NewSubscriptionEvent,
   type NewWebhookEvent,
@@ -45,6 +46,10 @@ export {
   type ReconciliationRun,
   type RuntimeConfig,
   runtimeConfig,
+  type ScreeningDecidedState,
+  type ScreeningJob,
+  screeningJobs,
+  type ScreeningJobState,
   type Subscription,
   type SubscriptionEvent,
   subscriptionEvents,
@@ -114,6 +119,7 @@ export * as paymentRepo from "@vibecc/paykit-auth-core/db/repos/payment.repo.js"
 export * as pendingRefundRepo from "@vibecc/paykit-auth-core/db/repos/pending-refund.repo.js";
 export * as reconciliationRepo from "@vibecc/paykit-auth-core/db/repos/reconciliation.repo.js";
 export * as runtimeConfigRepo from "@vibecc/paykit-auth-core/db/repos/runtime-config.repo.js";
+export * as screeningJobRepo from "@vibecc/paykit-auth-core/db/repos/screening-job.repo.js";
 export * as subscriptionRepo from "@vibecc/paykit-auth-core/db/repos/subscription.repo.js";
 export * as subscriptionEventRepo from "@vibecc/paykit-auth-core/db/repos/subscription-event.repo.js";
 export * as webhookEventRepo from "@vibecc/paykit-auth-core/db/repos/webhook-event.repo.js";
@@ -189,5 +195,25 @@ export {
   type RefundCoreDeps,
   type RefundCoreResult,
 } from "./services/refund-core.js";
+
+// Compliance screening runner.
+//
+// The webhook drains one job after its own transaction commits, which covers the
+// common case of a screening service that answers promptly. A job whose screening
+// was inconclusive is retried on a backoff schedule instead, and nothing in the
+// request path will come back for it — so a deployment that configures screening
+// must also call `drainScreeningJobs` from a cron or worker tick, or those
+// payments stay parked in `screening_pending` until someone does.
+export {
+  drainScreeningJobs,
+  processNextScreeningJob,
+  type ScreeningJobOutcome,
+  type ScreeningRunnerDeps,
+} from "./services/screening-runner.js";
+export {
+  MAX_SCREENING_ATTEMPTS,
+  screeningAttemptsExhausted,
+  screeningRetryDelayMs,
+} from "./services/screening-backoff.js";
 
 export const PAYKIT_SERVER_VERSION = "0.2.0-alpha.1";
