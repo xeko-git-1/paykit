@@ -17,8 +17,6 @@
  */
 import { createHash } from "node:crypto";
 import type { TenantResolver } from "@vibecc/paykit";
-import type { Context, MiddlewareHandler } from "hono";
-import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
 import {
   IdempotencyBodyMismatchError,
@@ -26,6 +24,8 @@ import {
   finalizeIdempotency,
   releaseIdempotency,
 } from "@vibecc/paykit-auth-core/db/repos/idempotency.repo.js";
+import type { Context, MiddlewareHandler } from "hono";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { errorJson } from "../shared/response.js";
 
 export const IDEMPOTENCY_HEADER = "Idempotency-Key";
@@ -46,9 +46,7 @@ export interface IdempotencyMiddlewareDeps {
   readonly provider: string;
 }
 
-export function buildIdempotencyMiddleware(
-  deps: IdempotencyMiddlewareDeps,
-): MiddlewareHandler {
+export function buildIdempotencyMiddleware(deps: IdempotencyMiddlewareDeps): MiddlewareHandler {
   const { db, tenantResolver, provider } = deps;
 
   return async (c, next) => {
@@ -108,6 +106,12 @@ export function buildIdempotencyMiddleware(
 
     // We own the claim. Run the handler, then finalize on success or release on
     // failure so a crashed/non-2xx attempt does not wedge the key for its TTL.
+    //
+    // Every write below carries the token this claim was granted. A handler slower
+    // than the in-flight TTL loses its claim to a reclaiming request, and without
+    // the token these calls would land on that other request's claim — finalizing
+    // it with this response, or deleting it outright.
+    const { claimToken } = claim;
     c.set("paykitIdempotencyKey", key);
     c.set("paykitIdempotencyBodyHash", bodyHash);
     c.set("paykitIdempotencyBodyText", bodyText);
@@ -115,22 +119,27 @@ export function buildIdempotencyMiddleware(
     try {
       await next();
     } catch (err) {
-      await releaseIdempotency(db, { tenantId, key }).catch(() => {});
+      await releaseIdempotency(db, { tenantId, key, claimToken }).catch(() => {});
       throw err;
     }
 
     const status = c.res.status as ContentfulStatusCode;
     if (status >= 200 && status < 300) {
       const responseBody = await readResponseBody(c);
+      // A null result means the claim was taken away while the handler ran. The
+      // mutation still happened and this request's own response still goes back to
+      // its own client, so there is nothing to report here — only the replay cache
+      // is lost, and it now belongs to whoever holds the claim.
       await finalizeIdempotency(db, {
         tenantId,
         key,
+        claimToken,
         responseStatus: status,
         responseBody,
       });
     } else {
       // Non-2xx: drop the placeholder so the caller can retry immediately.
-      await releaseIdempotency(db, { tenantId, key }).catch(() => {});
+      await releaseIdempotency(db, { tenantId, key, claimToken }).catch(() => {});
     }
   };
 }
@@ -157,7 +166,9 @@ async function readResponseBody(c: Context): Promise<Record<string, unknown>> {
 export function readBodyJson<T>(c: Context): T {
   const text = c.get("paykitIdempotencyBodyText");
   if (text === undefined) {
-    throw new Error("readBodyJson must be called inside a route guarded by buildIdempotencyMiddleware");
+    throw new Error(
+      "readBodyJson must be called inside a route guarded by buildIdempotencyMiddleware",
+    );
   }
   return JSON.parse(text) as T;
 }
