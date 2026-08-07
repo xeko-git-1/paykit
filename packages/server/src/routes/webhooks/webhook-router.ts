@@ -30,7 +30,6 @@ import { applyDelta } from "@vibecc/paykit-auth-core/db/repos/balance.repo.js";
 import { commitReservation, releaseReservation } from "@vibecc/paykit-auth-core/db/repos/discount.repo.js";
 import { appendLedgerEntryIdempotent } from "@vibecc/paykit-auth-core/db/repos/ledger.repo.js";
 import { updateTransactionStatus } from "@vibecc/paykit-auth-core/db/repos/payment.repo.js";
-import { findActiveByTransaction, markCompleted } from "@vibecc/paykit-auth-core/db/repos/pending-refund.repo.js";
 import { enqueueScreeningJob } from "@vibecc/paykit-auth-core/db/repos/screening-job.repo.js";
 import { tryRecordWebhookEvent } from "@vibecc/paykit-auth-core/db/repos/webhook-event.repo.js";
 import { paymentTransactions } from "@vibecc/paykit-auth-core/db/schema/payment-transactions.js";
@@ -38,6 +37,7 @@ import type { PaykitEventHandlers } from "../../events/emitter.js";
 import { emitEvent } from "../../events/emitter.js";
 import { processNextScreeningJob } from "../../services/screening-runner.js";
 import { errorJson } from "../shared/response.js";
+import { applyRefundEvent } from "./refund-event-handler.js";
 import { evaluateSettlementAmount } from "./settlement-amount-guard.js";
 
 export interface WebhookRouterDeps {
@@ -306,47 +306,17 @@ async function handleWebhook(
         break;
       }
       case "payment.refunded": {
-        if (evt.refundAmountMicros === undefined || evt.currencyCode === undefined) return;
-        const refundMicros = BigInt(evt.refundAmountMicros);
-        // RT F1 + F10 idempotent refund — admin sync-success and webhook-refunded
-        // for the same payment_id collapse to one ledger refund_debit row.
-        const { inserted } = await appendLedgerEntryIdempotent(tx, {
-          tenantId: row.tenantId,
-          ownerId: row.ownerId,
-          entryType: "refund",
-          amountMicros: (-refundMicros).toString(),
-          currencyCode: evt.currencyCode,
+        // Delegated because a refund is no longer one ledger write: it has its own
+        // row and identity, the payment's status is derived from the refunded total
+        // rather than assumed to be full, and both have to agree with the ledger in
+        // this same transaction.
+        const outcome = await applyRefundEvent(tx, row, evt, {
           provider: adapter.id,
-          sourceId: evt.providerRef,
-          metadataJson: {
-            source: "refund",
-            provider: adapter.id,
-            originalTransactionId: row.transactionId,
-            ...evt.metadata,
-          },
+          ...(deps.logger !== undefined ? { logger: deps.logger } : {}),
+          ...(deps.emitMetric !== undefined ? { emitMetric: deps.emitMetric } : {}),
         });
-        if (inserted) {
-          await applyDelta(tx, row.tenantId, evt.currencyCode, -refundMicros);
-        }
-
-        // Release any active reservations for this transaction+provider so that
-        // remaining is not double-counted (once via the committed ledger entry
-        // above, once via a stale queued/processing reservation). For concurrent
-        // partial refunds on async providers, releasing all active reservations
-        // for the tx errs toward freeing headroom (conservative: remaining goes
-        // UP, never enables over-refund). The correct reservation is always
-        // released; extras are rare and harmless (they just free stuck headroom).
-        const activeReservations = await findActiveByTransaction(tx, {
-          provider: adapter.id,
-          transactionId: row.transactionId,
-        });
-        for (const reservation of activeReservations) {
-          await markCompleted(tx, reservation.pendingId);
-        }
-
-        const updated = await updateTransactionStatus(tx, row.transactionId, "refunded");
-        if (updated !== undefined) {
-          processedTxId = updated.transactionId;
+        if (outcome.applied) {
+          processedTxId = outcome.transactionId;
           eventTypeProcessed = "payment.refunded";
         }
         break;
