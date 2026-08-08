@@ -16,7 +16,10 @@ export const API_VERSION = "2026-05-31" as const;
 
 export const CreateCheckoutBody = z
   .object({
-    amountUsd: z.number().positive().min(1).max(500).optional(),
+    // `multipleOf` keeps a fractional cent a validation error: `usdToMicros`
+    // refuses an amount it cannot express in whole cents, and without this guard
+    // that refusal would reach the client as a 500 rather than naming the field.
+    amountUsd: z.number().positive().min(1).max(500).multipleOf(0.01).optional(),
     amountVnd: z.number().int().positive().min(10_000).optional(),
     provider: z.string().min(1).max(64),
     discountCode: z.string().min(1).max(64).optional(),

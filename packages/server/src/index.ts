@@ -31,6 +31,7 @@ export {
   type NewPaymentTransaction,
   type NewPendingRefund,
   type NewReconciliationRun,
+  type NewRefund,
   type NewRuntimeConfig,
   type NewScreeningJob,
   type NewSubscription,
@@ -38,12 +39,18 @@ export {
   type NewWebhookEvent,
   paykitSchema,
   paymentTransactions,
+  type PaymentStatus,
   type PaymentTransaction,
   type PendingRefund,
   pendingRefunds,
   pendingRefundState,
   reconciliationRuns,
   type ReconciliationRun,
+  type ReconciliationRunStatus,
+  type Refund,
+  refunds,
+  type RefundStatus,
+  type RefundTerminalFailure,
   type RuntimeConfig,
   runtimeConfig,
   type ScreeningDecidedState,
@@ -96,7 +103,10 @@ export {
   type SecretLoaderDeps,
 } from "./auth/jwt-middleware.js";
 export { JWT_ISSUER, JWT_AUDIENCE } from "@vibecc/paykit-auth-core/auth/jwt-claims.js";
-export { mintAdminJwt, type MintAdminJwtOpts } from "@vibecc/paykit-auth-core/auth/mint-admin-jwt.js";
+export {
+  mintAdminJwt,
+  type MintAdminJwtOpts,
+} from "@vibecc/paykit-auth-core/auth/mint-admin-jwt.js";
 export {
   authPlaneDispatcher,
   type AuthPlaneDispatcherDeps,
@@ -118,6 +128,7 @@ export * as merchantRepo from "@vibecc/paykit-auth-core/db/repos/merchant.repo.j
 export * as paymentRepo from "@vibecc/paykit-auth-core/db/repos/payment.repo.js";
 export * as pendingRefundRepo from "@vibecc/paykit-auth-core/db/repos/pending-refund.repo.js";
 export * as reconciliationRepo from "@vibecc/paykit-auth-core/db/repos/reconciliation.repo.js";
+export * as refundRepo from "@vibecc/paykit-auth-core/db/repos/refund.repo.js";
 export * as runtimeConfigRepo from "@vibecc/paykit-auth-core/db/repos/runtime-config.repo.js";
 export * as screeningJobRepo from "@vibecc/paykit-auth-core/db/repos/screening-job.repo.js";
 export * as subscriptionRepo from "@vibecc/paykit-auth-core/db/repos/subscription.repo.js";
@@ -187,6 +198,17 @@ export {
   type DiscountLogger,
 } from "./routes/checkout/apply-discount.js";
 
+// Checkout replay — what a retried Idempotency-Key gets back, and when a retry
+// is allowed at all. Exported because the standalone service's /v1 checkout must
+// reach the same verdict as the embedded router; two copies of this decision is
+// how the two paths drifted apart in the first place.
+export {
+  decideReplay,
+  storableCheckoutResult,
+  type CheckoutResponseBody,
+  type ReplayDecision,
+} from "./routes/checkout/checkout-replay.js";
+
 // Refund core (guard-agnostic shared logic for admin + merchant planes)
 export {
   executeRefund,
@@ -215,5 +237,37 @@ export {
   screeningAttemptsExhausted,
   screeningRetryDelayMs,
 } from "./services/screening-backoff.js";
+
+// The webhook inbox has the same requirement, for the same reason. The request path
+// processes a delivery once; a delivery that could not be matched then — most often
+// because the checkout had not yet committed its provider reference — is retried on
+// a backoff schedule and nothing in the request path returns for it. A deployment
+// that does not call `drainWebhookInbox` from a cron or worker tick leaves those
+// deliveries in `unmatched` forever, which is the payment loss this inbox exists to
+// prevent, only now visible in a table.
+export {
+  drainWebhookInbox,
+  type InboxRunnerDeps,
+  processNextDelivery,
+  sweepWebhookInbox,
+} from "./services/webhook-inbox-runner.js";
+export {
+  type DeliveryProcessorDeps,
+  type DeliveryResult,
+  processDelivery,
+} from "./services/webhook-delivery-processor.js";
+export {
+  INBOX_BASE_RETRY_MS,
+  INBOX_LEASE_MS,
+  INBOX_MAX_ATTEMPTS,
+  INBOX_MAX_RETRY_MS,
+  INBOX_PAYLOAD_RETENTION_DAYS,
+} from "./services/webhook-inbox-policy.js";
+export { hashRawBody, redactRawBody } from "./services/webhook-payload-storage.js";
+export {
+  applyPaymentEvent,
+  type PaymentEventContext,
+  type PaymentEventOutcome,
+} from "./routes/webhooks/payment-event-processor.js";
 
 export const PAYKIT_SERVER_VERSION = "0.2.0-alpha.1";

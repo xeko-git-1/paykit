@@ -6,7 +6,8 @@
  * - supportedCurrencies: ['USD']
  * - checkoutMode: 'redirect'
  * - createCheckout: one-time Stripe Checkout Session (mode='payment')
- * - parseWebhookPayload: handles checkout.session.completed | charge.refunded | checkout.session.expired
+ * - parseWebhookPayload: checkout.session.completed | the refund.* family |
+ *   charge.refunded (legacy) | checkout.session.expired
  * - refund: stripe.refunds.create with idempotencyKey
  * - fetchTransactions: paginates checkout.sessions.list
  */
@@ -22,6 +23,7 @@ import {
   stripeUsdAmountToMicros,
 } from "@vibecc/paykit";
 import Stripe from "stripe";
+import { paykitRefs, refundFallbackRef, refundPaymentRef } from "./webhook-events.js";
 import { verifyAndParse } from "./webhook-verifier.js";
 
 export interface StripeAdapterConfig {
@@ -60,6 +62,11 @@ export function createStripeAdapter(config: StripeAdapterConfig): PaymentProvide
       }
       // amountMicros (BigInt) → cents for Stripe (1 USD = 100 cents = 1_000_000 micros)
       const cents = Number(input.amountMicros / 10_000n);
+      const sessionMetadata = {
+        paykitTransactionId: input.transactionId,
+        tenantId: input.tenantId,
+        ownerId: input.ownerId,
+      };
       const session = await stripe.checkout.sessions.create({
         mode: "payment",
         line_items: [
@@ -72,11 +79,15 @@ export function createStripeAdapter(config: StripeAdapterConfig): PaymentProvide
             quantity: 1,
           },
         ],
-        metadata: {
-          paykitTransactionId: input.transactionId,
-          tenantId: input.tenantId,
-          ownerId: input.ownerId,
-        },
+        metadata: sessionMetadata,
+        // The SAME metadata again, one level down. Session metadata does not
+        // propagate: a PaymentIntent copies its own metadata onto the Charge when
+        // the Charge is created, and the only way to set PaymentIntent metadata
+        // from Checkout is `payment_intent_data`. Without this, a refund event —
+        // which carries a Refund pointing at a Charge, never at the Session —
+        // has no way back to the paykit transaction, and a refund initiated from
+        // the Stripe Dashboard cannot be attributed at all.
+        payment_intent_data: { metadata: sessionMetadata },
         ...(input.customerEmail !== undefined ? { customer_email: input.customerEmail } : {}),
         success_url: `${config.successUrl}?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: config.cancelUrl,
@@ -148,28 +159,77 @@ export function createStripeAdapter(config: StripeAdapterConfig): PaymentProvide
         }
         case "charge.refunded": {
           const charge = event.data.object as Stripe.Charge;
-          let refundAmountMicros = "0";
+          // `charge.amount_refunded` is a RUNNING TOTAL across every refund of
+          // the charge, so it is not a delta and must never be used as one: the
+          // second partial refund would report the sum of both. The Refund
+          // objects on the charge each carry their own amount and id, and Stripe
+          // returns them newest first, so the most recent one is this event's
+          // refund.
+          const latestRefund = charge.refunds?.data?.[0];
+          const refundAmountMicros = (() => {
+            try {
+              // Falling back to the cumulative total when no Refund object is
+              // present keeps the single-refund case working (the total equals
+              // the delta when there has only been one). Such an event also
+              // carries no refund id, which the server reads as "this payment
+              // can have at most one refund" rather than risking a wrong delta.
+              const source = latestRefund?.amount ?? charge.amount_refunded;
+              return stripeUsdAmountToMicros(source, charge.currency ?? "usd").toString();
+            } catch {
+              return undefined;
+            }
+          })();
+          if (refundAmountMicros === undefined) return null;
+          return {
+            eventId: `refund:${event.id}`,
+            type: "payment.refunded",
+            providerRef: refundPaymentRef(charge.metadata, charge.id),
+            refundAmountMicros,
+            currencyCode: "USD",
+            ...(latestRefund !== undefined ? { providerRefundId: latestRefund.id } : {}),
+            metadata: {
+              chargeId: charge.id,
+              refundId: latestRefund?.id ?? null,
+              ...paykitRefs(charge.metadata),
+            },
+          };
+        }
+        case "refund.created":
+        case "refund.updated":
+        case "refund.failed": {
+          // The Refund object is the authoritative per-refund record: its own id
+          // and its own amount, which is what a partial refund needs. Stripe
+          // recommends these over `charge.refunded` for exactly that reason.
+          const refund = event.data.object as Stripe.Refund;
+          // Only a settled refund may move money. A refund can be created
+          // `pending` and later fail, so crediting on creation would give money
+          // back for a refund that never happened; a failed one must leave the
+          // balance alone entirely.
+          if (refund.status !== "succeeded") return null;
+          let refundAmountMicros: string;
           try {
             refundAmountMicros = stripeUsdAmountToMicros(
-              charge.amount_refunded,
-              charge.currency ?? "usd",
+              refund.amount,
+              refund.currency ?? "usd",
             ).toString();
           } catch {
             return null;
           }
-          const checkoutSessionId =
-            typeof charge.metadata?.checkoutSessionId === "string"
-              ? charge.metadata.checkoutSessionId
-              : charge.id;
           return {
             eventId: `refund:${event.id}`,
             type: "payment.refunded",
-            providerRef: checkoutSessionId,
+            // Prefer the checkout reference this adapter stamped on the refund,
+            // because that is what the payment row is keyed on. A refund created
+            // outside paykit (the Stripe Dashboard) has no such stamp, so it
+            // falls back to the charge or payment intent id.
+            providerRef: refundPaymentRef(refund.metadata, refundFallbackRef(refund)),
             refundAmountMicros,
             currencyCode: "USD",
+            providerRefundId: refund.id,
             metadata: {
-              chargeId: charge.id,
-              refundId: charge.refunds?.data?.[0]?.id ?? null,
+              refundId: refund.id,
+              chargeId: typeof refund.charge === "string" ? refund.charge : null,
+              ...paykitRefs(refund.metadata),
             },
           };
         }

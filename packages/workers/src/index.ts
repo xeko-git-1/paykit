@@ -2,6 +2,9 @@
 // from a cron / BullMQ / Cloudflare Cron — not a long-running daemon.
 
 export {
+  acquireReconcileLock,
+  holdsReconcileLock,
+  type ReconcileLockLease,
   releaseReconcileLock,
   tryAcquireReconcileLock,
   RECONCILE_LOCK_NAME,

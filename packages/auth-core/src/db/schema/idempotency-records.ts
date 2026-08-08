@@ -9,6 +9,13 @@
  * an 'in_flight' row (short TTL); a racing request sees it and is rejected
  * rather than re-running the mutating handler. The winner flips it to 'done'
  * with the response. response_status is null while in_flight.
+ *
+ * `claim_token` names WHICH request holds the claim, which `state` alone cannot.
+ * A handler that outlives the in-flight TTL loses its claim to a reclaiming
+ * request, and without a token its finalize still matches on
+ * (tenant_id, key, state='in_flight') — writing its response into the new
+ * claimant's row. The token is regenerated on every claim and reclaim, so a
+ * stale claimant's guard matches nothing.
  */
 import { integer, jsonb, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { paykitSchema } from "./payment-transactions.js";
@@ -22,6 +29,12 @@ export const idempotencyRecords = paykitSchema.table(
     routePath: text("route_path").notNull(),
     requestBodyHash: text("request_body_hash").notNull(),
     state: text("state").notNull().default("done"),
+    // Ownership of the current claim. Regenerated on claim and on reclaim, so it
+    // is the only thing a finalize can safely guard on.
+    claimToken: uuid("claim_token").notNull().defaultRandom(),
+    // How many times this key has been claimed. Not a guard — kept because it is
+    // what answers "was this key reclaimed, and how often?" during an incident.
+    claimGeneration: integer("claim_generation").notNull().default(0),
     responseStatus: integer("response_status"),
     responseBodyJson: jsonb("response_body_json").notNull().default({}),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

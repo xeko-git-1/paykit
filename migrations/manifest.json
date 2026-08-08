@@ -149,6 +149,41 @@
       "up": "021_screening_jobs.up.sql",
       "down": "021_screening_jobs.down.sql",
       "description": "The screening_pending payment status and paykit.screening_jobs — the durable handoff that keeps the tenant-supplied compliance screening call outside the crediting transaction, so a slow third-party endpoint no longer holds a payment row lock and a pooled connection for the length of its HTTP request"
+    },
+    {
+      "id": "022",
+      "slug": "refunds",
+      "up": "022_refunds.up.sql",
+      "down": "022_refunds.down.sql",
+      "description": "The paykit.refunds aggregate and the partially_refunded payment status — a refund gains its own identity and lifecycle so the ledger can be keyed per refund instead of per payment (which made every partial refund after the first collide with the first and skip its balance delta), and so a payment refunded in part is no longer recorded as refunded in full"
+    },
+    {
+      "id": "023",
+      "slug": "reconciliation_run_status",
+      "up": "023_reconciliation_run_status.up.sql",
+      "down": "023_reconciliation_run_status.down.sql",
+      "description": "reconciliation_runs.status gains 'partial' and 'skipped'. Both were previously recorded as 'failed', which conflated three different outcomes: a run where some providers reconciled and others errored, a run that never started because another instance held the lock, and a run where nothing reconciled at all. On a multi-instance deployment that made healthy lock contention look like a stream of failures"
+    },
+    {
+      "id": "024",
+      "slug": "idempotency_claim_token",
+      "up": "024_idempotency_claim_token.up.sql",
+      "down": "024_idempotency_claim_token.down.sql",
+      "description": "claim_token and claim_generation on paykit.idempotency_records — the ownership proof a finalize needs, so a claimant whose handler outlived the in-flight TTL cannot write its response into the claim a later request now holds, nor delete that claim on rollback"
+    },
+    {
+      "id": "025",
+      "slug": "checkout_lifecycle",
+      "up": "025_checkout_lifecycle.up.sql",
+      "down": "025_checkout_lifecycle.down.sql",
+      "description": "The provider_creating and awaiting_payment payment statuses plus checkout_result_json — a checkout attempt becomes durable before the provider is called, and the provider's answer is kept whole so a retry with the same Idempotency-Key replays the response the caller can actually use instead of a partial one"
+    },
+    {
+      "id": "026",
+      "slug": "webhook_inbox",
+      "up": "026_webhook_inbox.up.sql",
+      "down": "026_webhook_inbox.down.sql",
+      "description": "The webhook_inbox table — a received delivery becomes durable in its own transaction and its state says whether the business work committed, so a webhook that arrives before the checkout stored its provider reference becomes retryable work instead of a silent 200 that can never be redelivered"
     }
   ]
 }

@@ -1,11 +1,12 @@
 /**
  * Retry schedule for inconclusive screenings.
  *
- * Jitter is not cosmetic here: a screening provider outage makes every queued
- * job fail at once, and a fixed schedule would then retry them all in the same
- * instant, repeatedly — the retry storm keeps the provider down. The random
- * component spreads a synchronized batch back out.
+ * The jitter and the doubling live in `backoffDelayMs`, shared with the webhook
+ * inbox; what belongs here is only what is specific to screening — how patient to
+ * be with a compliance provider, and how many attempts pass before a payment
+ * stops waiting for a machine and goes to a human.
  */
+import { backoffDelayMs } from "@vibecc/paykit";
 
 /** Cap on attempts before a job stops retrying and goes to human review. */
 export const MAX_SCREENING_ATTEMPTS = 6;
@@ -24,11 +25,12 @@ export function screeningRetryDelayMs(
   attempts: number,
   random: () => number = Math.random,
 ): number {
-  const exponent = Math.max(0, attempts - 1);
-  const ceiling = Math.min(BASE_DELAY_MS * 2 ** exponent, MAX_DELAY_MS);
-  // Full jitter: anywhere in (0, ceiling]. Keeps a lower bound of 1ms so a
-  // delay is never zero, which would busy-loop the queue.
-  return Math.max(1, Math.round(ceiling * random()));
+  return backoffDelayMs({
+    attempts,
+    baseDelayMs: BASE_DELAY_MS,
+    maxDelayMs: MAX_DELAY_MS,
+    random,
+  });
 }
 
 /** Whether an inconclusive job has any attempts left. */

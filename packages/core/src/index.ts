@@ -47,8 +47,13 @@ export {
   parseMicros,
   stripeUsdAmountToMicros,
   SUPPORTED_CURRENCY_CODES,
+  usdToMicros,
   vndToMicros,
 } from "./money/index.js";
+
+// Refund-derived payment status — one comparison, shared by every write path
+export type { RefundedPaymentStatus } from "./payments/index.js";
+export { isRefundableStatus, refundedPaymentStatus } from "./payments/index.js";
 
 // Compliance screening contract
 export type {
@@ -110,5 +115,9 @@ export type {
   SubscriptionStatus,
   UpgradeSubscriptionInput,
 } from "./subscriptions/index.js";
+
+// Retry scheduling (shared by the screening queue and the webhook inbox)
+export type { BackoffOptions } from "./retry/backoff-schedule.js";
+export { backoffDelayMs, nextAttemptAt } from "./retry/backoff-schedule.js";
 
 export const PAYKIT_CORE_VERSION = "0.2.0-alpha.1";

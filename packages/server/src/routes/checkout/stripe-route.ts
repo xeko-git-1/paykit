@@ -6,7 +6,7 @@
  *
  * V1 mode: payment (one-off). Subscription is V2.
  */
-import { TenantResolutionError } from "@vibecc/paykit";
+import { TenantResolutionError, usdToMicros } from "@vibecc/paykit";
 import type {
   AppliedDiscount,
   CurrencyCode,
@@ -25,7 +25,11 @@ import { dataJson, errorJson } from "../shared/response.js";
 import { applyDiscountInTx, resolveDiscount } from "./apply-discount.js";
 
 const stripeBodySchema = z.object({
-  amountUsd: z.number().positive().min(1).max(500),
+  // `multipleOf` is what makes a fractional cent a validation error rather than a
+  // conversion error: `usdToMicros` refuses an amount it cannot express exactly,
+  // and without this guard that refusal would surface as a 500 instead of naming
+  // the offending field.
+  amountUsd: z.number().positive().min(1).max(500).multipleOf(0.01),
   discountCode: z.string().min(1).max(64).optional(),
 });
 
@@ -85,9 +89,9 @@ export function buildStripeCheckoutRoute(deps: StripeRouteDeps): Hono {
       }
     }
 
-    // amountUsd in dollars; Stripe wants cents; ledger stores micros (cents × 10_000).
-    const originalCents = BigInt(Math.round(parsed.amountUsd * 100));
-    const originalMicros = originalCents * 10_000n;
+    // Dollars → micros through the shared helper, so this route cannot drift from
+    // the other checkout paths on how a fractional cent is treated.
+    const originalMicros = usdToMicros(parsed.amountUsd);
 
     const discountLookup = await resolveDiscount({
       ...(discountResolver !== undefined ? { resolver: discountResolver } : {}),

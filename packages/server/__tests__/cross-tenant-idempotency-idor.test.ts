@@ -1,3 +1,4 @@
+import { Hono } from "hono";
 /**
  * Cross-tenant IDOR regression test — idempotency key lookup must be
  * tenant-scoped. Tenant B must NOT see tenant A's transaction by replaying
@@ -7,10 +8,9 @@
  * must filter by tenantId so one tenant cannot read another's transaction.
  */
 import { describe, expect, it, vi } from "vitest";
-import { Hono } from "hono";
-import { buildStripeCheckoutRoute } from "../src/routes/checkout/stripe-route.js";
-import { buildSepayCheckoutRoute } from "../src/routes/checkout/sepay-route.js";
 import { buildCheckoutRouter } from "../src/routes/checkout/checkout-router.js";
+import { buildSepayCheckoutRoute } from "../src/routes/checkout/sepay-route.js";
+import { buildStripeCheckoutRoute } from "../src/routes/checkout/stripe-route.js";
 
 // Mock payment repo — we intercept findByIdempotencyKey to verify tenant scoping
 vi.mock("@vibecc/paykit-auth-core/db/repos/payment.repo.js", () => ({
@@ -24,6 +24,25 @@ vi.mock("@vibecc/paykit-auth-core/db/repos/payment.repo.js", () => ({
     metadataJson: {},
   }),
   findByIdempotencyKey: vi.fn().mockResolvedValue(undefined),
+  // The generic router claims the key instead of looking it up: the claim IS the
+  // lookup, done as an insert-first conflict so two concurrent requests with one
+  // key produce one checkout. It still has to be tenant-scoped, which is what the
+  // test below asserts.
+  claimCheckout: vi.fn().mockResolvedValue({
+    row: {
+      transactionId: "tx-new-000",
+      tenantId: "tenant-aaa-111",
+      provider: "mock-provider",
+      amountMicros: "25000000",
+      currencyCode: "USD",
+      status: "provider_creating",
+      providerRef: null,
+      idempotencyKey: "shared-key-K",
+      metadataJson: {},
+    },
+    created: true,
+  }),
+  finalizeCheckout: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("./apply-discount.js", () => ({
@@ -35,7 +54,10 @@ vi.mock("./apply-discount.js", () => ({
   }),
 }));
 
-import { findByIdempotencyKey } from "@vibecc/paykit-auth-core/db/repos/payment.repo.js";
+import {
+  claimCheckout,
+  findByIdempotencyKey,
+} from "@vibecc/paykit-auth-core/db/repos/payment.repo.js";
 
 const TENANT_A = { tenantId: "tenant-aaa-111", ownerId: "owner-aaa-111" };
 const TENANT_B = { tenantId: "tenant-bbb-222", ownerId: "owner-bbb-222" };
@@ -55,8 +77,12 @@ const TENANT_A_TX = {
 
 const fakeDb = {
   transaction: vi.fn().mockImplementation(async (fn: (tx: unknown) => unknown) => fn(fakeDb)),
-  insert: vi.fn().mockReturnValue({ values: vi.fn().mockReturnValue({ returning: vi.fn().mockResolvedValue([TENANT_A_TX]) }) }),
-  update: vi.fn().mockReturnValue({ set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }) }),
+  insert: vi.fn().mockReturnValue({
+    values: vi.fn().mockReturnValue({ returning: vi.fn().mockResolvedValue([TENANT_A_TX]) }),
+  }),
+  update: vi.fn().mockReturnValue({
+    set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+  }),
   query: { paymentTransactions: { findFirst: vi.fn() } },
 } as never;
 
@@ -99,11 +125,7 @@ describe("cross-tenant IDOR: findByIdempotencyKey must be tenant-scoped", () => 
     });
 
     // Critical: findByIdempotencyKey must be called with (db, tenantId, key)
-    expect(findByIdempotencyKey).toHaveBeenCalledWith(
-      fakeDb,
-      TENANT_A.tenantId,
-      "shared-key-K",
-    );
+    expect(findByIdempotencyKey).toHaveBeenCalledWith(fakeDb, TENANT_A.tenantId, "shared-key-K");
   });
 
   it("sepay route passes tenantId to findByIdempotencyKey", async () => {
@@ -135,16 +157,15 @@ describe("cross-tenant IDOR: findByIdempotencyKey must be tenant-scoped", () => 
       body: JSON.stringify({ amountVnd: 100000 }),
     });
 
-    expect(findByIdempotencyKey).toHaveBeenCalledWith(
-      fakeDb,
-      TENANT_B.tenantId,
-      "shared-key-K",
-    );
+    expect(findByIdempotencyKey).toHaveBeenCalledWith(fakeDb, TENANT_B.tenantId, "shared-key-K");
   });
 
-  it("checkout-router passes tenantId to findByIdempotencyKey", async () => {
-    vi.mocked(findByIdempotencyKey).mockClear();
-    vi.mocked(findByIdempotencyKey).mockResolvedValue(undefined);
+  // The router no longer looks a key up before writing: it claims the key with an
+  // insert-first conflict, which is what makes two concurrent requests produce one
+  // checkout instead of a unique-violation 500. The tenant scoping this file exists
+  // to protect is unchanged and still asserted — it just lives in the claim now.
+  it("checkout-router scopes the checkout claim to the caller's tenant", async () => {
+    vi.mocked(claimCheckout).mockClear();
 
     const mockAdapter = {
       id: "mock-provider",
@@ -175,10 +196,15 @@ describe("cross-tenant IDOR: findByIdempotencyKey must be tenant-scoped", () => 
       body: JSON.stringify({ amountUsd: 25 }),
     });
 
-    expect(findByIdempotencyKey).toHaveBeenCalledWith(
-      fakeDb,
-      TENANT_A.tenantId,
-      "shared-key-K",
+    // The claim carries the caller's own tenant, so one tenant's key can never
+    // reach another tenant's row: the uniqueness it conflicts on is
+    // (tenant_id, idempotency_key).
+    expect(claimCheckout).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        tenantId: TENANT_A.tenantId,
+        idempotencyKey: "shared-key-K",
+      }),
     );
   });
 
@@ -218,11 +244,7 @@ describe("cross-tenant IDOR: findByIdempotencyKey must be tenant-scoped", () => 
     expect(body.data?.checkoutUrl).not.toContain("/aaa");
 
     // The lookup was scoped to tenant B
-    expect(findByIdempotencyKey).toHaveBeenCalledWith(
-      fakeDb,
-      TENANT_B.tenantId,
-      "shared-key-K",
-    );
+    expect(findByIdempotencyKey).toHaveBeenCalledWith(fakeDb, TENANT_B.tenantId, "shared-key-K");
   });
 
   it("tenant A replay of own key returns cached transaction", async () => {
