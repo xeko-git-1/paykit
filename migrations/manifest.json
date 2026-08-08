@@ -177,6 +177,13 @@
       "up": "025_checkout_lifecycle.up.sql",
       "down": "025_checkout_lifecycle.down.sql",
       "description": "The provider_creating and awaiting_payment payment statuses plus checkout_result_json — a checkout attempt becomes durable before the provider is called, and the provider's answer is kept whole so a retry with the same Idempotency-Key replays the response the caller can actually use instead of a partial one"
+    },
+    {
+      "id": "026",
+      "slug": "webhook_inbox",
+      "up": "026_webhook_inbox.up.sql",
+      "down": "026_webhook_inbox.down.sql",
+      "description": "The webhook_inbox table — a received delivery becomes durable in its own transaction and its state says whether the business work committed, so a webhook that arrives before the checkout stored its provider reference becomes retryable work instead of a silent 200 that can never be redelivered"
     }
   ]
 }
