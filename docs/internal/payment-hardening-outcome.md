@@ -10,9 +10,9 @@ Trạng thái gate trên đúng nhánh tích hợp, chạy thật:
 | `pnpm install --frozen-lockfile` | exit 0 |
 | `pnpm typecheck` | exit 0 |
 | `pnpm build` | exit 0 |
-| `pnpm test` | exit 0 — **1400 pass / 23 skip / 148 file** (không có Postgres) |
+| `pnpm test` | exit 0 — **1412 pass / 23 skip / 148 file** (không có Postgres) |
 | `pnpm test` + `PAYKIT_E2E_DATABASE_URL` | exit 0 — **1397 pass / 0 skip** (đo trước khi thêm 027) |
-| `pnpm lint` | exit 1 — **216 error** |
+| `pnpm lint` | exit 1 — **214 error** |
 
 `pnpm lint` fail là trạng thái có từ trước, không phải do workstream này: baseline
 lúc bắt đầu là 230–238 error trên cùng script (`biome check packages`). 219 là thấp
@@ -345,11 +345,22 @@ nhưng là nợ đã biết.
 
 ## Chạy được ngay sau deploy
 
-`drainWebhookInbox` và `drainScreeningJobs` **phải** được gọi từ cron/worker tick.
-Không gọi thì delivery `unmatched` không bao giờ được retry và payment
-`screening_pending` đứng mãi — đúng lỗi mất tiền cũ, chỉ khác là giờ nhìn thấy trong
-bảng. Cả hai đã export qua barrel của `paykit-server` và có comment nói rõ yêu cầu
-này ở chỗ export.
+Không cần cấu hình gì thêm. `paykit-service` tự chạy cả hai drain in-process
+(`startBackgroundDrains`, mặc định 15 giây/tick): inbox drain, screening drain, và
+sweep payload theo retention.
+
+Ban đầu tôi để đây là "yêu cầu deploy" trong báo cáo. Đó là sai hướng: một deploy
+mặc định sẽ để delivery `unmatched` treo mãi và payment `screening_pending` không bao
+giờ được xử lý — đúng lỗi mất tiền mà inbox tồn tại để xoá, chỉ khác là giờ nhìn thấy
+trong bảng. Một yêu cầu vận hành không ai đọc thì không phải bảo vệ.
+
+In-process vì claim là guarded UPDATE: nhiều replica tick đồng thời chia việc chứ
+không nhân đôi, nên không cần coordination. Ai muốn dùng scheduler ngoài thì đặt
+`intervalMs: 0` và gọi drain đã export.
+
+Ba tính chất của loop đều có test: tick throw thì log và loop vẫn sống (một lỗi DB
+tạm không được phép kết thúc mọi xử lý nền), tick chậm không stack lên chính nó, và
+`stop()` thật sự dừng trước khi pool đóng.
 
 Metric mới nên gắn alert: `paykit_webhook_dead_letter_total` (tiền có thể đã chuyển ở
 provider mà không khớp được gì ở đây — cần người xem),
