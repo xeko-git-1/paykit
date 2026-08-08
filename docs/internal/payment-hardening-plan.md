@@ -353,7 +353,7 @@ idempotency (F6), không phải refund.
 | 024 | `idempotency_claim_token` | **đã landed** | `claim_token uuid` NOT NULL + `claim_generation int` |
 | 025 | `checkout_lifecycle` | **đã landed** | `provider_creating`, `awaiting_payment` vào CHECK + `checkout_result_json` + partial index |
 | 026 | `webhook_inbox` | **đã landed** | bảng `webhook_inbox` + 4 index + backfill từ `webhook_events` |
-| 027 | `reconciliation_cursor` | còn lại | `cursor_json`, `provider` + index (đi cùng pagination) |
+| 027 | `reconciliation_cursor` | **đã landed** | bảng `reconciliation_cursors` (keyset `(created_at, transaction_id)`) + index `(provider, created_at, transaction_id)` |
 
 Lệch so với thiết kế ban đầu, ghi lại để số migration trong repo là nguồn duy nhất:
 
@@ -365,6 +365,8 @@ Lệch so với thiết kế ban đầu, ghi lại để số migration trong re
   `provider_creating` cộng `created_at` đã trả lời đúng câu hỏi mà reconcile cần
   ("checkout nào đang dở, từ khi nào"), nên hai cột đó là schema không có người đọc.
 - `webhook_inbox` xuống `026`, `reconciliation_cursor` xuống `027`.
+- `027` lưu keyset hai cột thay vì `cursor_json` như thiết kế: cursor cần so sánh
+  được trong `WHERE`, mà JSONB thì không dùng được index cho phép so sánh thứ tự.
 
 Mỗi migration: `NNN_<domain_slug>.up.sql` + `.down.sql` + entry trong `migrations/manifest.json`.
 **Không** đưa số phase / mã finding vào tên file hay comment SQL (rule

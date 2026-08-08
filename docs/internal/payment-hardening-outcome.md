@@ -10,9 +10,9 @@ Trạng thái gate trên đúng nhánh tích hợp, chạy thật:
 | `pnpm install --frozen-lockfile` | exit 0 |
 | `pnpm typecheck` | exit 0 |
 | `pnpm build` | exit 0 |
-| `pnpm test` | exit 0 — **1374 pass / 23 skip / 145 file** (không có Postgres) |
-| `pnpm test` + `PAYKIT_E2E_DATABASE_URL` | exit 0 — **1397 pass / 0 skip / 145 file** (Postgres 17 thật) |
-| `pnpm lint` | exit 1 — **219 error** |
+| `pnpm test` | exit 0 — **1400 pass / 23 skip / 148 file** (không có Postgres) |
+| `pnpm test` + `PAYKIT_E2E_DATABASE_URL` | exit 0 — **1397 pass / 0 skip** (đo trước khi thêm 027) |
+| `pnpm lint` | exit 1 — **216 error** |
 
 `pnpm lint` fail là trạng thái có từ trước, không phải do workstream này: baseline
 lúc bắt đầu là 230–238 error trên cùng script (`biome check packages`). 219 là thấp
@@ -33,7 +33,7 @@ Test lúc bắt đầu session: 1078 pass. Hiện tại 1374, +23 file test mớ
 | 3 | Semantics refund một phần / nhiều lần | Xong | bảng `refunds`, `refundedPaymentStatus` |
 | 4 | Map refund Stripe đúng | Xong | `stripe-adapter/src/webhook-events.ts` |
 | 5 | Advisory lock an toàn dưới pool | Xong | `advisory-lock.ts` pin vào 1 connection |
-| 6 | Pagination/timeout/retry/status cho reconcile | Một phần | status model xong (migration 023); cursor pagination **chưa** (027) |
+| 6 | Pagination/timeout/retry/status cho reconcile | Xong | migration 023 (status) + 027 (keyset cursor + batch ceiling) |
 | 7 | Invariant tiền tệ / số tiền / trạng thái | Xong | migration 019+020, `usd-native.ts`, `amount-guards.ts` |
 | 8 | Không gọi compliance khi đang giữ tx/row lock | Xong | `screening_jobs` + park, migration 021 |
 | 9 | Fencing token cho idempotency claim | Xong | migration 024, `claim_token` + `claim_generation` |
@@ -41,7 +41,7 @@ Test lúc bắt đầu session: 1078 pass. Hiện tại 1374, +23 file test mớ
 | 11 | Giữ pattern/convention repo | Xong | guarded UPDATE, repo-per-domain, kebab-case, manifest migration |
 | 12 | Không hack / monkey patch / nợ kỹ thuật | Xong | không có suppress, không có test bị tắt |
 
-Mục 6 là mục duy nhất **cố ý** chưa xong hết — chi tiết ở cuối.
+Cả 12 mục đã xong. Giới hạn còn lại nằm ở phần "Còn thiếu".
 
 ---
 
@@ -250,6 +250,36 @@ auth-core, nên không đọc được repo inbox — thêm dependency đó sẽ
 | 024 | `idempotency_claim_token` | `claim_token` + `claim_generation` (fencing) |
 | 025 | `checkout_lifecycle` | `provider_creating`, `awaiting_payment`, `checkout_result_json` |
 | 026 | `webhook_inbox` | bảng inbox + 4 partial index + backfill |
+| 027 | `reconciliation_cursor` | keyset cursor + index `(provider, created_at, transaction_id)` |
+
+### Reconcile phân trang được (027)
+
+Snapshot cũ là một `SELECT` không `LIMIT` cho cả window. Window đủ lớn thì process
+chết, và run chết giữa đường không nhớ đã đi tới đâu — lần sau chạy lại từ đầu và
+chết đúng chỗ đó. Window quá lớn để xong trong một lần thì **không bao giờ** xong được.
+
+Hai chi tiết phải đúng, cả hai đều đã đo trên Postgres 16 thật:
+
+**Keyset hai cột, không phải `created_at >`.** Timestamp không unique. Seed 5 payment
+với 3 cái cùng timestamp: keyset trả đủ 5/5 đúng một lần, còn predicate một cột chỉ
+thấy 1 — **bỏ mất 2 payment**. Bỏ sót payment là điều duy nhất reconciler không được
+phép làm, vì nó chính là thứ reconciler tồn tại để phát hiện.
+
+**Index phải dẫn bằng `provider`.** Bản đầu tôi viết index `(created_at,
+transaction_id)`; `EXPLAIN` cho thấy planner đi index khác rồi **Sort** — tức sort lại
+mỗi trang, tệ hơn cả cái select không giới hạn mà nó thay thế. Sửa thành
+`(provider, created_at, transaction_id)` thì thành **Index Only Scan**, không còn sort.
+
+Chi tiết dễ sai nhất lại không phải phân trang mà là differ: nó đối chiếu hai chiều
+và báo `paykit_missing` cho provider record không có row paykit. Nếu diff một trang
+paykit với **toàn bộ** danh sách provider thì mọi record ngoài trang đó bị báo thiếu —
+hàng nghìn discrepancy bịa ra mỗi batch, tệ hơn không reconcile vì nó chôn vùi
+discrepancy thật. Nên mỗi batch chỉ diff với những record mà trang đó có thể khớp, và
+phần không trang nào nhận được diff một lần ở cuối, khi "không có trong paykit" đúng
+nghĩa là vậy.
+
+Provider dừng ở batch ceiling làm run thành `partial`, không phải `completed`: không
+có gì fail, nhưng một phần window chưa được xem.
 
 Mọi migration có `.up.sql`, `.down.sql`, entry trong `manifest.json`, mirror
 byte-identical sang `packages/cli/migrations` (assert bằng test), và một shape test
@@ -285,12 +315,6 @@ Không có secret, dotenv, hay credential nào được commit.
 ---
 
 ## Còn thiếu — nói thẳng
-
-**Mục tiêu 6 chưa xong phần pagination.** Status model, lock, retry, timeout đã có.
-Cursor pagination cho reconcile (migration 027, `cursor_json` + `provider`) chưa làm.
-Hệ quả thực tế: reconcile vẫn fetch theo cửa sổ thời gian, nên với tenant có lượng
-giao dịch rất lớn một run có thể chạy dài hơn mong muốn. Không mất tiền, không sai
-số — chỉ là chưa chia trang.
 
 **Đã verify trên Postgres 17 thật.** Cả 26 migration apply sạch theo đúng thứ tự
 manifest lên database trống. `webhook-inbox-pg.e2e.test.ts` (14 test) chạy repo inbox
