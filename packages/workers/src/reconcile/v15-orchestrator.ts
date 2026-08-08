@@ -26,6 +26,7 @@ import {
   ledgerRepo,
   paymentTransactions,
   pendingRefundRepo,
+  reconciliationCursorRepo,
   reconciliationRepo,
 } from "@vibecc/paykit-server";
 import { and, eq, gte, lt } from "drizzle-orm";
@@ -43,6 +44,17 @@ export interface ReconcileV15Options {
   readonly until?: Date;
   readonly providerIds?: readonly string[]; // restrict to specific adapter ids
   readonly pendingRefundStaleAfterMs?: number; // default 5min
+  /** Payments compared per batch. Bounds the memory one invocation can hold. */
+  readonly batchSize?: number;
+  /**
+   * Batches per provider per invocation.
+   *
+   * Bounds how long one run can take, so a large backlog is worked through across
+   * several scheduled invocations rather than in a single run that holds the
+   * advisory lock — and a pooled connection — for an unbounded time. Progress is
+   * durable, so stopping early costs nothing but a later start.
+   */
+  readonly maxBatchesPerProvider?: number;
 }
 
 export interface ReconcileV15Deps {
@@ -64,6 +76,21 @@ export interface ReconcileV15Result {
    */
   readonly status: Exclude<ReconciliationRunStatus, "running">;
 }
+
+/**
+ * Payments compared per batch.
+ *
+ * Small enough that one batch is a bounded amount of memory, large enough that a
+ * normal window finishes in one or two round trips rather than dozens.
+ */
+const DEFAULT_BATCH_SIZE = 500;
+
+/**
+ * Batches per provider per invocation — the ceiling on how long one run may hold
+ * the reconcile lock. 20 x 500 covers 10k payments per provider per run; a bigger
+ * backlog is drained across successive scheduled runs from the stored cursor.
+ */
+const DEFAULT_MAX_BATCHES = 20;
 
 const DEFAULT_PENDING_STALE_MS = 5 * 60 * 1000;
 const PENDING_REFUND_TIMEOUT_MS = 24 * 60 * 60 * 1000;
@@ -89,13 +116,9 @@ export async function reconcileV15(
   const run = await reconciliationRepo.startRun(db, startedAt);
 
   try {
-    // Snapshot paykit transactions in window (all providers)
-    const paykitRows = (await db
-      .select()
-      .from(paymentTransactions)
-      .where(
-        and(gte(paymentTransactions.createdAt, since), lt(paymentTransactions.createdAt, until)),
-      )) as PaymentTransaction[];
+    const window = { since, until };
+    const batchSize = opts.batchSize ?? DEFAULT_BATCH_SIZE;
+    const maxBatches = opts.maxBatchesPerProvider ?? DEFAULT_MAX_BATCHES;
 
     const adapters = registry.list().filter((a) => {
       if (opts.providerIds === undefined) return true;
@@ -105,23 +128,133 @@ export async function reconcileV15(
     const perProvider: Record<string, PerProviderStats> = {};
     const allDiscrepancies = [];
     const adapterErrors: Record<string, string> = {};
+    const incomplete: string[] = [];
 
     for (const adapter of adapters) {
-      const snapshot = paykitRows
-        .filter((r) => r.provider === adapter.id)
-        .map<PaykitTxnSnapshot>((r) => ({
-          transactionId: r.transactionId,
-          providerRef: r.providerRef,
-          amountMicros: r.amountMicros,
-          currencyCode: r.currencyCode,
-          status: r.status,
-        }));
+      // Each provider is paged independently from its own stored position. The
+      // previous version selected the entire window for every provider at once and
+      // held it in memory: a window large enough to exhaust the process reconciled
+      // nothing at all, and the next invocation restarted it and died in the same
+      // place, so such a window could never be reconciled.
+      const cursor = await reconciliationCursorRepo.findCursor(db, adapter.id);
+      let after = reconciliationCursorRepo.resumePosition(cursor, window);
+
+      if (cursor !== undefined && after === undefined && cursor.exhausted) {
+        // The window this cursor finished is the window being asked for again, so
+        // there is nothing left to walk. A different window resets instead.
+        const sameWindow =
+          cursor.windowSince?.getTime() === since.getTime() &&
+          cursor.windowUntil?.getTime() === until.getTime();
+        if (sameWindow) {
+          perProvider[adapter.id] = EMPTY_PER_PROVIDER;
+          continue;
+        }
+      }
 
       try {
         const records = await adapter.fetchTransactions({ since, until });
-        const result = diffPaykitVsProvider(adapter.id, snapshot, records);
-        perProvider[adapter.id] = result.stats;
-        allDiscrepancies.push(...result.discrepancies);
+        // Provider records not yet accounted for by any batch.
+        //
+        // The differ compares BOTH directions: it flags a provider record with no
+        // paykit row as `paykit_missing`. Handing it one page of paykit rows against
+        // the full provider list would therefore report every record outside that
+        // page as missing — thousands of fabricated discrepancies per batch, which
+        // is worse than no reconciliation at all because it buries the real ones.
+        //
+        // So each batch is diffed against only the records its own page could match,
+        // and whatever no page ever claimed is genuinely absent from paykit. That
+        // final set is diffed once at the end, when it means what the differ thinks
+        // it means.
+        const unclaimed = new Map(records.map((r) => [r.providerRef, r]));
+        let batches = 0;
+        let exhausted = false;
+
+        while (batches < maxBatches) {
+          const page = await reconciliationCursorRepo.pageOfPayments(db, {
+            provider: adapter.id,
+            window,
+            ...(after !== undefined ? { after } : {}),
+            limit: batchSize,
+          });
+          if (page.length === 0) {
+            exhausted = true;
+            break;
+          }
+
+          const snapshot = page.map<PaykitTxnSnapshot>((r) => ({
+            transactionId: r.transactionId,
+            providerRef: r.providerRef,
+            amountMicros: r.amountMicros,
+            currencyCode: r.currencyCode,
+            status: r.status,
+          }));
+          const pageRecords = [];
+          for (const s of snapshot) {
+            if (s.providerRef === null) continue;
+            const match = unclaimed.get(s.providerRef);
+            if (match !== undefined) {
+              pageRecords.push(match);
+              unclaimed.delete(s.providerRef);
+            }
+          }
+          const result = diffPaykitVsProvider(adapter.id, snapshot, pageRecords);
+          perProvider[adapter.id] = mergeStats(perProvider[adapter.id], result.stats);
+          allDiscrepancies.push(...result.discrepancies);
+
+          const last = page[page.length - 1] as PaymentTransaction;
+          after = { createdAt: last.createdAt, transactionId: last.transactionId };
+          batches += 1;
+          // Advanced only after the batch has been diffed. A cursor moved ahead of
+          // the work would mark payments reconciled that nobody compared, and the
+          // next run would skip straight past them.
+          const done = page.length < batchSize;
+          await reconciliationCursorRepo.advanceCursor(db, {
+            provider: adapter.id,
+            window,
+            position: after,
+            exhausted: done,
+          });
+          if (done) {
+            exhausted = true;
+            break;
+          }
+        }
+
+        if (!exhausted) {
+          // Hit the batch ceiling with rows left. The position is durable, so the
+          // next invocation resumes here — but the window is NOT yet covered, and
+          // saying so is the difference between "reconciled" and "still going".
+          //
+          // The leftover provider records are deliberately NOT reported as missing:
+          // a later page may still match them, and calling them missing now would
+          // invent a discrepancy for every payment this run has not reached.
+          incomplete.push(adapter.id);
+          logger?.warn("Reconciler: batch ceiling reached, window not fully covered", {
+            provider: adapter.id,
+            batches,
+            batchSize,
+            unmatchedSoFar: unclaimed.size,
+          });
+        } else {
+          // The window is fully walked, so anything still unclaimed is a provider
+          // record with no paykit row — the real `paykit_missing` set, and the case
+          // that matters most: money moved upstream that this database has no record
+          // of. Diffed with an empty snapshot, which is exactly what it is.
+          if (unclaimed.size > 0) {
+            const leftover = diffPaykitVsProvider(adapter.id, [], [...unclaimed.values()]);
+            perProvider[adapter.id] = mergeStats(perProvider[adapter.id], leftover.stats);
+            allDiscrepancies.push(...leftover.discrepancies);
+          }
+          if (perProvider[adapter.id] === undefined) {
+            // An empty window still has to be recorded as finished, or every later
+            // invocation re-walks it forever.
+            perProvider[adapter.id] = EMPTY_PER_PROVIDER;
+            await reconciliationCursorRepo.markWindowExhausted(db, {
+              provider: adapter.id,
+              window,
+            });
+          }
+        }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         adapterErrors[adapter.id] = msg;
@@ -143,7 +276,11 @@ export async function reconcileV15(
     // both into one status leaves an operator unable to tell which happened.
     const failedAdapters = Object.keys(adapterErrors).length;
     const allAdaptersFailed = adapters.length > 0 && failedAdapters === adapters.length;
-    const anythingFailed = failedAdapters > 0 || pendingResults.failed > 0;
+    // A provider that stopped at the batch ceiling has rows left in the window, so
+    // the window is not covered — even though nothing failed. Reporting that as
+    // `completed` would tell an operator the window was reconciled when part of it
+    // has not been looked at yet, which is the same lie the old hardcoded status told.
+    const anythingFailed = failedAdapters > 0 || pendingResults.failed > 0 || incomplete.length > 0;
     const runStatus: Exclude<ReconciliationRunStatus, "running" | "skipped"> = allAdaptersFailed
       ? "failed"
       : anythingFailed
@@ -169,6 +306,10 @@ export async function reconcileV15(
       perProviderById: perProvider,
       adapterErrors,
       pendingRefunds: pendingResults,
+      // Named explicitly, because "partial" alone does not say whether a provider
+      // errored or simply has more of the window left to walk. The two call for
+      // different responses: one is a fault, the other is another invocation.
+      incompleteProviders: incomplete,
     };
 
     // Stored as-is. Mapping `partial` onto `failed` here is what made a run that
@@ -206,6 +347,26 @@ interface PendingRefundResults {
   readonly completed: number;
   readonly failed: number;
   readonly timedOut: number;
+}
+
+/**
+ * Add one batch's counts onto the provider's running totals.
+ *
+ * Needed because a window is now diffed in pieces: each batch returns counts for
+ * its own page, and the summary has to describe the whole window.
+ */
+function mergeStats(
+  current: PerProviderStats | undefined,
+  batch: PerProviderStats,
+): PerProviderStats {
+  if (current === undefined) return batch;
+  return {
+    matched: current.matched + batch.matched,
+    paykitMissing: current.paykitMissing + batch.paykitMissing,
+    providerMissing: current.providerMissing + batch.providerMissing,
+    amountMismatch: current.amountMismatch + batch.amountMismatch,
+    refundDrift: current.refundDrift + batch.refundDrift,
+  };
 }
 
 async function pollPendingRefunds(
