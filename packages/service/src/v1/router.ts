@@ -12,13 +12,15 @@ import type { AppliedDiscount, ProviderRegistry } from "@vibecc/paykit";
 import { usdToMicros, vndToMicros } from "@vibecc/paykit";
 import {
   type DbClient,
-  type PaykitAuthContext,
   MAX_ACTIVE_KEYS_PER_MERCHANT,
+  type PaykitAuthContext,
+  type PaymentTransaction,
   SCOPES,
   apiKeyRepo,
   applyDiscountInTx,
   balanceRepo,
   dataJson,
+  decideReplay,
   discountRepo,
   errorJson,
   executeRefund,
@@ -28,8 +30,10 @@ import {
   paymentTransactions,
   requirePlane,
   requireScope,
+  storableCheckoutResult,
 } from "@vibecc/paykit-server";
 import { eq } from "drizzle-orm";
+import type { Context } from "hono";
 import { Hono } from "hono";
 import type { z } from "zod";
 import {
@@ -128,36 +132,59 @@ export function buildV1Router(deps: V1RouterDeps): Hono {
       }
     }
 
-    // Apply the discount and persist the transaction in one DB transaction so a
-    // lost reservation race falls back to full price atomically. The discountId
-    // is stamped on the tx metadata so the payment webhook can commit or
-    // release the reservation later.
+    // An Idempotency-Key is optional here (it is required on /refunds), but when
+    // one is supplied it has to actually work: a retry must not create a second
+    // provider session for the same money.
+    const idempotencyKey = c.req.header("Idempotency-Key") ?? undefined;
+
+    // Claim the key BEFORE calling the provider. The row is what makes a crash
+    // mid-call recoverable: it rests in `provider_creating`, which says "a session
+    // may exist upstream" — the state a reconcile looks for. Persisting the
+    // reference only after the call, as this did, orphaned any session created by a
+    // request that died before writing it back, so a payment the customer
+    // completed could never be matched to a transaction.
+    //
+    // A lost claim rolls the transaction back, which also undoes the discount
+    // reservation taken inside it. Committing that reservation would spend the
+    // customer's redemption on a checkout this request is not going to create.
     let effectiveMicros = amountMicros;
     let discountApplied = false;
-    const created = await db.transaction(async (tx) => {
-      const outcome = await applyDiscountInTx({
-        discount: appliedDiscount,
-        tx,
-        amountMicros,
-        ...(logger !== undefined ? { logger } : {}),
+    let claim: Awaited<ReturnType<typeof paymentRepo.claimCheckout>>;
+    try {
+      claim = await db.transaction(async (tx) => {
+        const outcome = await applyDiscountInTx({
+          discount: appliedDiscount,
+          tx,
+          amountMicros,
+          ...(logger !== undefined ? { logger } : {}),
+        });
+        effectiveMicros = outcome.effectiveMicros;
+        discountApplied = outcome.applied;
+        const result = await paymentRepo.claimCheckout(tx, {
+          tenantId: auth.tenant.tenantId,
+          ownerId: auth.tenant.ownerId,
+          provider: adapter.id,
+          amountMicros: effectiveMicros.toString(),
+          currencyCode: currency,
+          ...(idempotencyKey !== undefined ? { idempotencyKey } : {}),
+          ...(discountApplied && discountId !== null
+            ? { metadataJson: { discountId, discountApplied: true } }
+            : {}),
+        });
+        if (!result.created) throw new CheckoutClaimHeld(result.row);
+        return result;
       });
-      effectiveMicros = outcome.effectiveMicros;
-      discountApplied = outcome.applied;
-      return paymentRepo.createTransaction(tx, {
-        tenantId: auth.tenant.tenantId,
-        ownerId: auth.tenant.ownerId,
-        provider: adapter.id,
-        amountMicros: effectiveMicros.toString(),
-        currencyCode: currency,
-        ...(discountApplied && discountId !== null
-          ? { metadataJson: { discountId, discountApplied: true } }
-          : {}),
-      });
-    });
+    } catch (err) {
+      if (err instanceof CheckoutClaimHeld) {
+        return respondToHeldClaim(c, err.row);
+      }
+      throw err;
+    }
 
-    // createCheckout runs after the commit. If the provider call fails the
-    // reservation would otherwise be stranded (the payment can never complete),
-    // so release it before surfacing the error.
+    const created = claim.row;
+
+    // The provider call stays outside every transaction: its latency is not ours
+    // to bound, and a transaction spanning it would pin a pooled connection.
     let checkoutResult: Awaited<ReturnType<typeof adapter.createCheckout>>;
     try {
       checkoutResult = await adapter.createCheckout({
@@ -168,17 +195,47 @@ export function buildV1Router(deps: V1RouterDeps): Hono {
         currencyCode: currency,
       });
     } catch (err) {
+      // The discount reservation is released because this payment will never
+      // complete, but the payment row is deliberately LEFT in `provider_creating`:
+      // a failed call cannot be told apart from one that created a session before
+      // failing, so the row has to keep saying "a session may exist". Deleting it
+      // would let a retry create a second session for the same money.
       if (discountApplied && discountId !== null) {
         await discountRepo.releaseReservation(db, discountId).catch(() => {});
       }
-      throw err;
+      logger?.warn("adapter createCheckout failed — checkout left for reconcile", {
+        provider: adapter.id,
+        transactionId: created.transactionId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return errorJson(
+        c,
+        502,
+        "PROVIDER_CHECKOUT_FAILED",
+        "Provider could not create a checkout session. Retry with the same Idempotency-Key.",
+      );
     }
 
+    // Store the provider's answer whole, not just the reference: it is what a
+    // retry on this key has to return, and a client cannot proceed without the
+    // URLs and expiry.
     const providerRef = checkoutResult.providerSessionId ?? created.transactionId;
-    await db
-      .update(paymentTransactions)
-      .set({ providerRef, updatedAt: new Date() })
-      .where(eq(paymentTransactions.transactionId, created.transactionId));
+    await paymentRepo.finalizeCheckout(db, {
+      transactionId: created.transactionId,
+      providerRef,
+      checkoutResult: storableCheckoutResult({
+        webUrl: checkoutResult.webUrl,
+        expiresAt: checkoutResult.expiresAt,
+        ...(checkoutResult.qrUrl !== undefined ? { qrUrl: checkoutResult.qrUrl } : {}),
+        ...(checkoutResult.mobileDeeplink !== undefined
+          ? { mobileDeeplink: checkoutResult.mobileDeeplink }
+          : {}),
+        discountApplied,
+      }),
+      ...(discountApplied && discountId !== null
+        ? { metadataJson: { discountId, discountApplied: true } }
+        : {}),
+    });
 
     return c.json({
       apiVersion: API_VERSION,
@@ -399,4 +456,40 @@ export function buildV1Router(deps: V1RouterDeps): Hono {
   });
 
   return app;
+}
+
+/**
+ * Signals that this request lost the race for an idempotency key.
+ *
+ * Thrown rather than returned so the surrounding transaction rolls back: the
+ * discount reservation taken inside it must not be committed for a checkout this
+ * request is not going to create.
+ */
+class CheckoutClaimHeld extends Error {
+  constructor(readonly row: PaymentTransaction) {
+    super("idempotency key already claimed");
+    this.name = "CheckoutClaimHeld";
+  }
+}
+
+/** Replay the stored checkout, or explain why this key cannot be reused. */
+function respondToHeldClaim(c: Context, row: PaymentTransaction): Response {
+  const decision = decideReplay(row);
+  if (decision.kind === "replay") {
+    return c.json({ apiVersion: API_VERSION, data: decision.body });
+  }
+  if (decision.kind === "in_progress") {
+    return errorJson(
+      c,
+      409,
+      "CHECKOUT_IN_PROGRESS",
+      "A checkout for this Idempotency-Key is still being created. Retry shortly.",
+    );
+  }
+  return errorJson(
+    c,
+    409,
+    "CHECKOUT_NOT_REPLAYABLE",
+    `The payment for this Idempotency-Key is already ${decision.status}. Use a new key.`,
+  );
 }
