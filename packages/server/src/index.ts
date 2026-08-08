@@ -39,6 +39,7 @@ export {
   type NewWebhookEvent,
   paykitSchema,
   paymentTransactions,
+  type PaymentStatus,
   type PaymentTransaction,
   type PendingRefund,
   pendingRefunds,
@@ -196,6 +197,17 @@ export {
   type DiscountOutcome,
   type DiscountLogger,
 } from "./routes/checkout/apply-discount.js";
+
+// Checkout replay — what a retried Idempotency-Key gets back, and when a retry
+// is allowed at all. Exported because the standalone service's /v1 checkout must
+// reach the same verdict as the embedded router; two copies of this decision is
+// how the two paths drifted apart in the first place.
+export {
+  decideReplay,
+  storableCheckoutResult,
+  type CheckoutResponseBody,
+  type ReplayDecision,
+} from "./routes/checkout/checkout-replay.js";
 
 // Refund core (guard-agnostic shared logic for admin + merchant planes)
 export {
