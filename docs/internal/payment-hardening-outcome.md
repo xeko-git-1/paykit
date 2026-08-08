@@ -281,6 +281,23 @@ nghĩa là vậy.
 Provider dừng ở batch ceiling làm run thành `partial`, không phải `completed`: không
 có gì fail, nhưng một phần window chưa được xem.
 
+### Rollback đã verify trên Postgres thật
+
+Không chỉ apply xuôi. Seed dữ liệu vào **mọi** state mà down migration phải fold
+(`provider_creating`, `awaiting_payment`, inbox row `unmatched`, cursor có position),
+rồi chạy down 027 → 026 → 025 → 024 → 023 → 022. Cả 6 exit 0, và sau đó:
+
+- Payment fold hết về `pending`, không còn status nào ngoài vocabulary cũ.
+- `webhook_inbox`, `reconciliation_cursors`, `refunds` bị drop; `webhook_events` **còn
+  nguyên** — đúng như thiết kế, vì đó là đường lùi của 026.
+- CHECK khôi phục thật sự chặn: INSERT `provider_creating` sau rollback bị reject.
+- Index `paykit_pt_reconcile_keyset_idx` bị dọn cùng bảng, không để lại index không
+  ai đọc.
+
+Điểm dễ sai nhất ở down migration là thứ tự: fold dữ liệu **trước** khi restore CHECK
+hẹp hơn. Làm ngược lại thì CHECK fail ngay trên row đang giữ status mới. Thứ tự này
+được assert trong shape test và giờ đã chạy thật với dữ liệu ở đúng các state đó.
+
 Mọi migration có `.up.sql`, `.down.sql`, entry trong `manifest.json`, mirror
 byte-identical sang `packages/cli/migrations` (assert bằng test), và một shape test
 riêng. Tên file và comment SQL không tham chiếu số phase hay mã finding.
