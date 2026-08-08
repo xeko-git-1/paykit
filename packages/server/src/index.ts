@@ -271,4 +271,13 @@ export {
   type PaymentEventOutcome,
 } from "./routes/webhooks/payment-event-processor.js";
 
+// Lifecycle event contract. Exported because a consumer that wires the background
+// drains has to name the handler type it passes in.
+export type {
+  EventLogger,
+  PaykitEvent,
+  PaykitEventHandlers,
+} from "./events/emitter.js";
+export { emitEvent } from "./events/emitter.js";
+
 export const PAYKIT_SERVER_VERSION = "0.2.0-alpha.1";

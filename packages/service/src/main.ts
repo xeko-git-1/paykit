@@ -1,19 +1,3 @@
-import type { PaymentProviderAdapter } from "@vibecc/paykit";
-import {
-  type ApiKeyAuthDeps,
-  type DbClient,
-  type JwtSecretLoader,
-  apiKeyAuthMiddleware,
-  apiKeyRepo,
-  authPlaneDispatcher,
-  createJwtSecretLoader,
-  createPaykit,
-  jwtAuthMiddleware,
-  JWT_AUDIENCE,
-  JWT_ISSUER,
-  paykitDbSchema,
-  runtimeConfigRepo,
-} from "@vibecc/paykit-server";
 /**
  * Service shell entrypoint — builds the Hono app and optionally starts
  * the HTTP server. Separated into buildServiceApp (testable via fetch)
@@ -27,12 +11,28 @@ import {
  *   /v1/admin/*        — adminGuard (env-based for V4.0)
  */
 import { timingSafeEqual } from "node:crypto";
+import type { PaymentProviderAdapter } from "@vibecc/paykit";
+import {
+  type ApiKeyAuthDeps,
+  type DbClient,
+  JWT_AUDIENCE,
+  JWT_ISSUER,
+  type JwtSecretLoader,
+  apiKeyAuthMiddleware,
+  apiKeyRepo,
+  authPlaneDispatcher,
+  createJwtSecretLoader,
+  createPaykit,
+  jwtAuthMiddleware,
+  paykitDbSchema,
+  runtimeConfigRepo,
+} from "@vibecc/paykit-server";
 import { Hono } from "hono";
 import type { Pool } from "pg";
-import { buildHealthRoutes } from "./health.js";
-import { buildV1Router } from "./v1/router.js";
-import { getOpenAPIDocument } from "./v1/openapi.js";
 import { serviceErrorHandler } from "./error-handler.js";
+import { buildHealthRoutes } from "./health.js";
+import { getOpenAPIDocument } from "./v1/openapi.js";
+import { buildV1Router } from "./v1/router.js";
 
 /**
  * Constant-time string compare for the admin secret. A plain !== leaks the
@@ -149,10 +149,7 @@ export async function buildServiceApp(deps: BuildServiceAppDeps): Promise<Hono> 
 // serve — opens HTTP socket (not used in tests)
 // ---------------------------------------------------------------------------
 
-export async function serve(
-  port: number,
-  app: Hono,
-): Promise<{ close: () => Promise<void> }> {
+export async function serve(port: number, app: Hono): Promise<{ close: () => Promise<void> }> {
   const { serve: honoServe } = await import("@hono/node-server");
   const server = honoServe({ fetch: app.fetch, port });
 
@@ -237,6 +234,23 @@ export async function main(): Promise<void> {
 
     const server = await serve(config.port, app);
 
+    // The durable queues only mean something if something comes back for them. A
+    // webhook the inbox could not match, and a screening whose verdict was
+    // inconclusive, are both waiting on this tick; without it a paid customer is
+    // never credited and nothing raises an error. Several replicas ticking at once
+    // is safe — the claims are guarded UPDATEs, so they divide the work.
+    const { startBackgroundDrains } = await import("./background-drains.js");
+    const drains = startBackgroundDrains({
+      db,
+      settlesExactAmount: (provider: string) =>
+        providers.find((a) => a.id === provider)?.settlesExactAmount !== false,
+      logger: {
+        warn: (msg: string, details?: Record<string, unknown>) => {
+          console.warn(`paykit-service: ${msg}`, details ?? {});
+        },
+      },
+    });
+
     // Graceful shutdown: stop accepting connections, then close the pool so
     // in-flight queries finish and the DB sees a clean disconnect. A second
     // signal (or a 10s timeout) forces exit so a hung request cannot wedge it.
@@ -254,12 +268,18 @@ export async function main(): Promise<void> {
       }, 10_000);
       forceTimer.unref?.();
       try {
+        // Stopped before the pool closes, or a tick in flight queries a dead pool
+        // and logs an error that describes nothing but the shutdown itself.
+        drains.stop();
         await server.close();
         await pool.end();
         console.log("paykit-service: shutdown complete.");
         process.exit(0);
       } catch (err) {
-        console.error("paykit-service: error during shutdown:", err instanceof Error ? err.message : err);
+        console.error(
+          "paykit-service: error during shutdown:",
+          err instanceof Error ? err.message : err,
+        );
         process.exit(1);
       }
     };
