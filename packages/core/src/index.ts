@@ -116,4 +116,8 @@ export type {
   UpgradeSubscriptionInput,
 } from "./subscriptions/index.js";
 
+// Retry scheduling (shared by the screening queue and the webhook inbox)
+export type { BackoffOptions } from "./retry/backoff-schedule.js";
+export { backoffDelayMs, nextAttemptAt } from "./retry/backoff-schedule.js";
+
 export const PAYKIT_CORE_VERSION = "0.2.0-alpha.1";
