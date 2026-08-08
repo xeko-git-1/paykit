@@ -1,3 +1,4 @@
+import type { PaymentProviderAdapter, ProviderRegistry, RefundResult } from "@vibecc/paykit";
 /**
  * Tests for reconciler pending-refund resolution — the lifecycle AFTER
  * executeRefund returns 'pending' (ZaloPay-style async).
@@ -7,8 +8,7 @@
  *   - failed: markFailed, no ledger, headroom released
  *   - Mutation-resistant: removing the ledger write causes the balance assertion to fail
  */
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import type { ProviderRegistry, RefundResult, PaymentProviderAdapter } from "@vibecc/paykit";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ---------------------------------------------------------------------------
 // Mock @vibecc/paykit-server — must be before import of orchestrator
@@ -23,6 +23,10 @@ const mockAppendLedgerEntryIdempotent = vi.fn();
 const mockApplyDelta = vi.fn();
 const mockSumRefundsByOriginalTransaction = vi.fn();
 const mockStartRun = vi.fn();
+const mockFindCursor = vi.fn();
+const mockPageOfPayments = vi.fn();
+const mockAdvanceCursor = vi.fn();
+const mockMarkWindowExhausted = vi.fn();
 const mockCompleteRun = vi.fn();
 
 vi.mock("@vibecc/paykit-server", () => {
@@ -43,7 +47,8 @@ vi.mock("@vibecc/paykit-server", () => {
     },
     ledgerRepo: {
       appendLedgerEntryIdempotent: (...args: unknown[]) => mockAppendLedgerEntryIdempotent(...args),
-      sumRefundsByOriginalTransaction: (...args: unknown[]) => mockSumRefundsByOriginalTransaction(...args),
+      sumRefundsByOriginalTransaction: (...args: unknown[]) =>
+        mockSumRefundsByOriginalTransaction(...args),
     },
     balanceRepo: {
       applyDelta: (...args: unknown[]) => mockApplyDelta(...args),
@@ -51,6 +56,17 @@ vi.mock("@vibecc/paykit-server", () => {
     reconciliationRepo: {
       startRun: (...args: unknown[]) => mockStartRun(...args),
       completeRun: (...args: unknown[]) => mockCompleteRun(...args),
+    },
+    // The orchestrator pages the window through a durable cursor. Defaults here
+    // describe "no stored position, one page, done": a single batch covering the
+    // whole window, which is what these tests were written against.
+    reconciliationCursorRepo: {
+      findCursor: (...args: unknown[]) => mockFindCursor(...args),
+      resumePosition: () => undefined,
+      pageOfPayments: (...args: unknown[]) => mockPageOfPayments(...args),
+      advanceCursor: (...args: unknown[]) => mockAdvanceCursor(...args),
+      markWindowExhausted: (...args: unknown[]) => mockMarkWindowExhausted(...args),
+      resetCursor: vi.fn(),
     },
   };
 });
@@ -68,16 +84,31 @@ vi.mock("../src/reconcile/advisory-lock.js", () => ({
 }));
 
 vi.mock("../src/reconcile/differ.js", () => ({
-  diffPaykitVsProvider: vi.fn().mockReturnValue({ stats: { matched: 0, paykitMissing: 0, providerMissing: 0, amountMismatch: 0, refundDrift: 0 }, discrepancies: [] }),
+  diffPaykitVsProvider: vi.fn().mockReturnValue({
+    stats: {
+      matched: 0,
+      paykitMissing: 0,
+      providerMissing: 0,
+      amountMismatch: 0,
+      refundDrift: 0,
+    },
+    discrepancies: [],
+  }),
 }));
 
 vi.mock("../src/reconcile/summary.js", () => ({
-  EMPTY_PER_PROVIDER: { matched: 0, paykitMissing: 0, providerMissing: 0, amountMismatch: 0, refundDrift: 0 },
+  EMPTY_PER_PROVIDER: {
+    matched: 0,
+    paykitMissing: 0,
+    providerMissing: 0,
+    amountMismatch: 0,
+    refundDrift: 0,
+  },
   summaryToJson: (s: unknown) => s,
 }));
 
 // Import AFTER mocks
-import { reconcileV15, type ReconcileV15Deps } from "../src/reconcile/v15-orchestrator.js";
+import { type ReconcileV15Deps, reconcileV15 } from "../src/reconcile/v15-orchestrator.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -125,7 +156,7 @@ function makeTxRow(overrides?: Record<string, unknown>) {
 
 function createFakeDb(txRow = makeTxRow()) {
   const txStatusUpdates: Array<{ status: string }> = [];
-  let transactionCallbacks: Array<(tx: unknown) => Promise<unknown>> = [];
+  const transactionCallbacks: Array<(tx: unknown) => Promise<unknown>> = [];
 
   const txProxy = {
     select: () => ({
@@ -190,6 +221,12 @@ describe("pollPendingRefunds — reconciler writes ledger+balance on completion 
     mockStartRun.mockResolvedValue({ runId: "run-1" });
     mockCompleteRun.mockResolvedValue(undefined);
     mockRecordPollAttempt.mockResolvedValue(undefined);
+    // No stored position, and the window fits in one page — the shape these tests
+    // were written against, before the window was walked in batches.
+    mockFindCursor.mockResolvedValue(undefined);
+    mockPageOfPayments.mockResolvedValue([]);
+    mockAdvanceCursor.mockResolvedValue(undefined);
+    mockMarkWindowExhausted.mockResolvedValue(undefined);
   });
 
   it("on completed: writes ledger entry, calls applyDelta, marks reservation completed", async () => {
@@ -204,7 +241,11 @@ describe("pollPendingRefunds — reconciler writes ledger+balance on completion 
     });
     // After this refund, total refunded = -3M, original = 10M → not fully refunded
     mockSumRefundsByOriginalTransaction.mockResolvedValue("-3000000");
-    mockApplyDelta.mockResolvedValue({ tenantId: TENANT_ID, currencyCode: "VND", currentBalanceMicros: "0" });
+    mockApplyDelta.mockResolvedValue({
+      tenantId: TENANT_ID,
+      currencyCode: "VND",
+      currentBalanceMicros: "0",
+    });
     mockMarkCompleted.mockResolvedValue(undefined);
 
     const deps: ReconcileV15Deps = { db: db as unknown as ReconcileV15Deps["db"], registry };
@@ -230,18 +271,10 @@ describe("pollPendingRefunds — reconciler writes ledger+balance on completion 
     );
 
     // applyDelta called with negative amount
-    expect(mockApplyDelta).toHaveBeenCalledWith(
-      expect.anything(),
-      TENANT_ID,
-      "VND",
-      -3000000n,
-    );
+    expect(mockApplyDelta).toHaveBeenCalledWith(expect.anything(), TENANT_ID, "VND", -3000000n);
 
     // Reservation marked completed
-    expect(mockMarkCompleted).toHaveBeenCalledWith(
-      expect.anything(),
-      "pending-1",
-    );
+    expect(mockMarkCompleted).toHaveBeenCalledWith(expect.anything(), "pending-1");
   });
 
   it("on completed + full refund: flips tx.status to refunded", async () => {
@@ -256,7 +289,11 @@ describe("pollPendingRefunds — reconciler writes ledger+balance on completion 
     });
     // Total refunded = -3M = original → fully refunded
     mockSumRefundsByOriginalTransaction.mockResolvedValue("-3000000");
-    mockApplyDelta.mockResolvedValue({ tenantId: TENANT_ID, currencyCode: "VND", currentBalanceMicros: "0" });
+    mockApplyDelta.mockResolvedValue({
+      tenantId: TENANT_ID,
+      currencyCode: "VND",
+      currentBalanceMicros: "0",
+    });
     mockMarkCompleted.mockResolvedValue(undefined);
 
     const deps: ReconcileV15Deps = { db: db as unknown as ReconcileV15Deps["db"], registry };
@@ -329,7 +366,11 @@ describe("pollPendingRefunds — reconciler writes ledger+balance on completion 
       inserted: true,
     });
     mockSumRefundsByOriginalTransaction.mockResolvedValue("-5000000");
-    mockApplyDelta.mockResolvedValue({ tenantId: TENANT_ID, currencyCode: "VND", currentBalanceMicros: "0" });
+    mockApplyDelta.mockResolvedValue({
+      tenantId: TENANT_ID,
+      currencyCode: "VND",
+      currentBalanceMicros: "0",
+    });
     mockMarkCompleted.mockResolvedValue(undefined);
 
     const deps: ReconcileV15Deps = { db: db as unknown as ReconcileV15Deps["db"], registry };

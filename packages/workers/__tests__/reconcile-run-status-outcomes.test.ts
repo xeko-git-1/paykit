@@ -21,6 +21,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mockStartRun = vi.fn();
 const mockCompleteRun = vi.fn();
 const mockListPollable = vi.fn();
+const mockFindCursor = vi.fn();
+const mockPageOfPayments = vi.fn();
+const mockAdvanceCursor = vi.fn();
+const mockMarkWindowExhausted = vi.fn();
 
 vi.mock("@vibecc/paykit-server", () => ({
   paymentTransactions: {
@@ -44,6 +48,17 @@ vi.mock("@vibecc/paykit-server", () => ({
   reconciliationRepo: {
     startRun: (...args: unknown[]) => mockStartRun(...args),
     completeRun: (...args: unknown[]) => mockCompleteRun(...args),
+  },
+  // The orchestrator pages the window through a durable cursor. Defaults here
+  // describe "no stored position, one page, done": a single batch covering the
+  // whole window, which is what these tests were written against.
+  reconciliationCursorRepo: {
+    findCursor: (...args: unknown[]) => mockFindCursor(...args),
+    resumePosition: () => undefined,
+    pageOfPayments: (...args: unknown[]) => mockPageOfPayments(...args),
+    advanceCursor: (...args: unknown[]) => mockAdvanceCursor(...args),
+    markWindowExhausted: (...args: unknown[]) => mockMarkWindowExhausted(...args),
+    resetCursor: vi.fn(),
   },
 }));
 
@@ -133,6 +148,12 @@ beforeEach(() => {
   mockStartRun.mockResolvedValue({ runId: "run-1" });
   mockCompleteRun.mockResolvedValue(undefined);
   mockListPollable.mockResolvedValue([]);
+  // No stored position, and the window fits in one page — the shape these tests
+  // were written against, before the window was walked in batches.
+  mockFindCursor.mockResolvedValue(undefined);
+  mockPageOfPayments.mockResolvedValue([]);
+  mockAdvanceCursor.mockResolvedValue(undefined);
+  mockMarkWindowExhausted.mockResolvedValue(undefined);
 });
 
 describe("every adapter succeeded", () => {
@@ -236,12 +257,14 @@ describe("the run throws part-way through", () => {
     // A row left in `running` is indistinguishable from a run still in progress:
     // nothing revisits it, so the audit trail shows a reconciliation that started
     // and never ended.
+    //
+    // The failure is injected at the cursor read rather than at a raw select: that
+    // is the first database call the run makes, and unlike the per-adapter paging it
+    // is outside the adapter try/catch — so it is the path that reaches the outer
+    // handler this test is about.
+    mockFindCursor.mockRejectedValue(new Error("connection reset"));
     const db = {
-      select: () => ({
-        from: () => ({
-          where: () => Promise.reject(new Error("connection reset")),
-        }),
-      }),
+      select: () => ({ from: () => ({ where: () => Promise.resolve([]) }) }),
       transaction: async <T>(fn: (tx: unknown) => Promise<T>): Promise<T> => fn({}),
     } as never;
 
@@ -259,11 +282,10 @@ describe("the run throws part-way through", () => {
     // If closing the row also fails — likely, since the database is usually why
     // the run failed — the caller must still see the cause.
     mockCompleteRun.mockRejectedValue(new Error("could not write run row"));
+    mockFindCursor.mockRejectedValue(new Error("connection reset"));
     const warn = vi.fn();
     const db = {
-      select: () => ({
-        from: () => ({ where: () => Promise.reject(new Error("connection reset")) }),
-      }),
+      select: () => ({ from: () => ({ where: () => Promise.resolve([]) }) }),
       transaction: async <T>(fn: (tx: unknown) => Promise<T>): Promise<T> => fn({}),
     } as never;
 
