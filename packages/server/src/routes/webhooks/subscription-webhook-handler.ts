@@ -32,15 +32,15 @@ import type {
   SubscriptionAdapter,
   SubscriptionStatus,
 } from "@vibecc/paykit";
-import type { Context } from "hono";
-import { Hono } from "hono";
 import type { DbClient, DbOrTx } from "@vibecc/paykit-auth-core/db/client.js";
 import * as customerRepo from "@vibecc/paykit-auth-core/db/repos/customer.repo.js";
 import { appendLedgerEntryIdempotent } from "@vibecc/paykit-auth-core/db/repos/ledger.repo.js";
-import * as subscriptionRepo from "@vibecc/paykit-auth-core/db/repos/subscription.repo.js";
 import { appendSubscriptionEvent } from "@vibecc/paykit-auth-core/db/repos/subscription-event.repo.js";
+import * as subscriptionRepo from "@vibecc/paykit-auth-core/db/repos/subscription.repo.js";
 import { tryRecordWebhookEvent } from "@vibecc/paykit-auth-core/db/repos/webhook-event.repo.js";
 import type { Subscription } from "@vibecc/paykit-auth-core/db/schema/subscriptions.js";
+import type { Context } from "hono";
+import { Hono } from "hono";
 import { errorJson } from "../shared/response.js";
 
 const LEDGER_CURRENCY = "USD";
@@ -52,9 +52,7 @@ export interface SubscriptionWebhookHandlerDeps {
   readonly onLedgerSkipped?: (reason: string, payload: Record<string, unknown>) => void;
 }
 
-export function buildSubscriptionWebhookHandler(
-  deps: SubscriptionWebhookHandlerDeps,
-): Hono {
+export function buildSubscriptionWebhookHandler(deps: SubscriptionWebhookHandlerDeps): Hono {
   const app = new Hono();
   app.post(`/${deps.adapter.id}`, async (c) => handle(c, deps));
   return app;
@@ -102,11 +100,7 @@ async function handle(c: Context, deps: SubscriptionWebhookHandlerDeps): Promise
         evt.subscriptionId,
       );
 
-      if (
-        evt.type === "sub.created" ||
-        evt.type === "sub.updated" ||
-        evt.type === "sub.deleted"
-      ) {
+      if (evt.type === "sub.created" || evt.type === "sub.updated" || evt.type === "sub.deleted") {
         await handleSubLifecycle(tx, deps, evt, existing);
       } else if (evt.type === "invoice.paid") {
         await handleInvoicePaid(tx, deps, evt, existing);
@@ -131,6 +125,19 @@ async function handle(c: Context, deps: SubscriptionWebhookHandlerDeps): Promise
       }
     });
   } catch (err) {
+    if (err instanceof EventNotYetApplicable) {
+      // Nothing was written — the rollback took the dedup row with it — so the
+      // redelivery this 409 asks for will find a clean slate. Distinguished from a
+      // handler fault so an operator can tell "waiting on another event" from
+      // "something is broken".
+      deps.logger?.warn("subscription_webhook_deferred", err.detail);
+      return errorJson(
+        c,
+        409,
+        "WEBHOOK_NOT_YET_APPLICABLE",
+        "The subscription this event belongs to is not recorded yet. Redeliver.",
+      );
+    }
     deps.logger?.warn("subscription_webhook_tx_failed", {
       error: err instanceof Error ? err.message : String(err),
       eventId: evt.eventId,
@@ -141,6 +148,29 @@ async function handle(c: Context, deps: SubscriptionWebhookHandlerDeps): Promise
   return c.json({ received: true });
 }
 
+/**
+ * Raised when an event cannot be applied YET, as opposed to not needing to be.
+ *
+ * The dedup row is inserted as the first statement of this transaction, so a plain
+ * `return` commits it: the event is permanently marked seen, the route answers 200,
+ * the provider stops retrying, and a redelivery is refused by the primary key.
+ * For an `invoice.paid` whose subscription row has not been written yet — Stripe can
+ * deliver the invoice before the subscription event — that means a customer paid and
+ * was never credited, with nothing to replay from.
+ *
+ * Throwing instead rolls the dedup row back with everything else, and the route
+ * answers 5xx so the provider redelivers. This is narrower than the payment inbox:
+ * durability depends on the provider's retry policy rather than on a table we own,
+ * and an event that stays unmatchable past that window is still lost. It removes the
+ * permanent-loss case, not the whole class.
+ */
+class EventNotYetApplicable extends Error {
+  constructor(readonly detail: Record<string, unknown>) {
+    super("subscription event cannot be applied yet");
+    this.name = "EventNotYetApplicable";
+  }
+}
+
 async function handleSubLifecycle(
   tx: DbOrTx,
   deps: SubscriptionWebhookHandlerDeps,
@@ -148,8 +178,7 @@ async function handleSubLifecycle(
   existing: Subscription | undefined,
 ): Promise<void> {
   const tenantId =
-    existing?.tenantId ??
-    ((evt.metadata as { paykit_tenant_id?: string }).paykit_tenant_id ?? "");
+    existing?.tenantId ?? (evt.metadata as { paykit_tenant_id?: string }).paykit_tenant_id ?? "";
   if (!tenantId) {
     deps.logger?.warn("sub_lifecycle_missing_tenant", { eventId: evt.eventId });
     return;
@@ -177,7 +206,18 @@ async function handleInvoicePaid(
   evt: NormalizedSubscriptionEvent,
   existing: Subscription | undefined,
 ): Promise<void> {
-  if (!existing || !evt.invoiceId) return;
+  // No invoice id means there is nothing to key the ledger entry on, so this event
+  // can never be applied — a genuine no-op, not a timing problem.
+  if (!evt.invoiceId) return;
+  // A missing subscription row IS a timing problem: the invoice can arrive before
+  // the subscription event that creates it. Retry rather than swallow.
+  if (!existing) {
+    throw new EventNotYetApplicable({
+      reason: "subscription_not_found",
+      eventId: evt.eventId,
+      providerSubscriptionId: evt.subscriptionId,
+    });
+  }
   if (evt.amountMicros === undefined || evt.amountMicros === "0") {
     deps.onLedgerSkipped?.("zero_amount", { eventId: evt.eventId });
     return;
@@ -286,7 +326,12 @@ async function handleCustomerDeleted(
 ): Promise<void> {
   const subs = await subscriptionRepo.listActiveByCustomer(tx, providerId, evt.customerId);
   for (const s of subs) {
-    await subscriptionRepo.markCanceled(tx, providerId, s.providerSubscriptionId, evt.eventCreatedAt);
+    await subscriptionRepo.markCanceled(
+      tx,
+      providerId,
+      s.providerSubscriptionId,
+      evt.eventCreatedAt,
+    );
     await appendSubscriptionEvent(tx, {
       subscriptionId: s.subscriptionId,
       provider: providerId,
