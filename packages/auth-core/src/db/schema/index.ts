@@ -18,9 +18,11 @@ export {
 } from "./ledger-entries.js";
 export { type Merchant, merchants, type NewMerchant } from "./merchants.js";
 export {
+  AWAITING_PAYMENT_STATUSES,
   type NewPaymentTransaction,
   paykitSchema,
   paymentTransactions,
+  type PaymentStatus,
   type PaymentTransaction,
 } from "./payment-transactions.js";
 export {

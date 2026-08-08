@@ -28,6 +28,12 @@ export const paymentTransactions = paykitSchema.table(
     // refund by provider_ref.
     providerPaymentId: text("provider_payment_id"),
     idempotencyKey: text("idempotency_key"),
+    // The provider's checkout answer, kept whole so a retry of the same
+    // Idempotency-Key can be replayed with the fields a client actually needs
+    // (the URLs and the expiry), not just the reference. Its own column rather
+    // than metadata_json because other paths rewrite that object wholesale and
+    // have no reason to know they must preserve a replay payload.
+    checkoutResultJson: jsonb("checkout_result_json"),
     metadataJson: jsonb("metadata_json").notNull().default({}),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -41,3 +47,37 @@ export const paymentTransactions = paykitSchema.table(
 
 export type PaymentTransaction = typeof paymentTransactions.$inferSelect;
 export type NewPaymentTransaction = typeof paymentTransactions.$inferInsert;
+
+/**
+ * The states a payment can hold.
+ *
+ * `pending` and `awaiting_payment` mean the same thing — the provider has a
+ * checkout and the customer has not paid. Both exist because every historical row
+ * uses `pending`, and rewriting them would change the meaning of stored data.
+ * New checkouts use the explicit pair (`provider_creating` → `awaiting_payment`);
+ * every read path must treat the two as equivalent.
+ *
+ * `provider_creating` is the one state that is not safe to retry blind: the row
+ * exists but the provider may or may not have accepted the checkout, so it needs
+ * a reconcile against the provider rather than a second attempt.
+ */
+export type PaymentStatus =
+  | "pending"
+  | "provider_creating"
+  | "awaiting_payment"
+  | "completed"
+  | "failed"
+  | "refunded"
+  | "partially_refunded"
+  | "expired"
+  | "quarantine"
+  | "refund_pending_webhook"
+  | "screening_pending";
+
+/**
+ * The states that mean "the provider has a checkout, the customer has not paid".
+ *
+ * Derived rather than restated so a new pre-payment state cannot be added without
+ * deciding whether it belongs here.
+ */
+export const AWAITING_PAYMENT_STATUSES: readonly PaymentStatus[] = ["pending", "awaiting_payment"];
