@@ -184,6 +184,13 @@
       "up": "026_webhook_inbox.up.sql",
       "down": "026_webhook_inbox.down.sql",
       "description": "The webhook_inbox table — a received delivery becomes durable in its own transaction and its state says whether the business work committed, so a webhook that arrives before the checkout stored its provider reference becomes retryable work instead of a silent 200 that can never be redelivered"
+    },
+    {
+      "id": "027",
+      "slug": "reconciliation_cursor",
+      "up": "027_reconciliation_cursor.up.sql",
+      "down": "027_reconciliation_cursor.down.sql",
+      "description": "Per-provider keyset cursor for reconciliation — a run works through a large window in bounded batches and resumes where it stopped, instead of loading the whole window into one process and restarting from the beginning after every failure"
     }
   ]
 }
