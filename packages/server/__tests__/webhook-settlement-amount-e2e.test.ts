@@ -15,9 +15,13 @@ import type {
 } from "@vibecc/paykit";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@vibecc/paykit-auth-core/db/repos/webhook-event.repo.js", () => ({
-  tryRecordWebhookEvent: vi.fn(),
-}));
+// The router records every delivery in the inbox before processing it, so this
+// stands in for that repo. The factory is async so the shared helper can be pulled
+// in from inside it — a hoisted factory cannot reach a top-level import.
+vi.mock("@vibecc/paykit-auth-core/db/repos/webhook-inbox.repo.js", async () => {
+  const { inboxRepoMock } = await import("./helpers/webhook-inbox-repo-mock.js");
+  return inboxRepoMock();
+});
 vi.mock("@vibecc/paykit-auth-core/db/repos/ledger.repo.js", () => ({
   appendLedgerEntryIdempotent: vi.fn(),
 }));
@@ -38,10 +42,8 @@ import { applyDelta } from "@vibecc/paykit-auth-core/db/repos/balance.repo.js";
 import { appendLedgerEntryIdempotent } from "@vibecc/paykit-auth-core/db/repos/ledger.repo.js";
 import { updateTransactionStatus } from "@vibecc/paykit-auth-core/db/repos/payment.repo.js";
 import { findActiveByTransaction } from "@vibecc/paykit-auth-core/db/repos/pending-refund.repo.js";
-import { tryRecordWebhookEvent } from "@vibecc/paykit-auth-core/db/repos/webhook-event.repo.js";
 import { buildWebhookRouter } from "../src/routes/webhooks/webhook-router.js";
 
-const mTryRecord = tryRecordWebhookEvent as ReturnType<typeof vi.fn>;
 const mAppend = appendLedgerEntryIdempotent as ReturnType<typeof vi.fn>;
 const mApplyDelta = applyDelta as ReturnType<typeof vi.fn>;
 const mFindActive = findActiveByTransaction as ReturnType<typeof vi.fn>;
@@ -143,7 +145,6 @@ function completedEvent(receivedMicros: string): NormalizedWebhookEvent {
 }
 
 beforeEach(() => {
-  mTryRecord.mockReset().mockResolvedValue({ recorded: true });
   mAppend.mockReset().mockResolvedValue({ inserted: true });
   mApplyDelta.mockReset().mockResolvedValue(undefined);
   mFindActive.mockReset().mockResolvedValue([]);

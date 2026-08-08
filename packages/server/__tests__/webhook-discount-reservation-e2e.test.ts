@@ -15,17 +15,31 @@
  * would free the slot for a payment that may still be credited. The verdict
  * transaction owns that decision — see screening-verdict-reservation.test.ts.
  */
-import type { NormalizedWebhookEvent, PaymentProviderAdapter, ProviderRegistry } from "@vibecc/paykit";
+import type {
+  NormalizedWebhookEvent,
+  PaymentProviderAdapter,
+  ProviderRegistry,
+} from "@vibecc/paykit";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@vibecc/paykit-auth-core/db/repos/webhook-event.repo.js", () => ({ tryRecordWebhookEvent: vi.fn() }));
-vi.mock("@vibecc/paykit-auth-core/db/repos/ledger.repo.js", () => ({ appendLedgerEntryIdempotent: vi.fn() }));
+// The router records every delivery in the inbox before processing it, so this
+// stands in for that repo. The factory is async so the shared helper can be pulled
+// in from inside it — a hoisted factory cannot reach a top-level import.
+vi.mock("@vibecc/paykit-auth-core/db/repos/webhook-inbox.repo.js", async () => {
+  const { inboxRepoMock } = await import("./helpers/webhook-inbox-repo-mock.js");
+  return inboxRepoMock();
+});
+vi.mock("@vibecc/paykit-auth-core/db/repos/ledger.repo.js", () => ({
+  appendLedgerEntryIdempotent: vi.fn(),
+}));
 vi.mock("@vibecc/paykit-auth-core/db/repos/balance.repo.js", () => ({ applyDelta: vi.fn() }));
 vi.mock("@vibecc/paykit-auth-core/db/repos/pending-refund.repo.js", () => ({
   findActiveByTransaction: vi.fn(),
   markCompleted: vi.fn(),
 }));
-vi.mock("@vibecc/paykit-auth-core/db/repos/payment.repo.js", () => ({ updateTransactionStatus: vi.fn() }));
+vi.mock("@vibecc/paykit-auth-core/db/repos/payment.repo.js", () => ({
+  updateTransactionStatus: vi.fn(),
+}));
 vi.mock("@vibecc/paykit-auth-core/db/repos/discount.repo.js", () => ({
   commitReservation: vi.fn(),
   releaseReservation: vi.fn(),
@@ -40,15 +54,16 @@ vi.mock("@vibecc/paykit-auth-core/db/repos/screening-job.repo.js", () => ({
   markScreeningRetryable: vi.fn(),
 }));
 
-import { buildWebhookRouter } from "../src/routes/webhooks/webhook-router.js";
-import { tryRecordWebhookEvent } from "@vibecc/paykit-auth-core/db/repos/webhook-event.repo.js";
-import { appendLedgerEntryIdempotent } from "@vibecc/paykit-auth-core/db/repos/ledger.repo.js";
 import { applyDelta } from "@vibecc/paykit-auth-core/db/repos/balance.repo.js";
-import { findActiveByTransaction } from "@vibecc/paykit-auth-core/db/repos/pending-refund.repo.js";
+import {
+  commitReservation,
+  releaseReservation,
+} from "@vibecc/paykit-auth-core/db/repos/discount.repo.js";
+import { appendLedgerEntryIdempotent } from "@vibecc/paykit-auth-core/db/repos/ledger.repo.js";
 import { updateTransactionStatus } from "@vibecc/paykit-auth-core/db/repos/payment.repo.js";
-import { commitReservation, releaseReservation } from "@vibecc/paykit-auth-core/db/repos/discount.repo.js";
+import { findActiveByTransaction } from "@vibecc/paykit-auth-core/db/repos/pending-refund.repo.js";
+import { buildWebhookRouter } from "../src/routes/webhooks/webhook-router.js";
 
-const mTryRecord = tryRecordWebhookEvent as ReturnType<typeof vi.fn>;
 const mAppend = appendLedgerEntryIdempotent as ReturnType<typeof vi.fn>;
 const mApplyDelta = applyDelta as ReturnType<typeof vi.fn>;
 const mFindActive = findActiveByTransaction as ReturnType<typeof vi.fn>;
@@ -131,11 +146,12 @@ function post(extraDeps: Record<string, unknown> = {}) {
 }
 
 beforeEach(() => {
-  mTryRecord.mockReset().mockResolvedValue({ recorded: true });
   mAppend.mockReset().mockResolvedValue({ inserted: true });
   mApplyDelta.mockReset().mockResolvedValue(undefined);
   mFindActive.mockReset().mockResolvedValue([]);
-  mUpdateStatus.mockReset().mockResolvedValue({ transactionId: "a0000000-0000-4000-8000-000000000001" });
+  mUpdateStatus
+    .mockReset()
+    .mockResolvedValue({ transactionId: "a0000000-0000-4000-8000-000000000001" });
   mCommit.mockReset().mockResolvedValue(true);
   mRelease.mockReset().mockResolvedValue(true);
   txMetadata = { discountId: "disc-1", discountApplied: true };

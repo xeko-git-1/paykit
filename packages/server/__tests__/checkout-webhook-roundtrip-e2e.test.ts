@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 /**
  * Checkout → webhook provider_ref round-trip, for every shipped adapter.
  *
@@ -25,8 +26,11 @@
  * a matching provider_ref credits the ledger and a mismatched one does not. The
  * mismatch case is the money-losing failure mode, pinned as a test.
  */
-import type { NormalizedWebhookEvent, PaymentProviderAdapter, ProviderRegistry } from "@vibecc/paykit";
-import { createHmac } from "node:crypto";
+import type {
+  NormalizedWebhookEvent,
+  PaymentProviderAdapter,
+  ProviderRegistry,
+} from "@vibecc/paykit";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // --- Stripe SDK stub ---------------------------------------------------------
@@ -62,9 +66,13 @@ vi.mock("stripe", () => {
   return { default: MockStripe };
 });
 
-vi.mock("@vibecc/paykit-auth-core/db/repos/webhook-event.repo.js", () => ({
-  tryRecordWebhookEvent: vi.fn(),
-}));
+// The router records every delivery in the inbox before processing it, so this
+// stands in for that repo. The factory is async so the shared helper can be pulled
+// in from inside it — a hoisted factory cannot reach a top-level import.
+vi.mock("@vibecc/paykit-auth-core/db/repos/webhook-inbox.repo.js", async () => {
+  const { inboxRepoMock } = await import("./helpers/webhook-inbox-repo-mock.js");
+  return inboxRepoMock();
+});
 vi.mock("@vibecc/paykit-auth-core/db/repos/ledger.repo.js", () => ({
   appendLedgerEntryIdempotent: vi.fn(),
 }));
@@ -79,11 +87,13 @@ vi.mock("@vibecc/paykit-auth-core/db/repos/payment.repo.js", () => ({
   updateTransactionStatus: vi.fn(),
 }));
 
-import { appendLedgerEntryIdempotent } from "@vibecc/paykit-auth-core/db/repos/ledger.repo.js";
 import { applyDelta } from "@vibecc/paykit-auth-core/db/repos/balance.repo.js";
-import { findActiveByTransaction, markCompleted } from "@vibecc/paykit-auth-core/db/repos/pending-refund.repo.js";
+import { appendLedgerEntryIdempotent } from "@vibecc/paykit-auth-core/db/repos/ledger.repo.js";
 import { updateTransactionStatus } from "@vibecc/paykit-auth-core/db/repos/payment.repo.js";
-import { tryRecordWebhookEvent } from "@vibecc/paykit-auth-core/db/repos/webhook-event.repo.js";
+import {
+  findActiveByTransaction,
+  markCompleted,
+} from "@vibecc/paykit-auth-core/db/repos/pending-refund.repo.js";
 import { buildWebhookRouter } from "../src/routes/webhooks/webhook-router.js";
 
 import { createBitpayAdapter } from "../../bitpay-adapter/src/adapter.js";
@@ -93,7 +103,10 @@ import { createMomoAdapter } from "../../momo-adapter/src/adapter.js";
 import { buildIpnCanonical, sign as momoSign } from "../../momo-adapter/src/signature.js";
 import { createNowpaymentsAdapter } from "../../nowpayments-adapter/src/adapter.js";
 import { canonicalize } from "../../nowpayments-adapter/src/canonical-json.js";
-import { NP_SIGNATURE_HEADER, computeNpSignature } from "../../nowpayments-adapter/src/webhook-verifier.js";
+import {
+  NP_SIGNATURE_HEADER,
+  computeNpSignature,
+} from "../../nowpayments-adapter/src/webhook-verifier.js";
 import { createSepayAdapter } from "../../sepay-adapter/src/adapter.js";
 import { createStripeAdapter } from "../../stripe-adapter/src/adapter.js";
 import { createVnpayAdapter } from "../../vnpay-adapter/src/adapter.js";
@@ -101,7 +114,6 @@ import { signParams } from "../../vnpay-adapter/src/signature.js";
 import { createZaloPayAdapter } from "../../zalopay-adapter/src/adapter.js";
 import { signWithKey2 } from "../../zalopay-adapter/src/signature.js";
 
-const mTryRecord = tryRecordWebhookEvent as ReturnType<typeof vi.fn>;
 const mAppend = appendLedgerEntryIdempotent as ReturnType<typeof vi.fn>;
 const mApplyDelta = applyDelta as ReturnType<typeof vi.fn>;
 const mFindActive = findActiveByTransaction as ReturnType<typeof vi.fn>;
@@ -183,7 +195,13 @@ interface AdapterCase {
 }
 
 function checkoutInput(txId: string, amountMicros: bigint, currencyCode: string) {
-  return { transactionId: txId, tenantId: TENANT_ID, ownerId: OWNER_ID, amountMicros, currencyCode };
+  return {
+    transactionId: txId,
+    tenantId: TENANT_ID,
+    ownerId: OWNER_ID,
+    amountMicros,
+    currencyCode,
+  };
 }
 
 // One entry per shipped adapter. Adding a future adapter is one entry.
@@ -458,10 +476,17 @@ const ADAPTER_CASES: readonly AdapterCase[] = [
         }
         return null;
       });
-      const adapter = createBitpayAdapter({ apiToken: "pos-token", fetcher, environment: "sandbox" });
+      const adapter = createBitpayAdapter({
+        apiToken: "pos-token",
+        fetcher,
+        environment: "sandbox",
+      });
       const checkout = await adapter.createCheckout(checkoutInput(txId, USD_50_MICROS, "USD"));
       // BitPay does not sign IPNs — the POSTed body only names the invoice.
-      const rawBody = JSON.stringify({ event: { name: "invoice_confirmed" }, data: { id: invoiceId } });
+      const rawBody = JSON.stringify({
+        event: { name: "invoice_confirmed" },
+        data: { id: invoiceId },
+      });
       return {
         adapter,
         storedProviderRef: checkout.providerSessionId ?? txId,
@@ -480,7 +505,10 @@ const ADAPTER_CASES: readonly AdapterCase[] = [
         if (!url.includes("/v1/payment")) return null;
         sentOrderId = (JSON.parse(body) as { order_id: string }).order_id;
         return {
-          body: { state: 0, result: { uuid, order_id: sentOrderId, url: "https://pay.cryptomus.com/pay/rt" } },
+          body: {
+            state: 0,
+            result: { uuid, order_id: sentOrderId, url: "https://pay.cryptomus.com/pay/rt" },
+          },
         };
       });
       const adapter = createCryptomusAdapter({
@@ -536,12 +564,13 @@ describe("checkout → webhook provider_ref round-trip (every shipped adapter)",
     },
   );
 
-  it.each(
-    ADAPTER_CASES.filter((c) => c.unsigned !== true).map((c) => [c.label, c] as const),
-  )("%s: accepts its own signed completed webhook", async (_label, adapterCase) => {
-    const { adapter, webhook } = await adapterCase.run(TX_ID);
-    expect(adapter.verifyWebhookSignature(webhook.rawBody, webhook.headers)).toBe(true);
-  });
+  it.each(ADAPTER_CASES.filter((c) => c.unsigned !== true).map((c) => [c.label, c] as const))(
+    "%s: accepts its own signed completed webhook",
+    async (_label, adapterCase) => {
+      const { adapter, webhook } = await adapterCase.run(TX_ID);
+      expect(adapter.verifyWebhookSignature(webhook.rawBody, webhook.headers)).toBe(true);
+    },
+  );
 
   it("covers every adapter the registry can ship", () => {
     expect(ADAPTER_CASES.map((c) => c.label).sort()).toEqual([
@@ -638,7 +667,6 @@ function buildApp(adapter: PaymentProviderAdapter, row: TxRow) {
 }
 
 beforeEach(() => {
-  mTryRecord.mockReset().mockResolvedValue({ recorded: true });
   mAppend.mockReset().mockResolvedValue({ inserted: true });
   mApplyDelta.mockReset().mockResolvedValue(undefined);
   mFindActive.mockReset().mockResolvedValue([]);
