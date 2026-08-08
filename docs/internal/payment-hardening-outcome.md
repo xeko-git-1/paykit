@@ -10,7 +10,8 @@ Trạng thái gate trên đúng nhánh tích hợp, chạy thật:
 | `pnpm install --frozen-lockfile` | exit 0 |
 | `pnpm typecheck` | exit 0 |
 | `pnpm build` | exit 0 |
-| `pnpm test` | exit 0 — **1374 pass / 9 skip / 144 file** |
+| `pnpm test` | exit 0 — **1374 pass / 23 skip / 145 file** (không có Postgres) |
+| `pnpm test` + `PAYKIT_E2E_DATABASE_URL` | exit 0 — **1397 pass / 0 skip / 145 file** (Postgres 17 thật) |
 | `pnpm lint` | exit 1 — **219 error** |
 
 `pnpm lint` fail là trạng thái có từ trước, không phải do workstream này: baseline
@@ -291,17 +292,24 @@ Hệ quả thực tế: reconcile vẫn fetch theo cửa sổ thời gian, nên 
 giao dịch rất lớn một run có thể chạy dài hơn mong muốn. Không mất tiền, không sai
 số — chỉ là chưa chia trang.
 
-**Test là unit/integration với DB giả, không phải test có Postgres thật.** Repo có
-sẵn hai file `*.e2e.test.ts` cần Postgres (`discount-consume-savepoint-pg.e2e.test.ts`)
-và chúng bị skip trong môi trường này — đó là 2 file skip trong 144. Nghĩa là các
-CHECK constraint và hành vi `FOR UPDATE SKIP LOCKED` của migration 026 được assert ở
-mức SQL text và mức logic, **chưa** được chạy trên Postgres thật trong session này.
-Đây là giới hạn cần biết trước khi deploy.
+**Đã verify trên Postgres 17 thật.** Cả 26 migration apply sạch theo đúng thứ tự
+manifest lên database trống. `webhook-inbox-pg.e2e.test.ts` (14 test) chạy repo inbox
+thật qua `pg.Pool` và assert những thứ mock không chứng minh được:
 
-**Chưa test hai worker tranh cùng một inbox row trên DB thật.** Fencing dựa vào
-guarded UPDATE, đúng theo pattern đã dùng cho `screening_jobs`, nhưng tính chất
-"một winner, một no-op" ở đây được suy ra từ pattern chứ không phải đo bằng test
-đồng thời.
+- Hai `claimNextDelivery` đồng thời cho ra **đúng một** winner — đo bằng
+  `Promise.all`, không phải suy ra từ pattern.
+- Lease hết hạn thì row được reclaim, `processing_attempts` lên 2 — worker chết
+  không làm delivery đứng mãi.
+- Cả 4 CHECK constraint thật sự reject: `processed` không có
+  `matched_transaction_id`, `unmatched` mang `processed_at`, `dead_letter` thiếu
+  `processed_at`, state sai chính tả.
+- Vòng `unmatched → failed → dead_letter → requeue` đi hết không vi phạm CHECK nào
+  (requeue phải clear `processed_at`, nếu không constraint chặn).
+- `sweepInboxPayloads` xoá payload của row đã settle và **không** chạm row còn nợ retry.
+- `listDeliveriesByState` không trả về `rawPayload`/`normalizedPayload`.
+
+Với `PAYKIT_E2E_DATABASE_URL` trỏ vào DB trống: **1397 pass, 0 skip, 145 file** —
+cả ba pg e2e (inbox, cold-start, discount savepoint) cùng chạy.
 
 **`webhook_events` vẫn còn.** Router payment không dùng nữa, nhưng
 `/admin/webhook-events` và pipeline subscription vẫn đọc. Giữ lại có chủ đích: down
