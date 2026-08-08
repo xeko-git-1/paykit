@@ -10,9 +10,9 @@ Trạng thái gate trên đúng nhánh tích hợp, chạy thật:
 | `pnpm install --frozen-lockfile` | exit 0 |
 | `pnpm typecheck` | exit 0 |
 | `pnpm build` | exit 0 |
-| `pnpm test` | exit 0 — **1412 pass / 23 skip / 148 file** (không có Postgres) |
+| `pnpm test` | exit 0 — **1418 pass / 23 skip / 149 file** (không có Postgres) |
 | `pnpm test` + `PAYKIT_E2E_DATABASE_URL` | exit 0 — **1397 pass / 0 skip** (đo trước khi thêm 027) |
-| `pnpm lint` | exit 1 — **214 error** |
+| `pnpm lint` | exit 1 — **212 error** |
 
 `pnpm lint` fail là trạng thái có từ trước, không phải do workstream này: baseline
 lúc bắt đầu là 230–238 error trên cùng script (`biome check packages`). 219 là thấp
@@ -352,11 +352,26 @@ thật qua `pg.Pool` và assert những thứ mock không chứng minh được:
 Với `PAYKIT_E2E_DATABASE_URL` trỏ vào DB trống: **1397 pass, 0 skip, 145 file** —
 cả ba pg e2e (inbox, cold-start, discount savepoint) cùng chạy.
 
-**`webhook_events` vẫn còn.** Router payment không dùng nữa, nhưng
-`/admin/webhook-events` và pipeline subscription vẫn đọc. Giữ lại có chủ đích: down
-migration của 026 cần chỗ đó còn dữ liệu để quay về. Nghĩa là pipeline subscription
-**chưa** được hưởng inbox — nó vẫn có đúng lỗi #1. Chưa nằm trong scope 12 mục tiêu,
-nhưng là nợ đã biết.
+**`webhook_events` vẫn còn, và pipeline subscription vẫn dùng nó.** Router payment
+không đọc nữa. Giữ lại có chủ đích: `/admin/webhook-events` đọc bảng đó, và down
+migration của 026 cần chỗ đó còn dữ liệu để quay về.
+
+Nhưng khi kiểm lại pipeline subscription thì thấy nó có **đúng** lỗi mất tiền #1, ở
+`handleInvoicePaid`: `if (!existing || !evt.invoiceId) return`. Stripe có thể gửi
+`invoice.paid` trước `sub.created`, và cái `return` đó vẫn commit row dedup ⇒ 200 ⇒
+provider ngừng retry ⇒ redelivery bị PK chặn. Khách trả tiền, không có credit, không
+replay được.
+
+Đã sửa: trường hợp chưa match được thì throw, rollback mang row dedup đi cùng, route
+trả 409 để provider gửi lại. Hoá đơn thiếu `invoiceId` vẫn ack vì không lần gửi lại
+nào giúp được — hai ca này trước đây bị gộp trong một điều kiện.
+
+Hẹp hơn inbox có chủ đích: durability ở đây dựa vào retry policy của provider chứ
+không phải bảng ta sở hữu, nên event không match được sau khi provider bỏ cuộc thì vẫn
+mất. Nó xoá ca mất-vĩnh-viễn, không xoá cả lớp lỗi. Muốn xoá hẳn thì subscription phải
+đi qua inbox — đó vẫn là nợ đã biết.
+
+Đã verify test thật sự bắt lỗi: revert bản sửa thì 3 trong 6 test mới fail.
 
 ---
 
