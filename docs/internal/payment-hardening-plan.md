@@ -351,10 +351,20 @@ idempotency (F6), không phải refund.
 | 022 | `refunds` | **đã landed** | bảng `refunds` + UNIQUE + status `partially_refunded` + backfill từ `pending_refunds`/ledger |
 | 023 | `reconciliation_run_status` | **đã landed** | thêm `partial`, `skipped` vào CHECK |
 | 024 | `idempotency_claim_token` | **đã landed** | `claim_token uuid` NOT NULL + `claim_generation int` |
-| 025 | `payment_status_lifecycle` | còn lại | thêm `provider_creating`, `awaiting_payment` vào CHECK |
-| 026 | `checkout_provider_request` | còn lại | `provider_request_id`, `provider_created_at` trên payment_transactions |
-| 027 | `webhook_inbox` | còn lại | bảng `webhook_inbox` + index + backfill từ `webhook_events` |
-| 028 | `reconciliation_cursor` | còn lại | `cursor_json`, `provider` + index (đi cùng pagination) |
+| 025 | `checkout_lifecycle` | **đã landed** | `provider_creating`, `awaiting_payment` vào CHECK + `checkout_result_json` + partial index |
+| 026 | `webhook_inbox` | **đã landed** | bảng `webhook_inbox` + 4 index + backfill từ `webhook_events` |
+| 027 | `reconciliation_cursor` | còn lại | `cursor_json`, `provider` + index (đi cùng pagination) |
+
+Lệch so với thiết kế ban đầu, ghi lại để số migration trong repo là nguồn duy nhất:
+
+- `025` gộp hai migration mà thiết kế tách rời (`payment_status_lifecycle` +
+  `checkout_provider_request`). Hai status mới và cột lưu câu trả lời của provider
+  cùng phục vụ một invariant — checkout phải recover được — nên tách ra thành hai
+  migration chỉ tạo một trạng thái trung gian không ai chạy tới.
+- Thiết kế dự tính `provider_request_id` / `provider_created_at`. Không cần: row
+  `provider_creating` cộng `created_at` đã trả lời đúng câu hỏi mà reconcile cần
+  ("checkout nào đang dở, từ khi nào"), nên hai cột đó là schema không có người đọc.
+- `webhook_inbox` xuống `026`, `reconciliation_cursor` xuống `027`.
 
 Mỗi migration: `NNN_<domain_slug>.up.sql` + `.down.sql` + entry trong `migrations/manifest.json`.
 **Không** đưa số phase / mã finding vào tên file hay comment SQL (rule

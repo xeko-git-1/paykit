@@ -1,6 +1,6 @@
 # ADR-0003 — Durable webhook inbox thay cho INSERT-first dedup
 
-- Trạng thái: Đề xuất
+- Trạng thái: Đã triển khai (migration `026_webhook_inbox`)
 - Ngày: 2026-07-28
 - Liên quan: [ADR-0001](0001-payment-aggregate-and-ledger-semantics.md), [ADR-0004](0004-stripe-refund-event-mapping.md)
 
@@ -111,6 +111,26 @@ trail.
 - Metrics mới: `paykit_webhook_unmatched_total`, `paykit_webhook_retry_total`,
   `paykit_webhook_dead_letter_total`, `paykit_webhook_payload_mismatch_total`.
 - Webhook router không còn quyết định "processed" bên trong transaction business.
+
+## Khi triển khai — hai chỗ lệch với thiết kế trên
+
+**`webhook_events` và `tryRecordWebhookEvent` được giữ nguyên, không xoá.** Decision §
+để mở ("giữ lại như adapter mỏng hoặc bị xoá"). Chọn giữ: `/admin/webhook-events` đọc bảng
+đó, `subscription-webhook-handler.ts` có pipeline riêng vẫn dùng nó, và bảng cũ là đường lùi
+của migration — down migration của `026` dựa vào chỗ đó còn dữ liệu để quay về. Router
+payment không còn gọi tới nó nữa; đó là thay đổi thật sự cần thiết.
+
+**Worker nằm ở `packages/server/src/services`, không phải `packages/workers`.** Consequences §
+nói `packages/workers`. Không làm được: `workers` chỉ depend `@vibecc/paykit` (core), không có
+`@vibecc/paykit-auth-core`, nên không đọc được repo inbox — và thêm dependency đó sẽ phá
+ranh giới package mà `no-cross-imports.test.ts` đang giữ. `drainWebhookInbox` vì thế đặt cạnh
+`drainScreeningJobs`, cùng dạng "gọi từ cron", export qua barrel của server.
+
+Ngoài ra, dedup theo `(provider, event_id)` giữ đúng như §3, nhưng backfill từ `webhook_events`
+vào `dead_letter` chứ không `processed`: CHECK `webhook_inbox_processed_has_match` buộc row
+`processed` phải có `matched_transaction_id`, mà bảng cũ chưa từng ghi cột đó. `dead_letter`
+là trạng thái trung thực — delivery đã đóng, và audit trail nói rõ không dựng lại được gì từ nó.
+Dedup vẫn nguyên vì dedup là UNIQUE constraint, không phải state.
 
 ## Sources
 
