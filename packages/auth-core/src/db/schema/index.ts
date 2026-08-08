@@ -67,3 +67,11 @@ export {
   type WebhookEvent,
   webhookEvents,
 } from "./webhook-events.js";
+export {
+  CLAIMABLE_INBOX_STATES,
+  type NewWebhookInboxRow,
+  TERMINAL_INBOX_STATES,
+  webhookInbox,
+  type WebhookInboxRow,
+  type WebhookInboxState,
+} from "./webhook-inbox.js";
