@@ -128,6 +128,7 @@ export * as merchantRepo from "@vibecc/paykit-auth-core/db/repos/merchant.repo.j
 export * as paymentRepo from "@vibecc/paykit-auth-core/db/repos/payment.repo.js";
 export * as pendingRefundRepo from "@vibecc/paykit-auth-core/db/repos/pending-refund.repo.js";
 export * as reconciliationRepo from "@vibecc/paykit-auth-core/db/repos/reconciliation.repo.js";
+export * as reconciliationCursorRepo from "@vibecc/paykit-auth-core/db/repos/reconciliation-cursor.repo.js";
 export * as refundRepo from "@vibecc/paykit-auth-core/db/repos/refund.repo.js";
 export * as runtimeConfigRepo from "@vibecc/paykit-auth-core/db/repos/runtime-config.repo.js";
 export * as screeningJobRepo from "@vibecc/paykit-auth-core/db/repos/screening-job.repo.js";

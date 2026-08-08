@@ -32,6 +32,11 @@ export {
   pendingRefundState,
 } from "./pending-refunds.js";
 export {
+  type NewReconciliationCursor,
+  type ReconciliationCursor,
+  reconciliationCursors,
+} from "./reconciliation-cursors.js";
+export {
   type NewReconciliationRun,
   reconciliationRuns,
   type ReconciliationRun,
