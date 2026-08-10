@@ -104,6 +104,20 @@ export type {
 } from "./adapters/index.js";
 export { ProviderRegistry } from "./adapters/index.js";
 
+// Crypto coin/chain code allow-list — boot-time guard against a config typo
+// that would otherwise fail at every checkout instead of at startup.
+export type { CheckChainCodesInput, UnknownChainCode } from "./adapters/index.js";
+export {
+  CRYPTOMUS_CURRENCIES,
+  CRYPTOMUS_NETWORKS,
+  describeUnknownChainCodes,
+  findUnknownChainCodes,
+  isKnownCryptomusCurrency,
+  isKnownCryptomusNetwork,
+  isKnownNowpaymentsPayCurrency,
+  NOWPAYMENTS_PAY_CURRENCIES,
+} from "./adapters/index.js";
+
 // Subscription contract (V2)
 export type {
   CancelSubscriptionInput,

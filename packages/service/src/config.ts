@@ -5,6 +5,7 @@
  * table and is loaded/seeded at service start by createJwtSecretLoader
  * (see @xeko-git-1/paykit-server jwt-middleware).
  */
+import { describeUnknownChainCodes, findUnknownChainCodes } from "@xeko-git-1/paykit";
 import { z } from "zod";
 
 // ---------------------------------------------------------------------------
@@ -83,6 +84,15 @@ const envSchema = z.object({
   BINANCE_RETURN_URL: z.string().optional(),
   BINANCE_CANCEL_URL: z.string().optional(),
   BINANCE_WEBHOOK_URL: z.string().optional(),
+
+  // Accept a coin/chain code paykit does not recognise. The crypto gateways add
+  // combinations faster than paykit can enumerate them, so this is the escape
+  // hatch for a genuinely newer code — the value is then passed through to the
+  // provider unchecked, and a typo will surface as a failed checkout instead.
+  PAYKIT_ALLOW_UNKNOWN_CHAIN_CODES: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((v) => v === "true"),
 
   // Admin guard secret (env-based for V4.0; dashboard JWT is V4.4)
   ADMIN_SECRET: z.string().optional(),
@@ -218,6 +228,23 @@ export function parseServiceConfig(env: Record<string, string | undefined>): Ser
   }
 
   const parsed = result.data;
+
+  // Coin/chain codes are checked before any adapter is built. An unrecognised
+  // code is otherwise accepted here and rejected by the provider at every
+  // checkout, which reads as a transient provider fault rather than the static
+  // misconfiguration it is. Unlike the generic zod failure above this message
+  // quotes the value: a chain code is not a secret, and withholding it leaves
+  // the operator without the one detail that identifies the mistake.
+  if (!parsed.PAYKIT_ALLOW_UNKNOWN_CHAIN_CODES) {
+    const unknown = findUnknownChainCodes({
+      nowpaymentsPayCurrency: parsed.NOWPAYMENTS_PAY_CURRENCY,
+      cryptomusNetwork: parsed.CRYPTOMUS_NETWORK,
+      cryptomusToCurrency: parsed.CRYPTOMUS_TO_CURRENCY,
+    });
+    if (unknown.length > 0) {
+      throw new Error(describeUnknownChainCodes(unknown, "PAYKIT_ALLOW_UNKNOWN_CHAIN_CODES"));
+    }
+  }
 
   const stripe = resolveProviderCreds(
     "Stripe",

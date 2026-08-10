@@ -206,6 +206,88 @@ describe("parseServiceConfig", () => {
   });
 });
 
+describe("coin/chain code guard", () => {
+  const base = {
+    DATABASE_URL: "postgres://localhost/paykit",
+    NOWPAYMENTS_API_KEY: "np-key",
+    NOWPAYMENTS_IPN_SECRET: "np-secret",
+  };
+
+  it("refuses to boot on the token-standard spelling of a suffix-named chain", async () => {
+    const { parseServiceConfig } = await import("../src/config.js");
+    // 'usdtbep20' would otherwise boot cleanly and then fail every checkout as a
+    // 502 advising a retry that can never succeed.
+    const env = { ...base, NOWPAYMENTS_PAY_CURRENCY: "usdtbep20" };
+    expect(() => parseServiceConfig(env)).toThrow(/NOWPAYMENTS_PAY_CURRENCY/);
+  });
+
+  it("names the value, the known set, and the override in the failure", async () => {
+    const { parseServiceConfig } = await import("../src/config.js");
+    const env = { ...base, NOWPAYMENTS_PAY_CURRENCY: "bep20" };
+    expect(() => parseServiceConfig(env)).toThrow(/bep20/);
+    expect(() => parseServiceConfig(env)).toThrow(/usdtbsc/);
+    expect(() => parseServiceConfig(env)).toThrow(/PAYKIT_ALLOW_UNKNOWN_CHAIN_CODES/);
+  });
+
+  it("rejects an unknown cryptomus network and coin", async () => {
+    const { parseServiceConfig } = await import("../src/config.js");
+    const cryptomusBase = {
+      DATABASE_URL: "postgres://localhost/paykit",
+      CRYPTOMUS_MERCHANT_ID: "merchant-uuid",
+      CRYPTOMUS_PAYMENT_API_KEY: "cm-key",
+    };
+    expect(() =>
+      parseServiceConfig({ ...cryptomusBase, CRYPTOMUS_NETWORK: "bep20" }),
+    ).toThrow(/CRYPTOMUS_NETWORK/);
+    expect(() =>
+      parseServiceConfig({ ...cryptomusBase, CRYPTOMUS_TO_CURRENCY: "TETHER" }),
+    ).toThrow(/CRYPTOMUS_TO_CURRENCY/);
+  });
+
+  it("accepts every documented chain pin", async () => {
+    const { parseServiceConfig } = await import("../src/config.js");
+    for (const code of ["usdtbsc", "usdttrc20", "usdterc20", "usdtmatic"]) {
+      const config = parseServiceConfig({ ...base, NOWPAYMENTS_PAY_CURRENCY: code });
+      expect(config.nowpayments?.payCurrency).toBe(code);
+    }
+  });
+
+  it("accepts a code in any case without rewriting what the provider receives", async () => {
+    const { parseServiceConfig } = await import("../src/config.js");
+    const config = parseServiceConfig({ ...base, NOWPAYMENTS_PAY_CURRENCY: "USDTBSC" });
+    // The guard is case-insensitive but must not normalize: the provider gets
+    // exactly what the operator configured.
+    expect(config.nowpayments?.payCurrency).toBe("USDTBSC");
+  });
+
+  it("passes an unrecognised code through when the override is set", async () => {
+    const { parseServiceConfig } = await import("../src/config.js");
+    const env = {
+      ...base,
+      NOWPAYMENTS_PAY_CURRENCY: "usdtnewchain",
+      PAYKIT_ALLOW_UNKNOWN_CHAIN_CODES: "true",
+    };
+    const config = parseServiceConfig(env);
+    expect(config.nowpayments?.payCurrency).toBe("usdtnewchain");
+  });
+
+  it("still rejects when the override is explicitly false", async () => {
+    const { parseServiceConfig } = await import("../src/config.js");
+    const env = {
+      ...base,
+      NOWPAYMENTS_PAY_CURRENCY: "usdtnewchain",
+      PAYKIT_ALLOW_UNKNOWN_CHAIN_CODES: "false",
+    };
+    expect(() => parseServiceConfig(env)).toThrow(/NOWPAYMENTS_PAY_CURRENCY/);
+  });
+
+  it("boots when no chain is pinned at all", async () => {
+    const { parseServiceConfig } = await import("../src/config.js");
+    const config = parseServiceConfig(base);
+    expect(config.nowpayments?.payCurrency).toBeUndefined();
+  });
+});
+
 describe("createJwtSecretLoader (race-safe seed)", () => {
   it("generates and seeds a secret via claimKey when runtime_config has none", async () => {
     const store = new Map<string, string>();

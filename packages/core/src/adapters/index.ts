@@ -5,6 +5,17 @@ export type {
   CheckoutResult,
   CreateCheckoutInput,
 } from "./checkout-types.js";
+export type { CheckChainCodesInput, UnknownChainCode } from "./crypto-chain-codes.js";
+export {
+  CRYPTOMUS_CURRENCIES,
+  CRYPTOMUS_NETWORKS,
+  describeUnknownChainCodes,
+  findUnknownChainCodes,
+  isKnownCryptomusCurrency,
+  isKnownCryptomusNetwork,
+  isKnownNowpaymentsPayCurrency,
+  NOWPAYMENTS_PAY_CURRENCIES,
+} from "./crypto-chain-codes.js";
 export type { ProviderTxnRecord } from "./provider-txn-record.js";
 export type {
   RefundInput,
