@@ -12,7 +12,7 @@
  *   - fetchTransactions: no signer → []; with signer → settled records
  */
 import { describe, expect, it } from "vitest";
-import { createBitpayAdapter, type BitpayMerchantSigner } from "../src/adapter.js";
+import { type BitpayMerchantSigner, createBitpayAdapter } from "../src/adapter.js";
 
 interface MockCall {
   readonly url: string;
@@ -59,7 +59,11 @@ describe("createCheckout", () => {
     const { fetcher, calls } = mockFetch(() => ({
       status: 200,
       body: JSON.stringify({
-        data: { id: "inv-123", url: "https://test.bitpay.com/invoice?id=inv-123", expirationTime: 1900000000000 },
+        data: {
+          id: "inv-123",
+          url: "https://test.bitpay.com/invoice?id=inv-123",
+          expirationTime: 1900000000000,
+        },
       }),
     }));
     const adapter = makeAdapter(fetcher);
@@ -99,13 +103,22 @@ describe("createCheckout", () => {
         return {
           status: 200,
           body: JSON.stringify({
-            data: { id: "inv-rt", orderId: TX_ID, status: "confirmed", price: 10, currency: "USD", amountPaid: 10 },
+            data: {
+              id: "inv-rt",
+              orderId: TX_ID,
+              status: "confirmed",
+              price: 10,
+              currency: "USD",
+              amountPaid: 10,
+            },
           }),
         };
       }
       return {
         status: 200,
-        body: JSON.stringify({ data: { id: "inv-rt", url: "https://test.bitpay.com/invoice?id=inv-rt" } }),
+        body: JSON.stringify({
+          data: { id: "inv-rt", url: "https://test.bitpay.com/invoice?id=inv-rt" },
+        }),
       };
     });
     const adapter = makeAdapter(fetcher);
@@ -443,7 +456,10 @@ describe("resolveWebhook — refund IPN resolution", () => {
     });
     const adapter = makeAdapter(fetcher, { merchantSigner: STUB_SIGNER });
     const evt = await adapter.resolveWebhook?.(
-      JSON.stringify({ event: { code: 1003, name: "invoice_confirmed" }, data: { id: "inv-plain" } }),
+      JSON.stringify({
+        event: { code: 1003, name: "invoice_confirmed" },
+        data: { id: "inv-plain" },
+      }),
       {},
     );
     expect(evt?.type).toBe("payment.completed");
@@ -536,11 +552,16 @@ describe("refund — merchant facade split", () => {
 });
 
 describe("fetchTransactions", () => {
-  it("returns [] when merchant signer absent (listing needs merchant facade)", async () => {
+  it("throws when the merchant signer is absent rather than reporting an empty window", async () => {
+    // The rail can list; this deployment just lacks the credential. An empty
+    // array would claim the merchant settled nothing in the window, which reports
+    // every stored payment as missing at the provider and records the run as a
+    // clean reconciliation.
     const { fetcher, calls } = mockFetch(() => ({ status: 200, body: "{}" }));
     const adapter = makeAdapter(fetcher);
-    const records = await adapter.fetchTransactions({ since: new Date("2026-01-01") });
-    expect(records).toEqual([]);
+    await expect(adapter.fetchTransactions({ since: new Date("2026-01-01") })).rejects.toThrow(
+      /merchantSigner/,
+    );
     expect(calls).toHaveLength(0);
   });
 

@@ -713,6 +713,14 @@ describe("fetchTransactions", () => {
     expect(records).toEqual([]);
     expect(calls).toHaveLength(0);
   });
+
+  it("declares that the rail cannot be listed by window", async () => {
+    // Without this declaration the empty list above reads as data — "the merchant
+    // settled nothing" — and the reconciler reports every stored Binance payment
+    // as missing at the provider while recording the run as fully reconciled.
+    const { fetcher } = mockFetch(() => ({ status: 200, body: "{}" }));
+    expect(makeAdapter(fetcher).canListTransactions).toBe(false);
+  });
 });
 
 describe("signature helpers", () => {

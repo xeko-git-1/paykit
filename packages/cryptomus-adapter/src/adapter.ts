@@ -81,7 +81,30 @@ interface CryptomusRefundResult {
 
 interface CryptomusListResult {
   readonly items?: ReadonlyArray<CryptomusWebhookPayload>;
+  /**
+   * Paging block as observed in the documented response shape. Only
+   * `nextCursor` is acted on; the counts are read defensively because the
+   * exact field set is not something this package can verify against the live
+   * API, and a missing field must degrade to "no more pages" rather than throw.
+   */
+  readonly paginate?: {
+    readonly count?: number;
+    readonly hasPages?: boolean;
+    readonly nextCursor?: string | null;
+    readonly previousCursor?: string | null;
+    readonly perPage?: number;
+  };
 }
+
+/**
+ * Ceiling on list requests per reconciliation window.
+ *
+ * Bounds one run when a cursor never terminates — a provider bug or a cursor
+ * field this package guessed wrong would otherwise loop until the process dies.
+ * At the documented page size this covers a large window; a genuinely larger
+ * one is better served by narrowing the window than by an unbounded loop.
+ */
+const MAX_LIST_PAGES = 50;
 
 function microsToUsd(amountMicros: bigint): string {
   const cents = amountMicros / 10_000n;
@@ -98,6 +121,17 @@ function readErrorMessage(body: string): string {
     // fall through
   }
   return body.length > 200 ? `${body.slice(0, 200)}…` : body;
+}
+
+/**
+ * `YYYY-MM-DD HH:mm:ss` in UTC, the format the payment-list filter documents.
+ *
+ * Built from the ISO string rather than a locale formatter so the value cannot
+ * drift with the host timezone: a window shifted by the server's offset would
+ * silently reconcile the wrong hours.
+ */
+function formatCryptomusDate(date: Date): string {
+  return date.toISOString().slice(0, 19).replace("T", " ");
 }
 
 export function createCryptomusAdapter(config: CryptomusAdapterConfig): PaymentProviderAdapter {
@@ -263,43 +297,85 @@ export function createCryptomusAdapter(config: CryptomusAdapterConfig): PaymentP
       };
     },
 
-    async fetchTransactions(_window: {
+    /**
+     * Every settled payment in the window, following the cursor to the end.
+     *
+     * Two earlier shortcuts are deliberately gone. The window bounds were not
+     * sent at all, and only the first page was read — so the reconciler received
+     * an arbitrary slice and reported every payment outside it as missing at the
+     * provider. Errors were also swallowed into an empty array, which claims the
+     * merchant settled nothing in the window; a run that never reached Cryptomus
+     * was therefore recorded as a clean reconciliation. Both now behave the way
+     * the contract requires: complete, or throw.
+     *
+     * The date field names and the cursor field are taken from the documented
+     * request/response shape and are NOT verified against the live API by this
+     * package. They are handled so that a wrong guess degrades safely: an
+     * unrecognised paging block ends the loop after one page, which is the old
+     * behaviour, rather than looping or throwing.
+     */
+    async fetchTransactions(window: {
       since: Date;
       until?: Date;
     }): Promise<readonly ProviderTxnRecord[]> {
-      // Cryptomus /v1/payment/list is cursor-paginated by date_from/date_to but
-      // the reconciler drives per-window; return the first page of finished
-      // payments, USD-normalized. Empty on any error (reconciler tolerates []).
-      let res: Response;
-      try {
-        res = await signedPost("/v1/payment/list", {});
-      } catch {
-        return [];
-      }
-      if (!res.ok) return [];
-
-      let json: CryptomusEnvelope<CryptomusListResult>;
-      try {
-        json = (await res.json()) as CryptomusEnvelope<CryptomusListResult>;
-      } catch {
-        return [];
-      }
-      const items = json.result?.items ?? [];
+      const dateFrom = formatCryptomusDate(window.since);
+      const dateTo = formatCryptomusDate(window.until ?? new Date());
 
       const records: ProviderTxnRecord[] = [];
-      for (const item of items) {
-        if (item.status !== "paid" && item.status !== "paid_over") continue;
-        if (!item.order_id) continue;
-        const amount = item.payment_amount_usd ?? item.merchant_amount ?? item.amount;
-        if (amount === undefined) continue;
-        const n = Number(amount);
-        if (!Number.isFinite(n) || n < 0) continue;
-        records.push({
-          providerRef: item.order_id,
-          amountMicros: BigInt(Math.round(n * 1_000_000)).toString(),
-          currencyCode: "USD",
-        });
+      let cursor: string | undefined;
+      let pages = 0;
+
+      while (pages < MAX_LIST_PAGES) {
+        const body: Record<string, unknown> = { date_from: dateFrom, date_to: dateTo };
+        if (cursor !== undefined) body.cursor = cursor;
+
+        // A failure here throws rather than returning what has been collected so
+        // far: a partial list is indistinguishable from a complete one to the
+        // reconciler, and it would fabricate a discrepancy for every payment the
+        // failed page would have covered.
+        const res = await signedPost("/v1/payment/list", body);
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(
+            `Cryptomus payment list failed: HTTP ${res.status} ${readErrorMessage(text)}`,
+          );
+        }
+
+        let json: CryptomusEnvelope<CryptomusListResult>;
+        try {
+          json = (await res.json()) as CryptomusEnvelope<CryptomusListResult>;
+        } catch {
+          throw new Error("Cryptomus payment list returned a body that was not JSON");
+        }
+
+        for (const item of json.result?.items ?? []) {
+          if (item.status !== "paid" && item.status !== "paid_over") continue;
+          if (!item.order_id) continue;
+          const amount = item.payment_amount_usd ?? item.merchant_amount ?? item.amount;
+          if (amount === undefined) continue;
+          const n = Number(amount);
+          if (!Number.isFinite(n) || n < 0) continue;
+          records.push({
+            providerRef: item.order_id,
+            amountMicros: BigInt(Math.round(n * 1_000_000)).toString(),
+            currencyCode: "USD",
+          });
+        }
+
+        pages += 1;
+        const next = json.result?.paginate?.nextCursor;
+        if (typeof next !== "string" || next === "") break;
+        cursor = next;
       }
+
+      if (pages >= MAX_LIST_PAGES) {
+        // Silently returning here would present a truncated list as complete,
+        // which is the failure this method was rewritten to remove.
+        throw new Error(
+          `Cryptomus payment list exceeded ${MAX_LIST_PAGES} pages for the window; narrow the reconciliation window`,
+        );
+      }
+
       return records;
     },
   };

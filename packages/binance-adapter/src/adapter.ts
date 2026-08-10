@@ -354,14 +354,21 @@ export function createBinanceAdapter(config: BinanceAdapterConfig): PaymentProvi
       };
     },
 
+    // Binance Pay exposes no merchant-wide date-range order list — only per-order
+    // query by merchantTradeNo/prepayId. Window reconciliation is therefore
+    // impossible through this API, and saying so explicitly is what keeps the
+    // empty list below from being read as data: the reconciler skips this
+    // provider instead of concluding that every stored payment is missing
+    // upstream. Settled orders must be checked one reference at a time.
+    canListTransactions: false,
+
     async fetchTransactions(_window: {
       since: Date;
       until?: Date;
     }): Promise<readonly ProviderTxnRecord[]> {
-      // Binance Pay exposes no merchant-wide date-range order list — only
-      // per-order query by merchantTradeNo/prepayId. Reconciliation by window is
-      // therefore impossible through this API; returning [] is honest and the
-      // reconciler tolerates it. Do not substitute a fabricated listing.
+      // Empty because there is nothing to list, not because nothing settled. The
+      // `canListTransactions: false` declaration above is what carries that
+      // distinction; do not substitute a fabricated listing here.
       return [];
     },
   };
