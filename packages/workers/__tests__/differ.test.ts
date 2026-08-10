@@ -113,4 +113,32 @@ describe("diffPaykitVsProvider", () => {
     const b = diffPaykitVsProvider("stripe", inputPk, inputProv);
     expect(a.stats).toEqual(b.stats);
   });
+
+  it("reports a differing currency as its own finding, not as an amount drift", () => {
+    // 9.95 of some coin against a 9.95 USD row is an adapter that never
+    // normalized. Calling it amount_mismatch would imply a settlement shortfall
+    // whose size means nothing, and here the integers happen to agree — so the
+    // amount check alone would call this a clean match.
+    const out = diffPaykitVsProvider(
+      "nowpayments",
+      [pk("tx-1", "tx-1", "9950000", "completed", "USD")],
+      [{ providerRef: "tx-1", amountMicros: "9950000", currencyCode: "USDT" }],
+    );
+    expect(out.stats.currencyMismatch).toBe(1);
+    expect(out.stats.matched).toBe(0);
+    expect(out.stats.amountMismatch).toBe(0);
+    expect(out.discrepancies[0]?.type).toBe("currency_mismatch");
+    expect(out.discrepancies[0]?.paykitCurrencyCode).toBe("USD");
+    expect(out.discrepancies[0]?.providerCurrencyCode).toBe("USDT");
+  });
+
+  it("treats currency codes case-insensitively, since provider JSON varies", () => {
+    const out = diffPaykitVsProvider(
+      "nowpayments",
+      [pk("tx-1", "tx-1", "1000000", "completed", "USD")],
+      [{ providerRef: "tx-1", amountMicros: "1000000", currencyCode: "usd" }],
+    );
+    expect(out.stats.matched).toBe(1);
+    expect(out.stats.currencyMismatch).toBe(0);
+  });
 });

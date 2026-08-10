@@ -272,6 +272,69 @@ describe("fetchTransactions", () => {
     expect(records.map((r) => r.providerRef).sort()).toEqual(["tx-a", "tx-c"]);
     expect(records.find((r) => r.providerRef === "tx-a")?.amountMicros).toBe("10000000");
   });
+
+  it("sends the reconciliation window instead of asking for everything", async () => {
+    // The request previously carried an empty body, so the reconciler received an
+    // arbitrary slice of history and reported every payment outside it as missing
+    // at the provider.
+    const { fetcher, calls } = mockFetch(() => ({
+      status: 200,
+      body: JSON.stringify({ state: 0, result: { items: [] } }),
+    }));
+    await makeAdapter(fetcher).fetchTransactions({
+      since: new Date("2026-05-01T00:00:00Z"),
+      until: new Date("2026-05-29T12:30:45Z"),
+    });
+    const body = JSON.parse(calls[0]?.body ?? "{}");
+    expect(body.date_from).toBe("2026-05-01 00:00:00");
+    expect(body.date_to).toBe("2026-05-29 12:30:45");
+  });
+
+  it("follows the cursor to the end of the window", async () => {
+    const { fetcher, calls } = mockFetch(({ init }) => {
+      const body = JSON.parse(typeof init?.body === "string" ? init.body : "{}");
+      return body.cursor === "page-2"
+        ? {
+            status: 200,
+            body: JSON.stringify({
+              state: 0,
+              result: {
+                items: [{ order_id: "tx-late", status: "paid", payment_amount_usd: "5.00" }],
+              },
+            }),
+          }
+        : {
+            status: 200,
+            body: JSON.stringify({
+              state: 0,
+              result: {
+                items: [{ order_id: "tx-early", status: "paid", payment_amount_usd: "1.00" }],
+                paginate: { nextCursor: "page-2" },
+              },
+            }),
+          };
+    });
+    const records = await makeAdapter(fetcher).fetchTransactions({ since: new Date("2026-05-01") });
+    expect(calls).toHaveLength(2);
+    expect(records.map((r) => r.providerRef)).toEqual(["tx-early", "tx-late"]);
+  });
+
+  it("throws rather than reporting an empty window when the call fails", async () => {
+    // An empty array claims the merchant settled nothing, and the reconciler
+    // believes it — a run that never reached Cryptomus would be recorded as a
+    // clean reconciliation of an empty window.
+    const { fetcher } = mockFetch(() => ({ status: 500, body: '{"message":"upstream"}' }));
+    await expect(
+      makeAdapter(fetcher).fetchTransactions({ since: new Date("2026-05-01") }),
+    ).rejects.toThrow(/HTTP 500/);
+  });
+
+  it("throws on a body that is not JSON rather than silently returning nothing", async () => {
+    const { fetcher } = mockFetch(() => ({ status: 200, body: "<html>gateway</html>" }));
+    await expect(
+      makeAdapter(fetcher).fetchTransactions({ since: new Date("2026-05-01") }),
+    ).rejects.toThrow(/not JSON/);
+  });
 });
 
 describe("phpJsonEncode", () => {

@@ -129,8 +129,23 @@ export async function reconcileV15(
     const allDiscrepancies = [];
     const adapterErrors: Record<string, string> = {};
     const incomplete: string[] = [];
+    const notReconcilable: string[] = [];
 
     for (const adapter of adapters) {
+      // A rail with no merchant-wide date-range listing cannot answer the question
+      // this loop asks, so it is skipped rather than diffed. Running it would diff
+      // every stored payment against an empty list and report each one as missing
+      // at the provider — thousands of fabricated discrepancies that also bury the
+      // genuine ones. Skipping is recorded, not silent: the window is not covered
+      // for this provider, and the run status below says so.
+      if (adapter.canListTransactions === false) {
+        notReconcilable.push(adapter.id);
+        perProvider[adapter.id] = EMPTY_PER_PROVIDER;
+        logger?.warn("Reconciler: adapter cannot list by window, provider not reconciled", {
+          provider: adapter.id,
+        });
+        continue;
+      }
       // Each provider is paged independently from its own stored position. The
       // previous version selected the entire window for every provider at once and
       // held it in memory: a window large enough to exhaust the process reconciled
@@ -275,12 +290,24 @@ export async function reconcileV15(
     // second means the window is reconciled except for one provider. Collapsing
     // both into one status leaves an operator unable to tell which happened.
     const failedAdapters = Object.keys(adapterErrors).length;
-    const allAdaptersFailed = adapters.length > 0 && failedAdapters === adapters.length;
+    // Counted against the adapters that could even be attempted. A deployment whose
+    // only crypto rail cannot list would otherwise report `failed` forever, which
+    // is indistinguishable from a real outage; it is `partial`, and the summary
+    // names which provider went unchecked.
+    const listableAdapters = adapters.filter((a) => a.canListTransactions !== false).length;
+    const allAdaptersFailed = listableAdapters > 0 && failedAdapters === listableAdapters;
     // A provider that stopped at the batch ceiling has rows left in the window, so
     // the window is not covered — even though nothing failed. Reporting that as
     // `completed` would tell an operator the window was reconciled when part of it
     // has not been looked at yet, which is the same lie the old hardcoded status told.
-    const anythingFailed = failedAdapters > 0 || pendingResults.failed > 0 || incomplete.length > 0;
+    // A provider that cannot be listed at all counts the same way: its slice of
+    // the window was never examined. `completed` has to mean every registered
+    // provider was actually checked, or the status is worthless as an alert.
+    const anythingFailed =
+      failedAdapters > 0 ||
+      pendingResults.failed > 0 ||
+      incomplete.length > 0 ||
+      notReconcilable.length > 0;
     const runStatus: Exclude<ReconciliationRunStatus, "running" | "skipped"> = allAdaptersFailed
       ? "failed"
       : anythingFailed
@@ -310,6 +337,12 @@ export async function reconcileV15(
       // errored or simply has more of the window left to walk. The two call for
       // different responses: one is a fault, the other is another invocation.
       incompleteProviders: incomplete,
+      // Providers whose rail exposes no date-range listing. Distinct from both
+      // buckets above: nothing failed and nothing is left to walk, the question
+      // simply cannot be asked of this provider through its API. An operator
+      // reading a `partial` run needs to know that this part will never clear on
+      // its own and has to be checked another way.
+      notReconcilableProviders: notReconcilable,
     };
 
     // Stored as-is. Mapping `partial` onto `failed` here is what made a run that
@@ -365,6 +398,7 @@ function mergeStats(
     paykitMissing: current.paykitMissing + batch.paykitMissing,
     providerMissing: current.providerMissing + batch.providerMissing,
     amountMismatch: current.amountMismatch + batch.amountMismatch,
+    currencyMismatch: current.currencyMismatch + batch.currencyMismatch,
     refundDrift: current.refundDrift + batch.refundDrift,
   };
 }

@@ -552,11 +552,16 @@ describe("refund — merchant facade split", () => {
 });
 
 describe("fetchTransactions", () => {
-  it("returns [] when merchant signer absent (listing needs merchant facade)", async () => {
+  it("throws when the merchant signer is absent rather than reporting an empty window", async () => {
+    // The rail can list; this deployment just lacks the credential. An empty
+    // array would claim the merchant settled nothing in the window, which reports
+    // every stored payment as missing at the provider and records the run as a
+    // clean reconciliation.
     const { fetcher, calls } = mockFetch(() => ({ status: 200, body: "{}" }));
     const adapter = makeAdapter(fetcher);
-    const records = await adapter.fetchTransactions({ since: new Date("2026-01-01") });
-    expect(records).toEqual([]);
+    await expect(adapter.fetchTransactions({ since: new Date("2026-01-01") })).rejects.toThrow(
+      /merchantSigner/,
+    );
     expect(calls).toHaveLength(0);
   });
 

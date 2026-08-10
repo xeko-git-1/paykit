@@ -71,6 +71,12 @@ const SANDBOX_BASE = "https://test.bitpay.com";
 const API_VERSION = "2.0.0";
 const FETCH_PAGE_LIMIT = 100;
 
+/**
+ * Ceiling on list requests per reconciliation window. Bounds one run if the
+ * offset parameter is not honoured and every request returns a full page.
+ */
+const MAX_LIST_PAGES = 50;
+
 interface BitpayEnvelope<T> {
   readonly data?: T;
 }
@@ -331,50 +337,90 @@ export function createBitpayAdapter(config: BitpayAdapterConfig): PaymentProvide
       };
     },
 
+    /**
+     * Every settled invoice in the window, following offsets to the end.
+     *
+     * A missing merchant signer now throws instead of returning an empty array.
+     * The rail CAN list — the deployment just has not been given the credential
+     * for it — and an empty list is read downstream as "the merchant settled
+     * nothing in this window", which would report every stored payment as missing
+     * at the provider and record the run as a clean reconciliation. A throw names
+     * the real problem and leaves the window to be covered once it is fixed.
+     *
+     * `offset` comes from the documented request shape and is not verified here.
+     * The loop stops on a short page, which holds regardless of how paging is
+     * spelled, and refuses to run past a hard ceiling.
+     */
     async fetchTransactions(window: {
       since: Date;
       until?: Date;
     }): Promise<readonly ProviderTxnRecord[]> {
-      if (!config.merchantSigner) return []; // listing needs merchant facade; skip gracefully
+      if (!config.merchantSigner) {
+        throw new Error(
+          "BitPay reconciliation requires a merchantSigner (merchant-facade ECDSA); configure one or exclude bitpay from the reconciliation run",
+        );
+      }
 
+      // Day granularity is all the filter accepts, so the request can span a
+      // little more than the window. Harmless: matching is by reference, and a
+      // record outside the window simply finds no row to claim.
       const dateStart = window.since.toISOString().slice(0, 10);
       const dateEnd = (window.until ?? new Date()).toISOString().slice(0, 10);
-      const params = new URLSearchParams({
-        token: config.apiToken,
-        dateStart,
-        dateEnd,
-        limit: String(FETCH_PAGE_LIMIT),
-      });
-      const url = `${baseUrl}/invoices?${params.toString()}`;
-
-      const signed = await config.merchantSigner.sign(url, "");
-      const res = await fetcher(url, {
-        method: "GET",
-        headers: {
-          "X-Accept-Version": API_VERSION,
-          "x-identity": signed.identity,
-          "x-signature": signed.signature,
-        },
-      });
-      if (!res.ok) {
-        throw new Error(`BitPay list invoices failed: HTTP ${res.status}`);
-      }
-      const json = (await res.json()) as BitpayEnvelope<readonly BitpayInvoice[]>;
-      const data = json.data ?? [];
 
       const records: ProviderTxnRecord[] = [];
-      for (const invoice of data) {
-        if (invoice.status !== "complete" && invoice.status !== "confirmed") continue;
-        if (!invoice.orderId) continue;
-        const n = typeof invoice.price === "number" ? invoice.price : Number(invoice.price);
-        if (!Number.isFinite(n) || n < 0) continue;
-        records.push({
-          providerRef: invoice.orderId,
-          amountMicros: BigInt(Math.round(n * 1_000_000)).toString(),
-          currencyCode:
-            typeof invoice.currency === "string" ? invoice.currency.toUpperCase() : "USD",
+      let offset = 0;
+      let sawFullPage = true;
+      let pages = 0;
+
+      while (sawFullPage && pages < MAX_LIST_PAGES) {
+        const params = new URLSearchParams({
+          token: config.apiToken,
+          dateStart,
+          dateEnd,
+          limit: String(FETCH_PAGE_LIMIT),
+          offset: String(offset),
         });
+        const url = `${baseUrl}/invoices?${params.toString()}`;
+
+        const signed = await config.merchantSigner.sign(url, "");
+        const res = await fetcher(url, {
+          method: "GET",
+          headers: {
+            "X-Accept-Version": API_VERSION,
+            "x-identity": signed.identity,
+            "x-signature": signed.signature,
+          },
+        });
+        if (!res.ok) {
+          throw new Error(`BitPay list invoices failed: HTTP ${res.status}`);
+        }
+        const json = (await res.json()) as BitpayEnvelope<readonly BitpayInvoice[]>;
+        const data = json.data ?? [];
+
+        for (const invoice of data) {
+          if (invoice.status !== "complete" && invoice.status !== "confirmed") continue;
+          if (!invoice.orderId) continue;
+          const n = typeof invoice.price === "number" ? invoice.price : Number(invoice.price);
+          if (!Number.isFinite(n) || n < 0) continue;
+          records.push({
+            providerRef: invoice.orderId,
+            amountMicros: BigInt(Math.round(n * 1_000_000)).toString(),
+            currencyCode:
+              typeof invoice.currency === "string" ? invoice.currency.toUpperCase() : "USD",
+          });
+        }
+
+        sawFullPage = data.length >= FETCH_PAGE_LIMIT;
+        offset += FETCH_PAGE_LIMIT;
+        pages += 1;
       }
+
+      if (sawFullPage) {
+        throw new Error(
+          `BitPay list invoices exceeded ${MAX_LIST_PAGES} pages for the window; narrow the reconciliation window`,
+        );
+      }
+
       return records;
     },
   };

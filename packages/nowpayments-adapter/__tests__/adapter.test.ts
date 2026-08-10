@@ -320,11 +320,62 @@ describe("fetchTransactions — paginated", () => {
     });
     expect(records).toHaveLength(2);
     expect(records[0]?.providerRef).toBe("tx-a");
-    expect(records[0]?.amountMicros).toBe("9950000");
+    // The invoiced price, not `outcome_amount`. `outcome_amount` is what the
+    // merchant nets after the gateway fee, and the payment row holds what the
+    // customer was asked to pay — so reconciling against the net would report an
+    // amount disagreement on every payment the gateway ever charged a fee on.
+    expect(records[0]?.amountMicros).toBe("10000000");
     expect(records[1]?.providerRef).toBe("tx-c");
+    expect(records[1]?.amountMicros).toBe("100000000");
     expect(calls[0]?.url).toContain("limit=100");
     expect(calls[0]?.url).toContain("dateFrom=");
     expect(calls[0]?.url).toContain("dateTo=");
+  });
+
+  it("follows pages until a short page ends the window", async () => {
+    // A full page means "there may be more", so the adapter must ask again. A
+    // single request would silently drop everything past the first page, and the
+    // reconciler reads this list as the complete truth about the window.
+    const fullPage = Array.from({ length: 100 }, (_, i) => ({
+      payment_id: i + 1,
+      payment_status: "finished",
+      order_id: `tx-page1-${i}`,
+      price_amount: 1,
+      price_currency: "usd",
+    }));
+    const { fetcher, calls } = mockFetch(({ url }) => ({
+      status: 200,
+      body: JSON.stringify({
+        data: url.includes("page=0")
+          ? fullPage
+          : [
+              {
+                payment_id: 999,
+                payment_status: "finished",
+                order_id: "tx-page2",
+                price_amount: 7,
+                price_currency: "usd",
+              },
+            ],
+      }),
+    }));
+    const records = await makeAdapter(fetcher).fetchTransactions({
+      since: new Date("2026-05-01T00:00:00Z"),
+      until: new Date("2026-05-29T00:00:00Z"),
+    });
+    expect(calls).toHaveLength(2);
+    expect(records).toHaveLength(101);
+    expect(records[100]?.providerRef).toBe("tx-page2");
+  });
+
+  it("throws instead of returning a partial list when a page fails", async () => {
+    // Returning the records gathered so far would be indistinguishable from a
+    // complete window, and every payment on the unread pages would be reported
+    // as missing at the provider.
+    const { fetcher } = mockFetch(() => ({ status: 502, body: "{}" }));
+    await expect(
+      makeAdapter(fetcher).fetchTransactions({ since: new Date("2026-05-01T00:00:00Z") }),
+    ).rejects.toThrow(/HTTP 502/);
   });
 });
 

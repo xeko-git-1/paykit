@@ -13,6 +13,15 @@ export type DiscrepancyType =
   | "paykit_missing" // provider has tx, paykit doesn't
   | "provider_missing" // paykit has tx, provider doesn't
   | "amount_mismatch"
+  /**
+   * The two sides agree on the reference but not on the unit of account — e.g. a
+   * row stored in USD against a provider record reported in a crypto
+   * denomination. Its own type because the numbers are not comparable at all:
+   * calling it `amount_mismatch` reports a settlement drift that may not exist
+   * and implies a magnitude nobody can act on, when what actually needs fixing
+   * is the adapter's normalization.
+   */
+  | "currency_mismatch"
   | "refund_drift"; // provider shows refund, paykit ledger has no refund entry
 
 export interface Discrepancy {
@@ -22,6 +31,13 @@ export interface Discrepancy {
   readonly providerRef: string | null;
   readonly paykitAmountMicros: string | null;
   readonly providerAmountMicros: string | null;
+  /**
+   * Set on `currency_mismatch`, where the two amounts above are in different
+   * units and the pair of codes is the whole finding. Omitted elsewhere, since
+   * every other type compares like with like.
+   */
+  readonly paykitCurrencyCode?: string;
+  readonly providerCurrencyCode?: string;
   readonly note?: string;
 }
 
@@ -30,6 +46,8 @@ export interface PerProviderStats {
   readonly paykitMissing: number;
   readonly providerMissing: number;
   readonly amountMismatch: number;
+  /** Same reference, different unit of account — amounts were never compared. */
+  readonly currencyMismatch: number;
   readonly refundDrift: number;
 }
 
@@ -55,6 +73,7 @@ export const EMPTY_PER_PROVIDER: PerProviderStats = {
   paykitMissing: 0,
   providerMissing: 0,
   amountMismatch: 0,
+  currencyMismatch: 0,
   refundDrift: 0,
 };
 

@@ -82,6 +82,7 @@ vi.mock("../src/reconcile/differ.js", () => ({
       paykitMissing: 0,
       providerMissing: 0,
       amountMismatch: 0,
+      currencyMismatch: 0,
       refundDrift: 0,
     },
     discrepancies: [],
@@ -95,6 +96,7 @@ const EMPTY_STATS = {
   paykitMissing: 0,
   providerMissing: 0,
   amountMismatch: 0,
+  currencyMismatch: 0,
   refundDrift: 0,
 };
 
@@ -297,5 +299,60 @@ describe("the run throws part-way through", () => {
     ).rejects.toThrow("connection reset");
 
     expect(warn).toHaveBeenCalled();
+  });
+});
+
+describe("an adapter whose rail cannot be listed by window", () => {
+  /** A rail with no merchant-wide date-range listing (Binance Pay). */
+  function nonListingAdapter(id: string): PaymentProviderAdapter {
+    return {
+      id,
+      canListTransactions: false,
+      fetchTransactions: vi.fn().mockResolvedValue([]),
+      refund: vi.fn(),
+      verifyWebhookSignature: vi.fn(() => true),
+      parseWebhookPayload: vi.fn(() => null),
+    } as unknown as PaymentProviderAdapter;
+  }
+
+  it("is never asked to list at all", async () => {
+    const adapter = nonListingAdapter("binance");
+    await run(adapter);
+    expect(adapter.fetchTransactions).not.toHaveBeenCalled();
+  });
+
+  it("is partial, not completed — that provider's slice was never checked", async () => {
+    // The empty list such an adapter returns is not evidence that nothing
+    // settled. Letting the run read as `completed` would claim the window was
+    // reconciled for a provider nobody looked at.
+    const result = await run(adapterNamed("stripe"), nonListingAdapter("binance"));
+    expect(result.status).toBe("partial");
+    expect(statusWrittenToDb()).toBe("partial");
+  });
+
+  it("names the provider in the summary, apart from failures and unfinished walks", async () => {
+    await run(adapterNamed("stripe"), nonListingAdapter("binance"));
+    const summary = mockCompleteRun.mock.calls.at(-1)?.[3] as {
+      notReconcilableProviders?: string[];
+      adapterErrors?: Record<string, string>;
+      incompleteProviders?: string[];
+    };
+    // Its own bucket: nothing failed and nothing is left to walk, so an operator
+    // needs to know this part will never clear on its own.
+    expect(summary.notReconcilableProviders).toEqual(["binance"]);
+    expect(summary.adapterErrors).toEqual({});
+    expect(summary.incompleteProviders).toEqual([]);
+  });
+
+  it("does not report failed when it is the only registered adapter", async () => {
+    // Nothing failed — there was nothing that could be attempted. `failed` here
+    // would be indistinguishable from a real outage, on every single run.
+    const result = await run(nonListingAdapter("binance"));
+    expect(result.status).toBe("partial");
+  });
+
+  it("still reports failed when every listable adapter failed", async () => {
+    const result = await run(adapterNamed("stripe", true), nonListingAdapter("binance"));
+    expect(result.status).toBe("failed");
   });
 });

@@ -78,7 +78,23 @@ interface NpPaymentListResponse {
     readonly outcome_amount?: number | string;
     readonly outcome_currency?: string;
   }>;
+  /**
+   * Paging counters from the documented response shape. Read defensively — the
+   * loop's real terminator is a short page, so a renamed or absent field costs
+   * nothing.
+   */
+  readonly limit?: number;
+  readonly page?: number;
+  readonly pagesCount?: number;
+  readonly total?: number;
 }
+
+/**
+ * Ceiling on list requests per reconciliation window. Bounds one run if the page
+ * parameter is not honoured and every request returns a full page, which would
+ * otherwise loop until the process dies.
+ */
+const MAX_LIST_PAGES = 50;
 
 function microsToUsd(amountMicros: bigint): string {
   const cents = amountMicros / 10_000n;
@@ -257,46 +273,83 @@ export function createNowpaymentsAdapter(config: NowpaymentsAdapterConfig): Paym
       };
     },
 
+    /**
+     * Every settled payment in the window, following pages to the end.
+     *
+     * Previously a single request capped at one page: past that many settled
+     * payments the remainder was dropped, and the reconciler — which reads this
+     * list as the complete truth about the window — reported each dropped payment
+     * as missing at the provider.
+     *
+     * The `page` parameter is taken from the documented request shape and is not
+     * verified against the live API here. The loop therefore does not trust it:
+     * it stops on a short page (which is true regardless of how paging is spelled)
+     * and refuses to run past a hard ceiling, so a parameter that is silently
+     * ignored produces a loud failure instead of an infinite loop.
+     */
     async fetchTransactions(window: {
       since: Date;
       until?: Date;
     }): Promise<readonly ProviderTxnRecord[]> {
       const dateFrom = window.since.toISOString();
       const dateTo = (window.until ?? new Date()).toISOString();
-      const params = new URLSearchParams({
-        limit: String(FETCH_PAGE_LIMIT),
-        dateFrom,
-        dateTo,
-      });
-
-      const res = await fetcher(`${baseUrl}/v1/payment/?${params.toString()}`, {
-        method: "GET",
-        headers: { "x-api-key": config.apiKey },
-      });
-      if (!res.ok) {
-        throw new Error(`NowPayments list payments failed: HTTP ${res.status}`);
-      }
-      const json = (await res.json()) as NpPaymentListResponse;
-      const data = json.data ?? [];
 
       const records: ProviderTxnRecord[] = [];
-      for (const row of data) {
-        if (row.payment_status !== "finished") continue;
-        if (!row.order_id) continue;
-        const settlementAmount = row.outcome_amount ?? row.actually_paid ?? row.price_amount;
-        if (settlementAmount === undefined) continue;
-        const settlementCurrency = (row.outcome_currency ?? row.price_currency ?? "USD")
-          .toString()
-          .toUpperCase();
-        const n =
-          typeof settlementAmount === "number" ? settlementAmount : Number(settlementAmount);
-        if (!Number.isFinite(n) || n < 0) continue;
-        records.push({
-          providerRef: row.order_id,
-          amountMicros: BigInt(Math.round(n * 1_000_000)).toString(),
-          currencyCode: settlementCurrency,
+      let page = 0;
+      let sawFullPage = true;
+
+      while (sawFullPage && page < MAX_LIST_PAGES) {
+        const params = new URLSearchParams({
+          limit: String(FETCH_PAGE_LIMIT),
+          page: String(page),
+          dateFrom,
+          dateTo,
         });
+
+        const res = await fetcher(`${baseUrl}/v1/payment/?${params.toString()}`, {
+          method: "GET",
+          headers: { "x-api-key": config.apiKey },
+        });
+        if (!res.ok) {
+          // Throw rather than return the records gathered so far: a partial list
+          // is indistinguishable from a complete one downstream, and every
+          // payment on the pages not read would be reported as missing.
+          throw new Error(`NowPayments list payments failed: HTTP ${res.status}`);
+        }
+        const json = (await res.json()) as NpPaymentListResponse;
+        const data = json.data ?? [];
+
+        for (const row of data) {
+          if (row.payment_status !== "finished") continue;
+          if (!row.order_id) continue;
+          // The invoiced price, NOT `outcome_amount`/`actually_paid`. Those are
+          // denominated in the coin the customer sent, so using them would
+          // compare a coin quantity against a USD ledger row — a disagreement
+          // whose size means nothing, and which can coincidentally match.
+          // `price_amount` is the same USD figure the payment row was created
+          // with, which is the only comparison the reconciler can act on.
+          const priced = row.price_amount;
+          if (priced === undefined) continue;
+          const currencyCode = (row.price_currency ?? "USD").toString().toUpperCase();
+          const n = typeof priced === "number" ? priced : Number(priced);
+          if (!Number.isFinite(n) || n < 0) continue;
+          records.push({
+            providerRef: row.order_id,
+            amountMicros: BigInt(Math.round(n * 1_000_000)).toString(),
+            currencyCode,
+          });
+        }
+
+        sawFullPage = data.length >= FETCH_PAGE_LIMIT;
+        page += 1;
       }
+
+      if (sawFullPage) {
+        throw new Error(
+          `NowPayments list payments exceeded ${MAX_LIST_PAGES} pages for the window; narrow the reconciliation window`,
+        );
+      }
+
       return records;
     },
   };
