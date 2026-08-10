@@ -17,7 +17,7 @@ import {
   createJwtSecretLoader,
   type JwtSecretLoader,
   type SecretLoaderDeps,
-} from "@vibecc/paykit-auth-core/auth/jwt-secret-loader.js";
+} from "@xeko-git-1/paykit-auth-core/auth/jwt-secret-loader.js";
 import type { PaykitAuthContext } from "./auth-context.js";
 import { errorJson } from "../routes/shared/response.js";
 

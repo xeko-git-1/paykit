@@ -8,8 +8,8 @@
  *   POST /v1/refunds     [api_key, refund:write] + ownership check
  *   POST /v1/api-keys    [jwt plane ONLY, key:manage] + scope-subset + DB cap
  */
-import type { AppliedDiscount, ProviderRegistry } from "@vibecc/paykit";
-import { usdToMicros, vndToMicros } from "@vibecc/paykit";
+import type { AppliedDiscount, ProviderRegistry } from "@xeko-git-1/paykit";
+import { usdToMicros, vndToMicros } from "@xeko-git-1/paykit";
 import {
   type DbClient,
   MAX_ACTIVE_KEYS_PER_MERCHANT,
@@ -31,7 +31,7 @@ import {
   requirePlane,
   requireScope,
   storableCheckoutResult,
-} from "@vibecc/paykit-server";
+} from "@xeko-git-1/paykit-server";
 import { eq } from "drizzle-orm";
 import type { Context } from "hono";
 import { Hono } from "hono";

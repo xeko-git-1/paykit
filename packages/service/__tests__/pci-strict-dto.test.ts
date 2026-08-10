@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { buildV1TestApp } from "./helpers/build-v1-test-app.js";
-import type { PaykitAuthContext } from "@vibecc/paykit-server";
+import type { PaykitAuthContext } from "@xeko-git-1/paykit-server";
 
 const validAuth: PaykitAuthContext = {
   merchantId: "merchant-1",

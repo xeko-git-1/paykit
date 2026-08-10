@@ -1,4 +1,4 @@
-// @vibecc/paykit — core types, errors, money helpers, secret abstractions.
+// @xeko-git-1/paykit — core types, errors, money helpers, secret abstractions.
 // Zero runtime deps. Foundation for server, workers, react, cli packages.
 
 // Types

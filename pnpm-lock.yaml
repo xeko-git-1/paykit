@@ -29,10 +29,10 @@ importers:
 
   e2e/consumer-app:
     dependencies:
-      '@vibecc/paykit':
+      '@xeko-git-1/paykit':
         specifier: workspace:*
         version: link:../../packages/core
-      '@vibecc/paykit-server':
+      '@xeko-git-1/paykit-server':
         specifier: workspace:*
         version: link:../../packages/server
       hono:
@@ -61,19 +61,19 @@ importers:
 
   packages/binance-adapter:
     devDependencies:
-      '@vibecc/paykit':
+      '@xeko-git-1/paykit':
         specifier: workspace:*
         version: link:../core
 
   packages/bitpay-adapter:
     devDependencies:
-      '@vibecc/paykit':
+      '@xeko-git-1/paykit':
         specifier: workspace:*
         version: link:../core
 
   packages/cli:
     dependencies:
-      '@vibecc/paykit-auth-core':
+      '@xeko-git-1/paykit-auth-core':
         specifier: workspace:*
         version: link:../auth-core
       cac:
@@ -89,7 +89,7 @@ importers:
       '@types/pg':
         specifier: ^8.20.0
         version: 8.20.0
-      '@vibecc/paykit':
+      '@xeko-git-1/paykit':
         specifier: workspace:*
         version: link:../core
       hono:
@@ -100,19 +100,19 @@ importers:
 
   packages/cryptomus-adapter:
     devDependencies:
-      '@vibecc/paykit':
+      '@xeko-git-1/paykit':
         specifier: workspace:*
         version: link:../core
 
   packages/momo-adapter:
     devDependencies:
-      '@vibecc/paykit':
+      '@xeko-git-1/paykit':
         specifier: workspace:*
         version: link:../core
 
   packages/nowpayments-adapter:
     devDependencies:
-      '@vibecc/paykit':
+      '@xeko-git-1/paykit':
         specifier: workspace:*
         version: link:../core
 
@@ -121,7 +121,7 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.0.0
         version: 5.100.13(react@19.2.6)
-      '@vibecc/paykit':
+      '@xeko-git-1/paykit':
         specifier: workspace:*
         version: link:../core
       react:
@@ -143,7 +143,7 @@ importers:
 
   packages/sdk:
     devDependencies:
-      '@vibecc/paykit-service':
+      '@xeko-git-1/paykit-service':
         specifier: workspace:*
         version: link:../service
       openapi-typescript:
@@ -155,22 +155,22 @@ importers:
 
   packages/sepay-adapter:
     devDependencies:
-      '@vibecc/paykit':
+      '@xeko-git-1/paykit':
         specifier: workspace:*
         version: link:../core
 
   packages/server:
     dependencies:
-      '@vibecc/paykit':
+      '@xeko-git-1/paykit':
         specifier: workspace:*
         version: link:../core
-      '@vibecc/paykit-auth-core':
+      '@xeko-git-1/paykit-auth-core':
         specifier: workspace:*
         version: link:../auth-core
-      '@vibecc/paykit-sepay':
+      '@xeko-git-1/paykit-sepay':
         specifier: workspace:^
         version: link:../sepay-adapter
-      '@vibecc/paykit-stripe':
+      '@xeko-git-1/paykit-stripe':
         specifier: workspace:^
         version: link:../stripe-adapter
       drizzle-orm:
@@ -204,37 +204,37 @@ importers:
       '@hono/zod-openapi':
         specifier: ^1.4.0
         version: 1.4.0(hono@4.12.22)(zod@4.4.3)
-      '@vibecc/paykit':
+      '@xeko-git-1/paykit':
         specifier: workspace:*
         version: link:../core
-      '@vibecc/paykit-binance':
+      '@xeko-git-1/paykit-binance':
         specifier: workspace:*
         version: link:../binance-adapter
-      '@vibecc/paykit-cli':
+      '@xeko-git-1/paykit-cli':
         specifier: workspace:*
         version: link:../cli
-      '@vibecc/paykit-cryptomus':
+      '@xeko-git-1/paykit-cryptomus':
         specifier: workspace:*
         version: link:../cryptomus-adapter
-      '@vibecc/paykit-momo':
+      '@xeko-git-1/paykit-momo':
         specifier: workspace:*
         version: link:../momo-adapter
-      '@vibecc/paykit-nowpayments':
+      '@xeko-git-1/paykit-nowpayments':
         specifier: workspace:*
         version: link:../nowpayments-adapter
-      '@vibecc/paykit-sepay':
+      '@xeko-git-1/paykit-sepay':
         specifier: workspace:*
         version: link:../sepay-adapter
-      '@vibecc/paykit-server':
+      '@xeko-git-1/paykit-server':
         specifier: workspace:*
         version: link:../server
-      '@vibecc/paykit-stripe':
+      '@xeko-git-1/paykit-stripe':
         specifier: workspace:*
         version: link:../stripe-adapter
-      '@vibecc/paykit-vnpay':
+      '@xeko-git-1/paykit-vnpay':
         specifier: workspace:*
         version: link:../vnpay-adapter
-      '@vibecc/paykit-zalopay':
+      '@xeko-git-1/paykit-zalopay':
         specifier: workspace:*
         version: link:../zalopay-adapter
       drizzle-orm:
@@ -260,13 +260,13 @@ importers:
         specifier: ^18.0.0
         version: 18.5.0(@types/node@22.19.19)
     devDependencies:
-      '@vibecc/paykit':
+      '@xeko-git-1/paykit':
         specifier: workspace:*
         version: link:../core
 
   packages/stripe-subscription-adapter:
     dependencies:
-      '@vibecc/paykit':
+      '@xeko-git-1/paykit':
         specifier: workspace:*
         version: link:../core
       stripe:
@@ -275,13 +275,13 @@ importers:
 
   packages/vnpay-adapter:
     devDependencies:
-      '@vibecc/paykit':
+      '@xeko-git-1/paykit':
         specifier: workspace:*
         version: link:../core
 
   packages/workers:
     dependencies:
-      '@vibecc/paykit':
+      '@xeko-git-1/paykit':
         specifier: workspace:*
         version: link:../core
       stripe:
@@ -291,7 +291,7 @@ importers:
       '@types/pg':
         specifier: ^8.20.0
         version: 8.20.0
-      '@vibecc/paykit-server':
+      '@xeko-git-1/paykit-server':
         specifier: workspace:^
         version: link:../server
       drizzle-orm:
@@ -303,7 +303,7 @@ importers:
 
   packages/zalopay-adapter:
     devDependencies:
-      '@vibecc/paykit':
+      '@xeko-git-1/paykit':
         specifier: workspace:*
         version: link:../core
 
@@ -442,11 +442,11 @@ packages:
 
   '@esbuild-kit/core-utils@3.3.2':
     resolution: {integrity: sha512-sPRAnw9CdSsRmEtnsl2WXWdyquogVpB3yZ3dgwJfe8zrOzTsV7cJvmwrKVa+0ma5BoiGJ+BoqkMvawbayKUsqQ==}
-    deprecated: 'Merged into tsx: https://tsx.is'
+    deprecated: 'Merged into tsx: https://tsx.hirok.io'
 
   '@esbuild-kit/esm-loader@2.6.5':
     resolution: {integrity: sha512-FxEMIkJKnodyA1OaCUoEvbYRkoZlLZ4d/eXFu9Fh8CbBBgP5EmZxrfTRyN0qpXZ4vOvqnE5YdRdcrmUUXuU+dA==}
-    deprecated: 'Merged into tsx: https://tsx.is'
+    deprecated: 'Merged into tsx: https://tsx.hirok.io'
 
   '@esbuild/aix-ppc64@0.21.5':
     resolution: {integrity: sha512-1SDgH6ZSPTlggy1yI6+Dbkiz8xzpHJEVAlF/AM1tHPLsf5STom9rwtjE4hKAF20FfXXNTFqEYXyJNWh1GiZedQ==}

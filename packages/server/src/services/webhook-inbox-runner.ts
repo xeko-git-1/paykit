@@ -16,7 +16,7 @@
 import {
   claimNextDelivery,
   sweepInboxPayloads,
-} from "@vibecc/paykit-auth-core/db/repos/webhook-inbox.repo.js";
+} from "@xeko-git-1/paykit-auth-core/db/repos/webhook-inbox.repo.js";
 import {
   type DeliveryProcessorDeps,
   type DeliveryResult,

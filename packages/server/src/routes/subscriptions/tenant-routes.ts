@@ -23,13 +23,13 @@ import type {
   SubscriptionResult,
   TenantResolver,
   UpgradeSubscriptionInput,
-} from "@vibecc/paykit";
-import { TenantResolutionError } from "@vibecc/paykit";
+} from "@xeko-git-1/paykit";
+import { TenantResolutionError } from "@xeko-git-1/paykit";
 import type { Context } from "hono";
 import { Hono } from "hono";
 import { z } from "zod";
-import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
-import * as subscriptionRepo from "@vibecc/paykit-auth-core/db/repos/subscription.repo.js";
+import type { DbClient } from "@xeko-git-1/paykit-auth-core/db/client.js";
+import * as subscriptionRepo from "@xeko-git-1/paykit-auth-core/db/repos/subscription.repo.js";
 import { getAuthTenant } from "../../auth/auth-context.js";
 import { buildCustomerService } from "../../services/customer-service.js";
 import { dataJson, errorJson } from "../shared/response.js";

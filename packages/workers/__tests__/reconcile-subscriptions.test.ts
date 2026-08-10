@@ -27,7 +27,7 @@ interface FakeRuntimeRow {
 const runtimeRows: FakeRuntimeRow[] = [];
 const idempotencyDeleted = { count: 0 };
 
-vi.mock("@vibecc/paykit-server", () => ({
+vi.mock("@xeko-git-1/paykit-server", () => ({
   runtimeConfigRepo: {
     getKey: vi.fn(async (_db: unknown, key: string) =>
       runtimeRows.find((r) => r.key === key),
@@ -75,7 +75,7 @@ import type {
   StripeAdapterPort,
   StripeFinancePort,
 } from "../src/reconcile-subscriptions/index.js";
-import type { SubscriptionResult } from "@vibecc/paykit";
+import type { SubscriptionResult } from "@xeko-git-1/paykit";
 
 const TENANT_A = "00000000-0000-0000-0000-000000000001";
 

@@ -17,51 +17,51 @@ import type {
   NormalizedWebhookEvent,
   PaymentProviderAdapter,
   ProviderRegistry,
-} from "@vibecc/paykit";
+} from "@xeko-git-1/paykit";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // The router records every delivery in the inbox before processing it, so this
 // stands in for that repo. The factory is async so the shared helper can be pulled
 // in from inside it — a hoisted factory cannot reach a top-level import.
-vi.mock("@vibecc/paykit-auth-core/db/repos/webhook-inbox.repo.js", async () => {
+vi.mock("@xeko-git-1/paykit-auth-core/db/repos/webhook-inbox.repo.js", async () => {
   const { inboxRepoMock } = await import("./helpers/webhook-inbox-repo-mock.js");
   return inboxRepoMock();
 });
-vi.mock("@vibecc/paykit-auth-core/db/repos/ledger.repo.js", () => ({
+vi.mock("@xeko-git-1/paykit-auth-core/db/repos/ledger.repo.js", () => ({
   appendLedgerEntryIdempotent: vi.fn(),
   sumRefundsByOriginalTransaction: vi.fn(),
 }));
-vi.mock("@vibecc/paykit-auth-core/db/repos/balance.repo.js", () => ({
+vi.mock("@xeko-git-1/paykit-auth-core/db/repos/balance.repo.js", () => ({
   applyDelta: vi.fn(),
 }));
-vi.mock("@vibecc/paykit-auth-core/db/repos/pending-refund.repo.js", () => ({
+vi.mock("@xeko-git-1/paykit-auth-core/db/repos/pending-refund.repo.js", () => ({
   findActiveByTransaction: vi.fn(),
   markCompleted: vi.fn(),
 }));
-vi.mock("@vibecc/paykit-auth-core/db/repos/payment.repo.js", () => ({
+vi.mock("@xeko-git-1/paykit-auth-core/db/repos/payment.repo.js", () => ({
   updateTransactionStatus: vi.fn(),
 }));
-vi.mock("@vibecc/paykit-auth-core/db/repos/refund.repo.js", () => ({
+vi.mock("@xeko-git-1/paykit-auth-core/db/repos/refund.repo.js", () => ({
   createRefund: vi.fn(),
   findByProviderRefundId: vi.fn(),
   markSucceeded: vi.fn(),
 }));
 
-import { applyDelta } from "@vibecc/paykit-auth-core/db/repos/balance.repo.js";
+import { applyDelta } from "@xeko-git-1/paykit-auth-core/db/repos/balance.repo.js";
 import {
   appendLedgerEntryIdempotent,
   sumRefundsByOriginalTransaction,
-} from "@vibecc/paykit-auth-core/db/repos/ledger.repo.js";
-import { updateTransactionStatus } from "@vibecc/paykit-auth-core/db/repos/payment.repo.js";
+} from "@xeko-git-1/paykit-auth-core/db/repos/ledger.repo.js";
+import { updateTransactionStatus } from "@xeko-git-1/paykit-auth-core/db/repos/payment.repo.js";
 import {
   findActiveByTransaction,
   markCompleted,
-} from "@vibecc/paykit-auth-core/db/repos/pending-refund.repo.js";
+} from "@xeko-git-1/paykit-auth-core/db/repos/pending-refund.repo.js";
 import {
   createRefund,
   findByProviderRefundId,
   markSucceeded,
-} from "@vibecc/paykit-auth-core/db/repos/refund.repo.js";
+} from "@xeko-git-1/paykit-auth-core/db/repos/refund.repo.js";
 import { buildWebhookRouter } from "../src/routes/webhooks/webhook-router.js";
 
 const mAppend = appendLedgerEntryIdempotent as ReturnType<typeof vi.fn>;

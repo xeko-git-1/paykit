@@ -6,12 +6,12 @@
  * in Phase 11 against testcontainer Postgres.
  */
 import { describe, expect, expectTypeOf, it } from "vitest";
-import type { DbOrTx } from "@vibecc/paykit-auth-core/db/client.js";
-import * as balanceRepo from "@vibecc/paykit-auth-core/db/repos/balance.repo.js";
-import * as ledgerRepo from "@vibecc/paykit-auth-core/db/repos/ledger.repo.js";
-import * as paymentRepo from "@vibecc/paykit-auth-core/db/repos/payment.repo.js";
-import * as reconciliationRepo from "@vibecc/paykit-auth-core/db/repos/reconciliation.repo.js";
-import * as webhookEventRepo from "@vibecc/paykit-auth-core/db/repos/webhook-event.repo.js";
+import type { DbOrTx } from "@xeko-git-1/paykit-auth-core/db/client.js";
+import * as balanceRepo from "@xeko-git-1/paykit-auth-core/db/repos/balance.repo.js";
+import * as ledgerRepo from "@xeko-git-1/paykit-auth-core/db/repos/ledger.repo.js";
+import * as paymentRepo from "@xeko-git-1/paykit-auth-core/db/repos/payment.repo.js";
+import * as reconciliationRepo from "@xeko-git-1/paykit-auth-core/db/repos/reconciliation.repo.js";
+import * as webhookEventRepo from "@xeko-git-1/paykit-auth-core/db/repos/webhook-event.repo.js";
 
 describe("paymentRepo public API", () => {
   it("exposes expected helpers", () => {

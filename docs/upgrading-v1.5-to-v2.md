@@ -16,10 +16,10 @@ V1.5 must already be running stably for ≥2 weeks. Subscription paths assume
 ## 1. Install the V2 adapter
 
 ```bash
-pnpm add @vibecc/paykit-stripe-subscription
+pnpm add @xeko-git-1/paykit-stripe-subscription
 ```
 
-The package adds zero-runtime-dep types from `@vibecc/paykit` plus the
+The package adds zero-runtime-dep types from `@xeko-git-1/paykit` plus the
 `createStripeSubscriptionAdapter` factory.
 
 ## 2. Apply migrations 004–009
@@ -56,9 +56,9 @@ Stripe customer.
 ## 4. Wire the V2 adapter
 
 ```ts
-import { createPaykit } from "@vibecc/paykit-server";
-import { createStripeAdapter } from "@vibecc/paykit-stripe";
-import { createStripeSubscriptionAdapter } from "@vibecc/paykit-stripe-subscription";
+import { createPaykit } from "@xeko-git-1/paykit-server";
+import { createStripeAdapter } from "@xeko-git-1/paykit-stripe";
+import { createStripeSubscriptionAdapter } from "@xeko-git-1/paykit-stripe-subscription";
 
 const paykit = await createPaykit({
   db,

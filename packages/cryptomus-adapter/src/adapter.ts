@@ -37,7 +37,7 @@ import {
   type RefundInput,
   type RefundResult,
   UnsupportedCurrencyError,
-} from "@vibecc/paykit";
+} from "@xeko-git-1/paykit";
 import { type CryptomusWebhookPayload, parseCryptomusWebhook } from "./webhook-events.js";
 import { computeCryptomusSign, verifyCryptomusSignature } from "./webhook-verifier.js";
 

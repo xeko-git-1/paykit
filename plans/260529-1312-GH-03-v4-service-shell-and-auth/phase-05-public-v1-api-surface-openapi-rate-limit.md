@@ -91,7 +91,7 @@ refund-core(actor, tenantId, txId, amount)  ←── admin-refund-route (adminC
    - **F7 extract** refund-core trước (test admin refund hiện có vẫn xanh — characterization).
    - DTO `.strict()` (F13); router scope+plane-gated; `/v1/refunds` gọi core + ownership (F4); mint JWT-only + subset (F3); rate-limit; openapi (cách F8 đã chốt).
    - KHÔNG viết lại business logic checkout/balance/history (chỉ bọc version+scope); refund LÀ extract thật sự (không phải wrap).
-3. **VERIFY:** `pnpm --filter @vibecc/paykit-service build && pnpm --filter @vibecc/paykit-server build && pnpm vitest run packages/service packages/server` → PASS. Admin refund suite cũ vẫn xanh (F7 không hồi quy).
+3. **VERIFY:** `pnpm --filter @xeko-git-1/paykit-service build && pnpm --filter @xeko-git-1/paykit-server build && pnpm vitest run packages/service packages/server` → PASS. Admin refund suite cũ vẫn xanh (F7 không hồi quy).
 
 ## Success Criteria
 

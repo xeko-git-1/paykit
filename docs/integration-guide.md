@@ -78,12 +78,12 @@
 
 ## 5. UI language / Ngôn ngữ giao diện
 
-**EN —** `@vibecc/paykit-react` now ships English and Vietnamese out of the box. Use the bundled translator, or pass your own `t(key)`:
+**EN —** `@xeko-git-1/paykit-react` now ships English and Vietnamese out of the box. Use the bundled translator, or pass your own `t(key)`:
 
-**VI —** `@vibecc/paykit-react` giờ có sẵn tiếng Anh và tiếng Việt. Dùng translator đóng gói sẵn, hoặc truyền `t(key)` của riêng bạn:
+**VI —** `@xeko-git-1/paykit-react` giờ có sẵn tiếng Anh và tiếng Việt. Dùng translator đóng gói sẵn, hoặc truyền `t(key)` của riêng bạn:
 
 ```tsx
-import { makeTranslator, PaykitBalanceWidget } from "@vibecc/paykit-react";
+import { makeTranslator, PaykitBalanceWidget } from "@xeko-git-1/paykit-react";
 
 const t = makeTranslator("vi"); // "en" | "vi"
 

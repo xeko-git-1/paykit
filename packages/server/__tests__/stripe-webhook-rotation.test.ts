@@ -1,4 +1,4 @@
-import { WebhookSignatureError } from "@vibecc/paykit";
+import { WebhookSignatureError } from "@xeko-git-1/paykit";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("stripe", () => {

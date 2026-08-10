@@ -19,7 +19,7 @@ import type {
   SubscriptionAdapter,
   SubscriptionResult,
   UpgradeSubscriptionInput,
-} from "@vibecc/paykit";
+} from "@xeko-git-1/paykit";
 import Stripe from "stripe";
 import { mapStripeStatus } from "./status-mapper.js";
 import { mapEvent } from "./webhook-events.js";

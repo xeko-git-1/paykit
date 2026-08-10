@@ -60,7 +60,7 @@ Dockerfile: COPY packages/{vnpay,momo,zalopay}-adapter (builder + runtime)
 
 - **Modify:** `packages/service/src/config.ts` — thêm 3 env block + 3 field `ServiceConfig`
 - **Modify:** `packages/service/src/adapters-from-env.ts` — 3 lazy-import block
-- **Modify:** `packages/service/package.json` — `@vibecc/paykit-vnpay`, `-momo`, `-zalopay` (workspace:*)
+- **Modify:** `packages/service/package.json` — `@xeko-git-1/paykit-vnpay`, `-momo`, `-zalopay` (workspace:*)
 - **Modify:** `packages/service/Dockerfile` — **F6:** COPY 3 package.json + 3 dist, CẢ HAI stage
   (builder COPY package.json trước install + COPY src trước build; runtime COPY dist + package.json).
   Tổng = 6 COPY mới × phân bổ 2 stage.
@@ -82,7 +82,7 @@ Dockerfile: COPY packages/{vnpay,momo,zalopay}-adapter (builder + runtime)
    - Cập nhật Dockerfile copy 3 package (builder COPY package.json trước install, COPY src
      trước build; runtime COPY dist + package.json).
    - Thêm 3 dep service `package.json`.
-3. **VERIFY:** `pnpm install && pnpm --filter @vibecc/paykit-service build && pnpm vitest run packages/service` → PASS.
+3. **VERIFY:** `pnpm install && pnpm --filter @xeko-git-1/paykit-service build && pnpm vitest run packages/service` → PASS.
 
 ## Success Criteria
 

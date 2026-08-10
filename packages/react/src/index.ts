@@ -1,4 +1,4 @@
-// @vibecc/paykit-react — admin UI components. Tailwind classes, t(key) i18n.
+// @xeko-git-1/paykit-react — admin UI components. Tailwind classes, t(key) i18n.
 
 export {
   PaykitAdminPanel,

@@ -11,7 +11,7 @@
  * Pass A transient abort on a tenant → status='partial' but other tenants
  * still complete. Pass B always runs (read-only, never mutates).
  */
-import { type DbClient, runtimeConfigRepo } from "@vibecc/paykit-server";
+import { type DbClient, runtimeConfigRepo } from "@xeko-git-1/paykit-server";
 import { releaseReconcileLock, tryAcquireReconcileLock } from "../reconcile/advisory-lock.js";
 import {
   type CachePassOutcome,

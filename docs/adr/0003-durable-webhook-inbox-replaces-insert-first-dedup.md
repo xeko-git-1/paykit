@@ -121,8 +121,8 @@ của migration — down migration của `026` dựa vào chỗ đó còn dữ l
 payment không còn gọi tới nó nữa; đó là thay đổi thật sự cần thiết.
 
 **Worker nằm ở `packages/server/src/services`, không phải `packages/workers`.** Consequences §
-nói `packages/workers`. Không làm được: `workers` chỉ depend `@vibecc/paykit` (core), không có
-`@vibecc/paykit-auth-core`, nên không đọc được repo inbox — và thêm dependency đó sẽ phá
+nói `packages/workers`. Không làm được: `workers` chỉ depend `@xeko-git-1/paykit` (core), không có
+`@xeko-git-1/paykit-auth-core`, nên không đọc được repo inbox — và thêm dependency đó sẽ phá
 ranh giới package mà `no-cross-imports.test.ts` đang giữ. `drainWebhookInbox` vì thế đặt cạnh
 `drainScreeningJobs`, cùng dạng "gọi từ cron", export qua barrel của server.
 

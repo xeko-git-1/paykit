@@ -22,14 +22,14 @@
  * coordination. An operator who prefers an external scheduler sets the interval to
  * 0 and calls the exported drains directly.
  */
-import type { ScreeningService } from "@vibecc/paykit";
+import type { ScreeningService } from "@xeko-git-1/paykit";
 import {
   type DbClient,
   type PaykitEventHandlers,
   drainScreeningJobs,
   drainWebhookInbox,
   sweepWebhookInbox,
-} from "@vibecc/paykit-server";
+} from "@xeko-git-1/paykit-server";
 
 export interface BackgroundDrainDeps {
   readonly db: DbClient;

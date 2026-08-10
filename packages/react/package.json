@@ -1,5 +1,5 @@
 {
-  "name": "@vibecc/paykit-react",
+  "name": "@xeko-git-1/paykit-react",
   "version": "0.2.1",
   "description": "Paykit React admin UI components: PaykitAdminPanel, PaykitBalanceWidget, tables. i18n via t(key) prop.",
   "type": "module",
@@ -26,7 +26,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@vibecc/paykit": "workspace:*"
+    "@xeko-git-1/paykit": "workspace:*"
   },
   "peerDependencies": {
     "@tanstack/react-query": "^5.0.0",

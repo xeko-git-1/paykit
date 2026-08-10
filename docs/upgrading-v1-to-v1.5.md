@@ -5,12 +5,12 @@
 V1.5 extracts Stripe and SePay into their own npm packages. V1 user upgrading to V1.5 MUST install 2 new packages:
 
 ```bash
-pnpm add @vibecc/paykit-stripe @vibecc/paykit-sepay
+pnpm add @xeko-git-1/paykit-stripe @xeko-git-1/paykit-sepay
 ```
 
 If you forget, paykit's factory throws a clear migration error at boot:
 
-> Legacy `providers: { stripe }` shape requires `pnpm add @vibecc/paykit-stripe`.
+> Legacy `providers: { stripe }` shape requires `pnpm add @xeko-git-1/paykit-stripe`.
 
 ## Two upgrade paths
 
@@ -38,12 +38,12 @@ const paykit = await createPaykit({
 Migrate to the new adapter array. This is required when adding a 3rd provider (VNPay/Momo/ZaloPay).
 
 ```ts
-import { createPaykit } from "@vibecc/paykit-server";
-import { createStripeAdapter } from "@vibecc/paykit-stripe";
-import { createSepayAdapter } from "@vibecc/paykit-sepay";
-import { createVnpayAdapter } from "@vibecc/paykit-vnpay";
-import { createMomoAdapter } from "@vibecc/paykit-momo";
-import { createZaloPayAdapter } from "@vibecc/paykit-zalopay";
+import { createPaykit } from "@xeko-git-1/paykit-server";
+import { createStripeAdapter } from "@xeko-git-1/paykit-stripe";
+import { createSepayAdapter } from "@xeko-git-1/paykit-sepay";
+import { createVnpayAdapter } from "@xeko-git-1/paykit-vnpay";
+import { createMomoAdapter } from "@xeko-git-1/paykit-momo";
+import { createZaloPayAdapter } from "@xeko-git-1/paykit-zalopay";
 
 const paykit = await createPaykit({
   db,
@@ -107,7 +107,7 @@ V1's manual `/admin/billing/ledger/adjust` still works for SePay (which has no r
 V1's `reconcile()` signature with separate fetcher args still works. V1.5 adds `reconcileV15(deps, opts)` which uses the registry — recommended for new projects.
 
 ```ts
-import { reconcileV15 } from "@vibecc/paykit-workers";
+import { reconcileV15 } from "@xeko-git-1/paykit-workers";
 
 const result = await reconcileV15(
   { db: paykitDb, registry: paykit.registry },
@@ -124,7 +124,7 @@ If your app is web + native mobile, see `docs/mobile-integration.md` for iOS Uni
 
 A V1 user following this guide should complete the upgrade in **< 30 minutes**:
 
-1. `pnpm add @vibecc/paykit-stripe @vibecc/paykit-sepay` (2 min)
+1. `pnpm add @xeko-git-1/paykit-stripe @xeko-git-1/paykit-sepay` (2 min)
 2. `await` the `createPaykit` call (2 min)
 3. `npx paykit migrate up` (2 min)
 4. Verify webhook URLs unchanged in Stripe/SePay dashboards (5 min)

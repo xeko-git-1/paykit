@@ -16,7 +16,7 @@
 Create `.npmrc` in your project root:
 
 ```
-@vibecc:registry=https://npm.pkg.github.com
+@xeko-git-1:registry=https://npm.pkg.github.com
 //npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
 ```
 
@@ -25,15 +25,15 @@ Set `GITHUB_TOKEN` env var to a PAT with `read:packages`.
 ## Step 2 — Install
 
 ```bash
-pnpm add @vibecc/paykit @vibecc/paykit-server @vibecc/paykit-react
-pnpm add -D @vibecc/paykit-cli
+pnpm add @xeko-git-1/paykit @xeko-git-1/paykit-server @xeko-git-1/paykit-react
+pnpm add -D @xeko-git-1/paykit-cli
 ```
 
 **V3 crypto adapters** (install only the providers you need):
 
 ```bash
-pnpm add @vibecc/paykit-nowpayments   # NowPayments — 200+ crypto assets, USD settlement, async refund via webhook
-pnpm add @vibecc/paykit-bitpay        # BitPay — fiat-priced crypto invoices, USD settlement, unsigned-webhook fetch-back verification
+pnpm add @xeko-git-1/paykit-nowpayments   # NowPayments — 200+ crypto assets, USD settlement, async refund via webhook
+pnpm add @xeko-git-1/paykit-bitpay        # BitPay — fiat-priced crypto invoices, USD settlement, unsigned-webhook fetch-back verification
 ```
 
 ## Step 3 — Provision the paykit Postgres database
@@ -65,7 +65,7 @@ inside the paykit DB.
 ## Step 5 — Wire createPaykit in your app
 
 ```ts
-import { createPaykit } from "@vibecc/paykit-server";
+import { createPaykit } from "@xeko-git-1/paykit-server";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Client } from "pg";
 
@@ -145,7 +145,7 @@ Expected output:
 ## Step 9 — React UI
 
 ```tsx
-import { PaykitBalanceWidget, PaykitAdminPanel } from "@vibecc/paykit-react";
+import { PaykitBalanceWidget, PaykitAdminPanel } from "@xeko-git-1/paykit-react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const queryClient = new QueryClient();
@@ -163,7 +163,7 @@ function MyApp() {
 ## Schedule the reconciliation worker
 
 ```ts
-import { reconcile, createStripeFetcher, createSepayFetcher } from "@vibecc/paykit-workers";
+import { reconcile, createStripeFetcher, createSepayFetcher } from "@xeko-git-1/paykit-workers";
 import Stripe from "stripe";
 
 // Run via cron / BullMQ / Cloudflare Cron — NOT a long-running daemon.

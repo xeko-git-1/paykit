@@ -1,4 +1,4 @@
-# @vibecc/paykit-workers
+# @xeko-git-1/paykit-workers
 
 Reconciliation worker that compares paykit's ledger against Stripe + SePay records. Designed to run on cron or BullMQ — not a long-running daemon.
 

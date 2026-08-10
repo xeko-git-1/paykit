@@ -5,7 +5,7 @@
  * Each adapter is lazily imported only when its creds are available.
  * This keeps the service lightweight when running with a subset of providers.
  */
-import type { PaymentProviderAdapter } from "@vibecc/paykit";
+import type { PaymentProviderAdapter } from "@xeko-git-1/paykit";
 import type { ServiceConfig } from "./config.js";
 
 /**
@@ -18,7 +18,7 @@ export async function buildAdaptersFromConfig(
   const adapters: PaymentProviderAdapter[] = [];
 
   if (config.stripe) {
-    const { createStripeAdapter } = await import("@vibecc/paykit-stripe");
+    const { createStripeAdapter } = await import("@xeko-git-1/paykit-stripe");
     adapters.push(
       createStripeAdapter({
         secretKey: config.stripe.secretKey,
@@ -30,7 +30,7 @@ export async function buildAdaptersFromConfig(
   }
 
   if (config.sepay) {
-    const { createSepayAdapter } = await import("@vibecc/paykit-sepay");
+    const { createSepayAdapter } = await import("@xeko-git-1/paykit-sepay");
     adapters.push(
       createSepayAdapter({
         apiKey: config.sepay.apiKey,
@@ -43,7 +43,7 @@ export async function buildAdaptersFromConfig(
   }
 
   if (config.nowpayments) {
-    const { createNowpaymentsAdapter } = await import("@vibecc/paykit-nowpayments");
+    const { createNowpaymentsAdapter } = await import("@xeko-git-1/paykit-nowpayments");
     adapters.push(
       createNowpaymentsAdapter({
         apiKey: config.nowpayments.apiKey,
@@ -57,7 +57,7 @@ export async function buildAdaptersFromConfig(
   }
 
   if (config.cryptomus) {
-    const { createCryptomusAdapter } = await import("@vibecc/paykit-cryptomus");
+    const { createCryptomusAdapter } = await import("@xeko-git-1/paykit-cryptomus");
     adapters.push(
       createCryptomusAdapter({
         merchantId: config.cryptomus.merchantId,
@@ -79,7 +79,7 @@ export async function buildAdaptersFromConfig(
   }
 
   if (config.binance) {
-    const { createBinanceAdapter } = await import("@vibecc/paykit-binance");
+    const { createBinanceAdapter } = await import("@xeko-git-1/paykit-binance");
     adapters.push(
       createBinanceAdapter({
         apiKey: config.binance.apiKey,
@@ -99,7 +99,7 @@ export async function buildAdaptersFromConfig(
   }
 
   if (config.vnpay) {
-    const { createVnpayAdapter } = await import("@vibecc/paykit-vnpay");
+    const { createVnpayAdapter } = await import("@xeko-git-1/paykit-vnpay");
     adapters.push(
       createVnpayAdapter({
         tmnCode: config.vnpay.tmnCode,
@@ -112,7 +112,7 @@ export async function buildAdaptersFromConfig(
   }
 
   if (config.momo) {
-    const { createMomoAdapter } = await import("@vibecc/paykit-momo");
+    const { createMomoAdapter } = await import("@xeko-git-1/paykit-momo");
     adapters.push(
       createMomoAdapter({
         partnerCode: config.momo.partnerCode,
@@ -126,7 +126,7 @@ export async function buildAdaptersFromConfig(
   }
 
   if (config.zalopay) {
-    const { createZaloPayAdapter } = await import("@vibecc/paykit-zalopay");
+    const { createZaloPayAdapter } = await import("@xeko-git-1/paykit-zalopay");
     adapters.push(
       createZaloPayAdapter({
         appId: config.zalopay.appId,

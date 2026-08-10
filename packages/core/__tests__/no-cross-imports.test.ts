@@ -30,29 +30,29 @@ function grepImports(searchPath: string, forbiddenPattern: string): string[] {
 
 describe("no cross-package forbidden imports", () => {
   it("react does not import from server", () => {
-    const matches = grepImports("packages/react/src", "@vibecc/paykit-server");
+    const matches = grepImports("packages/react/src", "@xeko-git-1/paykit-server");
     expect(matches, matches.join("\n")).toEqual([]);
   });
 
   // CLI must not bundle the HTTP layer. It reuses auth primitives + repos via
-  // @vibecc/paykit-auth-core (the HTTP-free lower tier), never from server.
+  // @xeko-git-1/paykit-auth-core (the HTTP-free lower tier), never from server.
   it("cli does not import from server", () => {
-    const matches = grepImports("packages/cli/src", "@vibecc/paykit-server");
+    const matches = grepImports("packages/cli/src", "@xeko-git-1/paykit-server");
     expect(matches, matches.join("\n")).toEqual([]);
   });
 
   // auth-core is the HTTP-free foundation: it must never import the HTTP server.
   it("auth-core does not import from server", () => {
-    const matches = grepImports("packages/auth-core/src", "@vibecc/paykit-server");
+    const matches = grepImports("packages/auth-core/src", "@xeko-git-1/paykit-server");
     expect(matches, matches.join("\n")).toEqual([]);
   });
 
   it("core does not import from server, workers, react, or cli", () => {
     const targets = [
-      "@vibecc/paykit-server",
-      "@vibecc/paykit-workers",
-      "@vibecc/paykit-react",
-      "@vibecc/paykit-cli",
+      "@xeko-git-1/paykit-server",
+      "@xeko-git-1/paykit-workers",
+      "@xeko-git-1/paykit-react",
+      "@xeko-git-1/paykit-cli",
     ];
     for (const target of targets) {
       const matches = grepImports("packages/core/src", target);
@@ -63,7 +63,7 @@ describe("no cross-package forbidden imports", () => {
   it("workers does not import from react or cli", () => {
     // workers IS allowed to import DbClient + schema types from server (it's a peer of server,
     // not a layer above). Forbidden: react (DOM-only) and cli (process-level).
-    const targets = ["@vibecc/paykit-react", "@vibecc/paykit-cli"];
+    const targets = ["@xeko-git-1/paykit-react", "@xeko-git-1/paykit-cli"];
     for (const target of targets) {
       const matches = grepImports("packages/workers/src", target);
       expect(matches, `${target}: ${matches.join("\n")}`).toEqual([]);

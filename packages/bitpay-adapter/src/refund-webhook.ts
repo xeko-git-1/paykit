@@ -26,7 +26,7 @@
  * reconciliation catches; guessing wrong in the unsafe direction would debit for
  * a refund that never landed.
  */
-import type { NormalizedWebhookEvent } from "@vibecc/paykit";
+import type { NormalizedWebhookEvent } from "@xeko-git-1/paykit";
 import type { BitpayMerchantSigner } from "./adapter.js";
 import { type BitpayInvoice, amountToMicros } from "./webhook-events.js";
 

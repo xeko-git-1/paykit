@@ -31,14 +31,14 @@ import type {
   NormalizedSubscriptionEvent,
   SubscriptionAdapter,
   SubscriptionStatus,
-} from "@vibecc/paykit";
-import type { DbClient, DbOrTx } from "@vibecc/paykit-auth-core/db/client.js";
-import * as customerRepo from "@vibecc/paykit-auth-core/db/repos/customer.repo.js";
-import { appendLedgerEntryIdempotent } from "@vibecc/paykit-auth-core/db/repos/ledger.repo.js";
-import { appendSubscriptionEvent } from "@vibecc/paykit-auth-core/db/repos/subscription-event.repo.js";
-import * as subscriptionRepo from "@vibecc/paykit-auth-core/db/repos/subscription.repo.js";
-import { tryRecordWebhookEvent } from "@vibecc/paykit-auth-core/db/repos/webhook-event.repo.js";
-import type { Subscription } from "@vibecc/paykit-auth-core/db/schema/subscriptions.js";
+} from "@xeko-git-1/paykit";
+import type { DbClient, DbOrTx } from "@xeko-git-1/paykit-auth-core/db/client.js";
+import * as customerRepo from "@xeko-git-1/paykit-auth-core/db/repos/customer.repo.js";
+import { appendLedgerEntryIdempotent } from "@xeko-git-1/paykit-auth-core/db/repos/ledger.repo.js";
+import { appendSubscriptionEvent } from "@xeko-git-1/paykit-auth-core/db/repos/subscription-event.repo.js";
+import * as subscriptionRepo from "@xeko-git-1/paykit-auth-core/db/repos/subscription.repo.js";
+import { tryRecordWebhookEvent } from "@xeko-git-1/paykit-auth-core/db/repos/webhook-event.repo.js";
+import type { Subscription } from "@xeko-git-1/paykit-auth-core/db/schema/subscriptions.js";
 import type { Context } from "hono";
 import { Hono } from "hono";
 import { errorJson } from "../shared/response.js";

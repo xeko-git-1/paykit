@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import * as paykit from "../src/index.js";
 
-describe("@vibecc/paykit barrel exports", () => {
+describe("@xeko-git-1/paykit barrel exports", () => {
   it("exports money helpers", () => {
     expect(typeof paykit.microsStringToBigInt).toBe("function");
     expect(typeof paykit.microsStringToNumber).toBe("function");

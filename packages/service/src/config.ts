@@ -3,7 +3,7 @@
  *
  * JWT signing secret is NOT read from env. It lives in the runtime_config
  * table and is loaded/seeded at service start by createJwtSecretLoader
- * (see @vibecc/paykit-server jwt-middleware).
+ * (see @xeko-git-1/paykit-server jwt-middleware).
  */
 import { z } from "zod";
 

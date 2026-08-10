@@ -1,4 +1,4 @@
-# @vibecc/paykit-cli
+# @xeko-git-1/paykit-cli
 
 `paykit migrate up/down/status` (advisory-locked, multi-instance safe) and `paykit doctor` (env + schema + provider health).
 

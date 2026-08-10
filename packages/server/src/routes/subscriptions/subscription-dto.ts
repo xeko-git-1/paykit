@@ -2,8 +2,8 @@
  * Subscription serializer + tenant-scope helpers shared by tenant + admin
  * route files. Keeps each route under 200 LOC.
  */
-import type { SubscriptionStatus } from "@vibecc/paykit";
-import type { Subscription } from "@vibecc/paykit-auth-core/db/schema/subscriptions.js";
+import type { SubscriptionStatus } from "@xeko-git-1/paykit";
+import type { Subscription } from "@xeko-git-1/paykit-auth-core/db/schema/subscriptions.js";
 
 export interface SubscriptionDto {
   readonly id: string;

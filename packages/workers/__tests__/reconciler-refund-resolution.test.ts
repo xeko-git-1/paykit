@@ -1,4 +1,4 @@
-import type { PaymentProviderAdapter, ProviderRegistry, RefundResult } from "@vibecc/paykit";
+import type { PaymentProviderAdapter, ProviderRegistry, RefundResult } from "@xeko-git-1/paykit";
 /**
  * Tests for reconciler pending-refund resolution — the lifecycle AFTER
  * executeRefund returns 'pending' (ZaloPay-style async).
@@ -11,7 +11,7 @@ import type { PaymentProviderAdapter, ProviderRegistry, RefundResult } from "@vi
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ---------------------------------------------------------------------------
-// Mock @vibecc/paykit-server — must be before import of orchestrator
+// Mock @xeko-git-1/paykit-server — must be before import of orchestrator
 // ---------------------------------------------------------------------------
 
 const mockMarkCompleted = vi.fn();
@@ -29,7 +29,7 @@ const mockAdvanceCursor = vi.fn();
 const mockMarkWindowExhausted = vi.fn();
 const mockCompleteRun = vi.fn();
 
-vi.mock("@vibecc/paykit-server", () => {
+vi.mock("@xeko-git-1/paykit-server", () => {
   const paymentTransactions = {
     transactionId: "transaction_id",
     createdAt: "created_at",

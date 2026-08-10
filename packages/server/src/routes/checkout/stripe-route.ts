@@ -6,19 +6,19 @@
  *
  * V1 mode: payment (one-off). Subscription is V2.
  */
-import { TenantResolutionError, usdToMicros } from "@vibecc/paykit";
+import { TenantResolutionError, usdToMicros } from "@xeko-git-1/paykit";
 import type {
   AppliedDiscount,
   CurrencyCode,
   DiscountResolver,
   TenantResolver,
-} from "@vibecc/paykit";
+} from "@xeko-git-1/paykit";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
-import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
-import { createTransaction, findByIdempotencyKey } from "@vibecc/paykit-auth-core/db/repos/payment.repo.js";
-import { paymentTransactions } from "@vibecc/paykit-auth-core/db/schema/payment-transactions.js";
+import type { DbClient } from "@xeko-git-1/paykit-auth-core/db/client.js";
+import { createTransaction, findByIdempotencyKey } from "@xeko-git-1/paykit-auth-core/db/repos/payment.repo.js";
+import { paymentTransactions } from "@xeko-git-1/paykit-auth-core/db/schema/payment-transactions.js";
 import type { StripeClient } from "../../providers/stripe/client.js";
 import { getAuthTenant } from "../../auth/auth-context.js";
 import { dataJson, errorJson } from "../shared/response.js";

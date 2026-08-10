@@ -11,8 +11,8 @@
  * Returns null for any other Stripe event type — caller treats it as
  * uninteresting and ACKs without dispatch.
  */
-import type { NormalizedSubscriptionEvent, SubscriptionEventType } from "@vibecc/paykit";
-import { stripeUsdAmountToMicros } from "@vibecc/paykit";
+import type { NormalizedSubscriptionEvent, SubscriptionEventType } from "@xeko-git-1/paykit";
+import { stripeUsdAmountToMicros } from "@xeko-git-1/paykit";
 import type Stripe from "stripe";
 import { mapStripeStatus } from "./status-mapper.js";
 

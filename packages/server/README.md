@@ -1,4 +1,4 @@
-# @vibecc/paykit-server
+# @xeko-git-1/paykit-server
 
 Hono routes (checkout, webhooks, billing, admin), DB schema, repos, and provider clients (SePay + Stripe). Mounts via `createPaykit().routes()`.
 

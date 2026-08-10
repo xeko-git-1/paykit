@@ -1,5 +1,5 @@
 /**
- * PaymentProviderAdapter — V1.5 contract. Implemented by @vibecc/paykit-{stripe,
+ * PaymentProviderAdapter — V1.5 contract. Implemented by @xeko-git-1/paykit-{stripe,
  * sepay,vnpay,momo,zalopay} packages. Server-level routes call adapter methods
  * via ProviderRegistry.
  *

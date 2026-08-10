@@ -15,25 +15,25 @@
  *   - No status guard, so a refund could be applied to a payment that was never
  *     credited, debiting a wallet for money it never received.
  */
-import { isRefundableStatus, parseMicros, refundedPaymentStatus } from "@vibecc/paykit";
-import type { NormalizedWebhookEvent } from "@vibecc/paykit";
-import type { DbOrTx } from "@vibecc/paykit-auth-core/db/client.js";
-import { applyDelta } from "@vibecc/paykit-auth-core/db/repos/balance.repo.js";
+import { isRefundableStatus, parseMicros, refundedPaymentStatus } from "@xeko-git-1/paykit";
+import type { NormalizedWebhookEvent } from "@xeko-git-1/paykit";
+import type { DbOrTx } from "@xeko-git-1/paykit-auth-core/db/client.js";
+import { applyDelta } from "@xeko-git-1/paykit-auth-core/db/repos/balance.repo.js";
 import {
   appendLedgerEntryIdempotent,
   sumRefundsByOriginalTransaction,
-} from "@vibecc/paykit-auth-core/db/repos/ledger.repo.js";
-import { updateTransactionStatus } from "@vibecc/paykit-auth-core/db/repos/payment.repo.js";
+} from "@xeko-git-1/paykit-auth-core/db/repos/ledger.repo.js";
+import { updateTransactionStatus } from "@xeko-git-1/paykit-auth-core/db/repos/payment.repo.js";
 import {
   findActiveByTransaction,
   markCompleted,
-} from "@vibecc/paykit-auth-core/db/repos/pending-refund.repo.js";
+} from "@xeko-git-1/paykit-auth-core/db/repos/pending-refund.repo.js";
 import {
   createRefund,
   findByProviderRefundId,
   markSucceeded,
-} from "@vibecc/paykit-auth-core/db/repos/refund.repo.js";
-import type { PaymentTransaction } from "@vibecc/paykit-auth-core/db/schema/payment-transactions.js";
+} from "@xeko-git-1/paykit-auth-core/db/repos/refund.repo.js";
+import type { PaymentTransaction } from "@xeko-git-1/paykit-auth-core/db/schema/payment-transactions.js";
 
 export interface RefundEventLogger {
   warn(message: string, details?: Record<string, unknown>): void;

@@ -8,7 +8,7 @@ import { sign } from "hono/jwt";
 import { apiKeyAuthMiddleware, type ApiKeyAuthDeps } from "../src/auth/api-key-middleware.js";
 import { jwtAuthMiddleware, createJwtSecretLoader, type JwtAuthDeps } from "../src/auth/jwt-middleware.js";
 import { requireScope, requirePlane } from "../src/auth/require-scope.js";
-import { mintApiKey } from "@vibecc/paykit-auth-core/auth/api-key.js";
+import { mintApiKey } from "@xeko-git-1/paykit-auth-core/auth/api-key.js";
 
 // ---------------------------------------------------------------------------
 // Helpers

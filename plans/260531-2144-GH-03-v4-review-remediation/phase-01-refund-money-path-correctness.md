@@ -81,7 +81,7 @@ call happens outside the lock. Finalization (ledger + balance) happens in a seco
    - `sourceId = tx:${txRow.transactionId}:${idempotencyKey}` (distinct per key, dedup on retry)
    - remaining = original + committed_refunds(negative) - active_reservations(positive)
 
-3. **VERIFY:** `pnpm --filter @vibecc/paykit-server build && pnpm vitest run packages/server` → 276 PASS.
+3. **VERIFY:** `pnpm --filter @xeko-git-1/paykit-server build && pnpm vitest run packages/server` → 276 PASS.
    `pnpm vitest run packages/service` → 43 PASS. No regressions.
 
 ## Success Criteria

@@ -14,15 +14,15 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@vibecc/paykit-auth-core/db/repos/balance.repo.js", () => ({ applyDelta: vi.fn() }));
-vi.mock("@vibecc/paykit-auth-core/db/repos/ledger.repo.js", () => ({
+vi.mock("@xeko-git-1/paykit-auth-core/db/repos/balance.repo.js", () => ({ applyDelta: vi.fn() }));
+vi.mock("@xeko-git-1/paykit-auth-core/db/repos/ledger.repo.js", () => ({
   appendLedgerEntryIdempotent: vi.fn(),
 }));
-vi.mock("@vibecc/paykit-auth-core/db/repos/discount.repo.js", () => ({
+vi.mock("@xeko-git-1/paykit-auth-core/db/repos/discount.repo.js", () => ({
   commitReservation: vi.fn(),
   releaseReservation: vi.fn(),
 }));
-vi.mock("@vibecc/paykit-auth-core/db/repos/screening-job.repo.js", () => ({
+vi.mock("@xeko-git-1/paykit-auth-core/db/repos/screening-job.repo.js", () => ({
   claimNextScreeningJob: vi.fn(),
   markScreeningDecided: vi.fn(),
   markScreeningRetryable: vi.fn(),
@@ -37,7 +37,7 @@ vi.mock("../src/services/screening-verdict-tx.js", () => ({
 import {
   claimNextScreeningJob,
   markScreeningRetryable,
-} from "@vibecc/paykit-auth-core/db/repos/screening-job.repo.js";
+} from "@xeko-git-1/paykit-auth-core/db/repos/screening-job.repo.js";
 import { MAX_SCREENING_ATTEMPTS } from "../src/services/screening-backoff.js";
 import { drainScreeningJobs, processNextScreeningJob } from "../src/services/screening-runner.js";
 import {

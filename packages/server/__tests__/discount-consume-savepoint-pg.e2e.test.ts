@@ -16,8 +16,8 @@
  *
  * Gated by PAYKIT_E2E_DATABASE_URL, matching the service cold-start e2e.
  */
-import type { AppliedDiscount } from "@vibecc/paykit";
-import { type DbClient, paykitDbSchema } from "@vibecc/paykit-server";
+import type { AppliedDiscount } from "@xeko-git-1/paykit";
+import { type DbClient, paykitDbSchema } from "@xeko-git-1/paykit-server";
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";

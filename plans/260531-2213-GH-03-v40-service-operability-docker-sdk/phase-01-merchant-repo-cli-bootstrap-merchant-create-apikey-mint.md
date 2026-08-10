@@ -47,7 +47,7 @@ mount → phải wire mới dùng được.
 
 **Non-functional**
 - Plaintext key + JWT chỉ stdout, không log file.
-- CLI import `mintApiKey`/`apiKeyRepo`/`merchantRepo`/`SCOPES` từ `@vibecc/paykit-server` barrel
+- CLI import `mintApiKey`/`apiKeyRepo`/`merchantRepo`/`SCOPES` từ `@xeko-git-1/paykit-server` barrel
   (`server/src/index.ts` — đã export, verified).
 - **F5:** CLI phải tạo **Drizzle** client (`drizzle(pgClient)`) cho repo, KHÔNG truyền raw
   `pg.Client`. Repo gọi `db.insert().values().returning()` (`api-key.repo.ts:23`) đòi Drizzle.
@@ -88,7 +88,7 @@ Service (main.ts) — wire BOTH planes on /v1:
 - **Modify:** `packages/server/src/index.ts` — export `* as merchantRepo`
 - **Modify:** `packages/cli/src/bin/paykit.ts` — 3 command (`merchant create`, `apikey mint`, `jwt mint`) + `withDb` Drizzle helper
 - **Create:** `packages/cli/src/lib/bootstrap.ts` — create/mint/jwt logic (testable, cap-enforced, ghi `created_by`)
-- **Modify:** `packages/cli/package.json` — dep `@vibecc/paykit-server`, `drizzle-orm`; **F7: regenerate + commit `pnpm-lock.yaml`**
+- **Modify:** `packages/cli/package.json` — dep `@xeko-git-1/paykit-server`, `drizzle-orm`; **F7: regenerate + commit `pnpm-lock.yaml`**
 - **Modify:** `packages/service/src/main.ts` — **F3:** mount CẢ `apiKeyAuthMiddleware` + `jwtAuthMiddleware`
   trên `/v1/*` (pass-through nếu token không khớp dạng); **F9:** XÓA `migrate`/`doctor` sub-command
   (chỉ giữ `serve`) — loại execSync injection
@@ -120,7 +120,7 @@ Service (main.ts) — wire BOTH planes on /v1:
      `jwtSecretLoader` đang bị bỏ); đảm bảo plane-coexistence (pass-through theo dạng token).
    - **F9:** XÓA `migrate`/`doctor` sub-command khỏi `main.ts` (chỉ giữ `serve`).
    - Regenerate lockfile.
-3. **VERIFY:** `pnpm install && pnpm --filter @vibecc/paykit-cli --filter @vibecc/paykit-server --filter @vibecc/paykit-service build && pnpm vitest run packages/cli packages/server packages/service` → PASS.
+3. **VERIFY:** `pnpm install && pnpm --filter @xeko-git-1/paykit-cli --filter @xeko-git-1/paykit-server --filter @xeko-git-1/paykit-service build && pnpm vitest run packages/cli packages/server packages/service` → PASS.
 
 ## Success Criteria
 

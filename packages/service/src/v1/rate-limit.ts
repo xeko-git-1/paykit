@@ -9,7 +9,7 @@
  * draft standard (X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset).
  */
 import type { MiddlewareHandler } from "hono";
-import { errorJson } from "@vibecc/paykit-server";
+import { errorJson } from "@xeko-git-1/paykit-server";
 
 // ---------------------------------------------------------------------------
 // Token bucket implementation

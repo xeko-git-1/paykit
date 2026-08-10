@@ -33,7 +33,7 @@ up` chạy thật end-to-end.
 **Non-functional**
 - **F9:** bỏ `execSync(\`paykit migrate ${cmd} --db-url "${dbUrl}"\`)` (`main.ts:133-135`) — nội
   suy DSN chưa escape. Thay bằng gọi migrate-lib trực tiếp trong process (import `migrateUp` từ
-  `@vibecc/paykit-cli`) HOẶC `spawnSync("node",[cliPath,"migrate","up"],{env})` (argv array,
+  `@xeko-git-1/paykit-cli`) HOẶC `spawnSync("node",[cliPath,"migrate","up"],{env})` (argv array,
   DSN qua env không qua shell string).
 - **F12:** migrate up phải **chặn serve cho tới khi schema ở HEAD**. try-lock skip (exit 0) hiện
   cho serve chạy sớm khi instance khác đang migrate. Dùng blocking `pg_advisory_lock` HOẶC

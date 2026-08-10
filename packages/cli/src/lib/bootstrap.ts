@@ -22,7 +22,7 @@ import {
   mintAdminJwt,
   mintApiKey,
   runtimeConfigRepo,
-} from "@vibecc/paykit-auth-core";
+} from "@xeko-git-1/paykit-auth-core";
 
 // Valid scope strings, derived from the server's canonical SCOPES map.
 const VALID_SCOPES = new Set<string>(Object.values(SCOPES));

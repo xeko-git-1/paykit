@@ -5,12 +5,12 @@
  *
  * Tenant resolved via paykitAuth context (service mode) or TenantResolver (embedded).
  */
-import { TenantResolutionError } from "@vibecc/paykit";
-import type { TenantResolver } from "@vibecc/paykit";
+import { TenantResolutionError } from "@xeko-git-1/paykit";
+import type { TenantResolver } from "@xeko-git-1/paykit";
 import { Hono } from "hono";
 import { z } from "zod";
-import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
-import { listLedgerEntries } from "@vibecc/paykit-auth-core/db/repos/ledger.repo.js";
+import type { DbClient } from "@xeko-git-1/paykit-auth-core/db/client.js";
+import { listLedgerEntries } from "@xeko-git-1/paykit-auth-core/db/repos/ledger.repo.js";
 import { getAuthTenant } from "../../auth/auth-context.js";
 import { dataJson, errorJson } from "../shared/response.js";
 

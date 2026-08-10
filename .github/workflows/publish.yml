@@ -24,7 +24,7 @@ jobs:
           node-version: 22
           cache: pnpm
           registry-url: https://npm.pkg.github.com
-          scope: "@vibecc"
+          scope: "@xeko-git-1"
       - run: pnpm install --frozen-lockfile
       # Build first. Packages in this workspace resolve each other through their
       # `dist` output, which does not exist in a fresh checkout — running
@@ -37,4 +37,9 @@ jobs:
       - name: Publish all packages
         run: pnpm -r --filter './packages/*' publish --no-git-checks --access restricted
         env:
+          # The project-level .npmrc reads ${GITHUB_TOKEN} and takes precedence
+          # over the user-level file setup-node writes, so NODE_AUTH_TOKEN alone
+          # left the token unresolved and every publish 401'd. Setting both keeps
+          # whichever config wins authenticated.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

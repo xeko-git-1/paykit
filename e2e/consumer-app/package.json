@@ -10,8 +10,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@vibecc/paykit": "workspace:*",
-    "@vibecc/paykit-server": "workspace:*",
+    "@xeko-git-1/paykit": "workspace:*",
+    "@xeko-git-1/paykit-server": "workspace:*",
     "hono": "^4.6.0"
   },
   "devDependencies": {

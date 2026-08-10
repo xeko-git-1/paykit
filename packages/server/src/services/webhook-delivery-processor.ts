@@ -25,17 +25,17 @@
  * delivery is retried, and the retry credits nothing twice because the ledger's
  * UNIQUE (provider, source_id, entry_type) collapses the repeat.
  */
-import type { NormalizedWebhookEvent } from "@vibecc/paykit";
-import { nextAttemptAt } from "@vibecc/paykit";
-import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
+import type { NormalizedWebhookEvent } from "@xeko-git-1/paykit";
+import { nextAttemptAt } from "@xeko-git-1/paykit";
+import type { DbClient } from "@xeko-git-1/paykit-auth-core/db/client.js";
 import {
   markDeliveryDeadLettered,
   markDeliveryFailed,
   markDeliveryProcessed,
   markDeliveryUnmatched,
-} from "@vibecc/paykit-auth-core/db/repos/webhook-inbox.repo.js";
-import { paymentTransactions } from "@vibecc/paykit-auth-core/db/schema/payment-transactions.js";
-import type { WebhookInboxRow } from "@vibecc/paykit-auth-core/db/schema/webhook-inbox.js";
+} from "@xeko-git-1/paykit-auth-core/db/repos/webhook-inbox.repo.js";
+import { paymentTransactions } from "@xeko-git-1/paykit-auth-core/db/schema/payment-transactions.js";
+import type { WebhookInboxRow } from "@xeko-git-1/paykit-auth-core/db/schema/webhook-inbox.js";
 import { and, eq } from "drizzle-orm";
 import type { PaykitEventHandlers } from "../events/emitter.js";
 import { emitEvent } from "../events/emitter.js";

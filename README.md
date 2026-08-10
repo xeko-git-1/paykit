@@ -21,16 +21,16 @@
 
 | Provider | Package | Currency | Refund mode |
 |---|---|---|---|
-| Stripe (one-off) | `@vibecc/paykit-stripe` | USD | sync |
-| Stripe Subscriptions | `@vibecc/paykit-stripe-subscription` | USD | via invoice lifecycle |
-| SePay (VietQR) | `@vibecc/paykit-sepay` | VND | manual (one-way bank transfer) |
-| VNPay | `@vibecc/paykit-vnpay` | VND | sync |
-| Momo | `@vibecc/paykit-momo` | VND | sync |
-| ZaloPay | `@vibecc/paykit-zalopay` | VND | 2-step async (poll) |
-| NowPayments | `@vibecc/paykit-nowpayments` | USD | async (`pending_webhook`) — multi-chain USDT (BEP20/TRC20/ERC20/Polygon) via `payCurrency` |
-| Cryptomus | `@vibecc/paykit-cryptomus` | USD | async (`pending_webhook`) — multi-chain USDT, signed webhook (MD5) |
-| BitPay | `@vibecc/paykit-bitpay` | USD | async (`pending_webhook`) — refund needs an injected merchant ECDSA signer; not yet sandbox-verified end-to-end |
-| Binance Pay | `@vibecc/paykit-binance` | USD | async (`pending_webhook`) — off-chain merchant account; no public sandbox, not yet verified end-to-end |
+| Stripe (one-off) | `@xeko-git-1/paykit-stripe` | USD | sync |
+| Stripe Subscriptions | `@xeko-git-1/paykit-stripe-subscription` | USD | via invoice lifecycle |
+| SePay (VietQR) | `@xeko-git-1/paykit-sepay` | VND | manual (one-way bank transfer) |
+| VNPay | `@xeko-git-1/paykit-vnpay` | VND | sync |
+| Momo | `@xeko-git-1/paykit-momo` | VND | sync |
+| ZaloPay | `@xeko-git-1/paykit-zalopay` | VND | 2-step async (poll) |
+| NowPayments | `@xeko-git-1/paykit-nowpayments` | USD | async (`pending_webhook`) — multi-chain USDT (BEP20/TRC20/ERC20/Polygon) via `payCurrency` |
+| Cryptomus | `@xeko-git-1/paykit-cryptomus` | USD | async (`pending_webhook`) — multi-chain USDT, signed webhook (MD5) |
+| BitPay | `@xeko-git-1/paykit-bitpay` | USD | async (`pending_webhook`) — refund needs an injected merchant ECDSA signer; not yet sandbox-verified end-to-end |
+| Binance Pay | `@xeko-git-1/paykit-binance` | USD | async (`pending_webhook`) — off-chain merchant account; no public sandbox, not yet verified end-to-end |
 
 ## What it doesn't do (yet)
 
@@ -40,7 +40,7 @@
 
 ## Architecture (locked)
 
-- Core packages: `@vibecc/paykit` (core types), `@vibecc/paykit-server` (Hono + Drizzle), `@vibecc/paykit-workers` (reconciliation), `@vibecc/paykit-react` (admin UI), `@vibecc/paykit-cli` (migrate + doctor)
+- Core packages: `@xeko-git-1/paykit` (core types), `@xeko-git-1/paykit-server` (Hono + Drizzle), `@xeko-git-1/paykit-workers` (reconciliation), `@xeko-git-1/paykit-react` (admin UI), `@xeko-git-1/paykit-cli` (migrate + doctor)
 - Provider adapters ship as separate packages (see the matrix above) — install only the ones you use; each plugs into the generic webhook router with zero core/server changes
 - Postgres schema: `paykit.*` (separate database from your app DB — no cross-DB JOIN)
 - Tenancy: you implement `TenantResolver` (`{tenantId, ownerId}` from request)
@@ -50,17 +50,17 @@
 ### Two ways to run
 
 - **Embedded (V1–V3):** `import { createPaykit }` into your own Hono app, supply a `TenantResolver`. Quickstart below.
-- **Standalone service (V4):** run `@vibecc/paykit-service` as a container — config + API-key auth via env, no app code. Migrate-then-serve cold start, 8 wired adapters (Stripe / SePay / NowPayments / VNPay / Momo / ZaloPay / Cryptomus / Binance Pay; BitPay is embedded-only), `/v1` HTTP API, CLI bootstrap, and a thin TypeScript SDK. See [service-mode-setup.md](docs/service-mode-setup.md).
+- **Standalone service (V4):** run `@xeko-git-1/paykit-service` as a container — config + API-key auth via env, no app code. Migrate-then-serve cold start, 8 wired adapters (Stripe / SePay / NowPayments / VNPay / Momo / ZaloPay / Cryptomus / Binance Pay; BitPay is embedded-only), `/v1` HTTP API, CLI bootstrap, and a thin TypeScript SDK. See [service-mode-setup.md](docs/service-mode-setup.md).
 
 ## Quickstart (preview — V1 not yet published)
 
 ```bash
-pnpm add @vibecc/paykit @vibecc/paykit-server @vibecc/paykit-react
-pnpm add -D @vibecc/paykit-cli
+pnpm add @xeko-git-1/paykit @xeko-git-1/paykit-server @xeko-git-1/paykit-react
+pnpm add -D @xeko-git-1/paykit-cli
 ```
 
 ```ts
-import { createPaykit } from "@vibecc/paykit-server";
+import { createPaykit } from "@xeko-git-1/paykit-server";
 
 const paykit = createPaykit({
   db,                                   // your paykit-DB Drizzle client

@@ -1,5 +1,5 @@
 {
-  "name": "@vibecc/paykit-cryptomus",
+  "name": "@xeko-git-1/paykit-cryptomus",
   "version": "0.3.0-rc.0",
   "description": "Paykit adapter for Cryptomus — multi-chain USDT (BEP20/TRC20/ERC20/Polygon), USD settlement, MD5 base64-body IPN signature, async refund",
   "type": "module",
@@ -27,10 +27,10 @@
   },
   "dependencies": {},
   "peerDependencies": {
-    "@vibecc/paykit": ">=0.3.0-rc.0 <0.4.0"
+    "@xeko-git-1/paykit": ">=0.3.0-rc.0 <0.4.0"
   },
   "devDependencies": {
-    "@vibecc/paykit": "workspace:*"
+    "@xeko-git-1/paykit": "workspace:*"
   },
   "engines": { "node": ">=20" }
 }

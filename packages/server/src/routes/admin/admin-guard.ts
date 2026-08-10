@@ -5,7 +5,7 @@
  * Stores `adminContext` on the Hono context for downstream routes to access
  * `adminUserId` / `role` for audit logging.
  */
-import type { AdminGuard, AdminGuardResult } from "@vibecc/paykit";
+import type { AdminGuard, AdminGuardResult } from "@xeko-git-1/paykit";
 import type { MiddlewareHandler } from "hono";
 import { errorJson } from "../shared/response.js";
 

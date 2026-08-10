@@ -1,4 +1,4 @@
-import { JWT_AUDIENCE, JWT_ISSUER } from "@vibecc/paykit-auth-core";
+import { JWT_AUDIENCE, JWT_ISSUER } from "@xeko-git-1/paykit-auth-core";
 /**
  * CLI bootstrap tests — operator path for merchant create, apikey mint, jwt mint.
  *

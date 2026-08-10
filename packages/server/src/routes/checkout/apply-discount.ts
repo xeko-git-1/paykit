@@ -27,8 +27,8 @@ import type {
   CurrencyCode,
   DbTransaction,
   DiscountResolver,
-} from "@vibecc/paykit";
-import type { DbTransactionHandle } from "@vibecc/paykit-auth-core/db/client.js";
+} from "@xeko-git-1/paykit";
+import type { DbTransactionHandle } from "@xeko-git-1/paykit-auth-core/db/client.js";
 import { effectiveMicrosFor, validateDiscountPercent } from "./discount-percent.js";
 
 export interface DiscountOutcome {

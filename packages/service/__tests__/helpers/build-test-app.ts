@@ -2,7 +2,7 @@
  * Shared test helper — builds a service app with a mock adapter so webhook
  * routes are registered and testable without real provider credentials.
  */
-import type { PaymentProviderAdapter } from "@vibecc/paykit";
+import type { PaymentProviderAdapter } from "@xeko-git-1/paykit";
 import { buildServiceApp } from "../../src/main.js";
 
 /**

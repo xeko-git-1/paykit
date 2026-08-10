@@ -6,13 +6,13 @@
  *
  * Tenant resolved via paykitAuth context (service mode) or TenantResolver (embedded).
  */
-import { TenantResolutionError } from "@vibecc/paykit";
-import type { TenantResolver } from "@vibecc/paykit";
+import { TenantResolutionError } from "@xeko-git-1/paykit";
+import type { TenantResolver } from "@xeko-git-1/paykit";
 import { and, count, desc, eq, gte, lt, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
-import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
-import { paymentTransactions } from "@vibecc/paykit-auth-core/db/schema/payment-transactions.js";
+import type { DbClient } from "@xeko-git-1/paykit-auth-core/db/client.js";
+import { paymentTransactions } from "@xeko-git-1/paykit-auth-core/db/schema/payment-transactions.js";
 import { getAuthTenant } from "../../auth/auth-context.js";
 import { dataJson, errorJson } from "../shared/response.js";
 

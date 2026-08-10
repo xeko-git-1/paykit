@@ -5,7 +5,7 @@
  * emit `STATUS_UNKNOWN` so observability can alert without crashing the
  * adapter.
  */
-import type { SubscriptionStatus } from "@vibecc/paykit";
+import type { SubscriptionStatus } from "@xeko-git-1/paykit";
 
 const KNOWN: Record<string, SubscriptionStatus> = {
   active: "active",

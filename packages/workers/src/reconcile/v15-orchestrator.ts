@@ -17,7 +17,7 @@
  *
  * Pending refunds (ZaloPay PROCESSING) polled in same run via `pollPendingRefunds`.
  */
-import type { ProviderRegistry } from "@vibecc/paykit";
+import type { ProviderRegistry } from "@xeko-git-1/paykit";
 import {
   type DbClient,
   type PaymentTransaction,
@@ -28,7 +28,7 @@ import {
   pendingRefundRepo,
   reconciliationCursorRepo,
   reconciliationRepo,
-} from "@vibecc/paykit-server";
+} from "@xeko-git-1/paykit-server";
 import { and, eq, gte, lt } from "drizzle-orm";
 import { releaseReconcileLock, tryAcquireReconcileLock } from "./advisory-lock.js";
 import { type PaykitTxnSnapshot, diffPaykitVsProvider } from "./differ.js";

@@ -1,5 +1,5 @@
 {
-  "name": "@vibecc/paykit-bitpay",
+  "name": "@xeko-git-1/paykit-bitpay",
   "version": "0.3.0-rc.0",
   "description": "Paykit adapter for BitPay — fiat-priced crypto invoices, USD settlement, unsigned-webhook fetch-back verification, async refund via webhook",
   "type": "module",
@@ -27,10 +27,10 @@
   },
   "dependencies": {},
   "peerDependencies": {
-    "@vibecc/paykit": ">=0.3.0-rc.0 <0.4.0"
+    "@xeko-git-1/paykit": ">=0.3.0-rc.0 <0.4.0"
   },
   "devDependencies": {
-    "@vibecc/paykit": "workspace:*"
+    "@xeko-git-1/paykit": "workspace:*"
   },
   "engines": { "node": ">=20" }
 }

@@ -1,5 +1,5 @@
 /**
- * @vibecc/paykit-cryptomus — adapter for crypto payments via Cryptomus.
+ * @xeko-git-1/paykit-cryptomus — adapter for crypto payments via Cryptomus.
  *
  * Flow:
  *   1. createCheckout: POST /v1/payment with a USD amount → hosted pay page

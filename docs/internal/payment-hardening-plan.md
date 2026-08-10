@@ -16,14 +16,14 @@ nhóm commit trên integration branch, theo thứ tự ở §8.
 ### 1.1 Package graph (workspace `packages/*`, pnpm)
 
 ```
-core (@vibecc/paykit)            — types, adapter contract, errors, money, metrics. Zero deps.
+core (@xeko-git-1/paykit)            — types, adapter contract, errors, money, metrics. Zero deps.
   ↑
-auth-core (@vibecc/paykit-auth-core) — Drizzle schema + repos + auth primitives. Zero deps (peer: drizzle).
+auth-core (@xeko-git-1/paykit-auth-core) — Drizzle schema + repos + auth primitives. Zero deps (peer: drizzle).
   ↑
-server (@vibecc/paykit-server)   — Hono routes, refund-core, webhook router, createPaykit.
+server (@xeko-git-1/paykit-server)   — Hono routes, refund-core, webhook router, createPaykit.
   ↑                                 deps: core, auth-core, zod
-  ├── service (@vibecc/paykit-service) — standalone /v1 API + auth planes + config. deps: server, cli, adapters
-  └── workers (@vibecc/paykit-workers) — reconciler. deps: core (imports server types at runtime)
+  ├── service (@xeko-git-1/paykit-service) — standalone /v1 API + auth planes + config. deps: server, cli, adapters
+  └── workers (@xeko-git-1/paykit-workers) — reconciler. deps: core (imports server types at runtime)
 
 adapters (stripe|sepay|vnpay|momo|zalopay|nowpayments|bitpay|cryptomus|binance)
   — zero deps, implement PaymentProviderAdapter from core. Never import server/auth-core.

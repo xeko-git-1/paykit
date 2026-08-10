@@ -5,7 +5,7 @@
  * verification success returns the parsed event. All failures throw
  * paykit-typed `WebhookSignatureError`, never raw Stripe errors.
  */
-import { WebhookSignatureError } from "@vibecc/paykit";
+import { WebhookSignatureError } from "@xeko-git-1/paykit";
 import type Stripe from "stripe";
 
 export function verifyAndParse(

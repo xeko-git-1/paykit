@@ -10,7 +10,7 @@
  * In embedded mode, the tenantResolver fallback is still available.
  */
 import type { Context } from "hono";
-import type { ResolvedTenant } from "@vibecc/paykit";
+import type { ResolvedTenant } from "@xeko-git-1/paykit";
 import { errorJson } from "../routes/shared/response.js";
 
 // ---------------------------------------------------------------------------

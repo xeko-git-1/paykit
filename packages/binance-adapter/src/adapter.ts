@@ -42,7 +42,7 @@ import {
   type RefundInput,
   type RefundResult,
   UnsupportedCurrencyError,
-} from "@vibecc/paykit";
+} from "@xeko-git-1/paykit";
 import { toMerchantTradeNo } from "./merchant-trade-no.js";
 import { type BinanceNotificationEnvelope, parseBinanceNotification } from "./webhook-events.js";
 import { generateNonce, signRequest, verifyBinanceWebhookSignature } from "./webhook-verifier.js";

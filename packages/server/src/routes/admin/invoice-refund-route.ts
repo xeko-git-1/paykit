@@ -17,14 +17,14 @@
  * Anti-double-refund: ledger UNIQUE `(provider, source_id='invoice:'+id, entry_type='refund_debit')`
  * blocks double-credit even if Stripe replays.
  */
-import type { AdminGuard, AdminGuardResult } from "@vibecc/paykit";
+import type { AdminGuard, AdminGuardResult } from "@xeko-git-1/paykit";
 import { and, eq } from "drizzle-orm";
 import type { Context } from "hono";
 import { Hono } from "hono";
 import { z } from "zod";
-import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
-import { appendLedgerEntryIdempotent } from "@vibecc/paykit-auth-core/db/repos/ledger.repo.js";
-import { subscriptions } from "@vibecc/paykit-auth-core/db/schema/subscriptions.js";
+import type { DbClient } from "@xeko-git-1/paykit-auth-core/db/client.js";
+import { appendLedgerEntryIdempotent } from "@xeko-git-1/paykit-auth-core/db/repos/ledger.repo.js";
+import { subscriptions } from "@xeko-git-1/paykit-auth-core/db/schema/subscriptions.js";
 import { adminGuardMiddleware } from "../admin/admin-guard.js";
 import { dataJson, errorJson } from "../shared/response.js";
 

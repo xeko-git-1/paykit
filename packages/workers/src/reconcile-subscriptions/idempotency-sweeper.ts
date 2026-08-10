@@ -5,7 +5,7 @@
  * idempotency-records with `expires_at < now`. Pure repo wrapper — kept in
  * its own file to satisfy the 200-LOC ceiling.
  */
-import { idempotencyRepo, type DbClient } from "@vibecc/paykit-server";
+import { idempotencyRepo, type DbClient } from "@xeko-git-1/paykit-server";
 
 export interface SweepIdempotencyResult {
   readonly deletedCount: number;

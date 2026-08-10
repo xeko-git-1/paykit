@@ -25,7 +25,7 @@ const state = vi.hoisted(() => ({
   subscriptions: [] as Record<string, unknown>[],
 }));
 
-vi.mock("@vibecc/paykit-auth-core/db/repos/webhook-event.repo.js", () => ({
+vi.mock("@xeko-git-1/paykit-auth-core/db/repos/webhook-event.repo.js", () => ({
   tryRecordWebhookEvent: vi.fn(async (_db: unknown, provider: string, eventId: string) => {
     const seen = [...state.dedup, ...state.pending].some(
       (r) => r.provider === provider && r.eventId === eventId,
@@ -37,7 +37,7 @@ vi.mock("@vibecc/paykit-auth-core/db/repos/webhook-event.repo.js", () => ({
   listEvents: vi.fn(),
 }));
 
-vi.mock("@vibecc/paykit-auth-core/db/repos/subscription.repo.js", () => ({
+vi.mock("@xeko-git-1/paykit-auth-core/db/repos/subscription.repo.js", () => ({
   findByProviderSub: vi.fn(async (_db: unknown, provider: string, id: string) =>
     state.subscriptions.find((r) => r.provider === provider && r.providerSubscriptionId === id),
   ),
@@ -49,7 +49,7 @@ vi.mock("@vibecc/paykit-auth-core/db/repos/subscription.repo.js", () => ({
   markCanceled: vi.fn(),
 }));
 
-vi.mock("@vibecc/paykit-auth-core/db/repos/ledger.repo.js", () => ({
+vi.mock("@xeko-git-1/paykit-auth-core/db/repos/ledger.repo.js", () => ({
   appendLedgerEntryIdempotent: vi.fn(async (_db: unknown, input: Record<string, unknown>) => {
     state.ledger.push(input);
     return { row: input, inserted: true };
@@ -59,12 +59,12 @@ vi.mock("@vibecc/paykit-auth-core/db/repos/ledger.repo.js", () => ({
   sumRefundsByOriginalTransaction: vi.fn(async () => "0"),
 }));
 
-vi.mock("@vibecc/paykit-auth-core/db/repos/subscription-event.repo.js", () => ({
+vi.mock("@xeko-git-1/paykit-auth-core/db/repos/subscription-event.repo.js", () => ({
   appendSubscriptionEvent: vi.fn(async () => undefined),
   listEventsForSubscription: vi.fn(),
 }));
 
-vi.mock("@vibecc/paykit-auth-core/db/repos/customer.repo.js", () => ({
+vi.mock("@xeko-git-1/paykit-auth-core/db/repos/customer.repo.js", () => ({
   clearProviderCustomerId: vi.fn(),
   findByProviderCustomerId: vi.fn(),
 }));

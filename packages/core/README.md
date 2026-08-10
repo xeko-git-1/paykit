@@ -1,4 +1,4 @@
-# @vibecc/paykit (core)
+# @xeko-git-1/paykit (core)
 
 Zero-dependency types and interfaces shared by all paykit packages: `TenantResolver`, `DiscountResolver`, `AdminGuard`, `SecretProvider`, error taxonomy, money helpers.
 

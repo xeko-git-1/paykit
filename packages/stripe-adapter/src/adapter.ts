@@ -21,7 +21,7 @@ import {
   type RefundResult,
   UnsupportedCurrencyError,
   stripeUsdAmountToMicros,
-} from "@vibecc/paykit";
+} from "@xeko-git-1/paykit";
 import Stripe from "stripe";
 import { paykitRefs, refundFallbackRef, refundPaymentRef } from "./webhook-events.js";
 import { verifyAndParse } from "./webhook-verifier.js";

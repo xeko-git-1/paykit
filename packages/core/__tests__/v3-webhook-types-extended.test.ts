@@ -2,7 +2,7 @@ import { describe, expectTypeOf, it } from "vitest";
 import type {
   NormalizedWebhookEvent,
   WebhookEventType,
-} from "@vibecc/paykit";
+} from "@xeko-git-1/paykit";
 
 describe("V3 core webhook types extended (Phase 0b — Val Session 1 D2 + D3)", () => {
   it("WebhookEventType includes V3 'payment.underpaid' (RT F5)", () => {

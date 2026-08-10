@@ -22,7 +22,7 @@ import {
   mintApiKey,
   requirePlane,
   requireScope,
-} from "@vibecc/paykit-server";
+} from "@xeko-git-1/paykit-server";
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { describe, expect, it } from "vitest";

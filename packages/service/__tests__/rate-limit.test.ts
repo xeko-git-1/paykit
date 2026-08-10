@@ -5,7 +5,7 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import { buildV1TestApp } from "./helpers/build-v1-test-app.js";
 import { resetAllBuckets } from "../src/v1/rate-limit.js";
-import type { PaykitAuthContext } from "@vibecc/paykit-server";
+import type { PaykitAuthContext } from "@xeko-git-1/paykit-server";
 
 describe("/v1 rate limiting", () => {
   beforeEach(() => {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import * as paykit from "../src/index.js";
 
-describe("@vibecc/paykit V1.5 barrel exports", () => {
+describe("@xeko-git-1/paykit V1.5 barrel exports", () => {
   it("exports adapter types", () => {
     // Type-only exports — verify symbols exist via runtime barrel.
     expect("ProviderRegistry" in paykit).toBe(true);

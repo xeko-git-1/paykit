@@ -6,7 +6,7 @@
  * Optionally enforces plane restriction (e.g. KEY_MANAGE = jwt-only).
  */
 import type { MiddlewareHandler } from "hono";
-import { hasScope } from "@vibecc/paykit-auth-core/auth/scope.js";
+import { hasScope } from "@xeko-git-1/paykit-auth-core/auth/scope.js";
 import type { AuthPlane } from "./auth-context.js";
 import { errorJson } from "../routes/shared/response.js";
 

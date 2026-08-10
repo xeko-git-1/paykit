@@ -7,7 +7,7 @@
  *
  * Returns ProviderTxnRecord[] with amount in micros (cents × 10_000).
  */
-import { stripeUsdAmountToMicros } from "@vibecc/paykit";
+import { stripeUsdAmountToMicros } from "@xeko-git-1/paykit";
 import type Stripe from "stripe";
 import type { ProviderTxnRecord } from "./differ.js";
 

@@ -28,7 +28,7 @@ import {
   type RefundInput,
   type RefundResult,
   UnsupportedCurrencyError,
-} from "@vibecc/paykit";
+} from "@xeko-git-1/paykit";
 import { type NpIpnPayload, parseNpIpn } from "./webhook-events.js";
 import { verifyNpSignature } from "./webhook-verifier.js";
 

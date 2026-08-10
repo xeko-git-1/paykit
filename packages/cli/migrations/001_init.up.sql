@@ -1,6 +1,6 @@
 -- Paykit V1 — initial schema.
 -- Schema name `paykit` is isolated from consumer's `public.*` tables.
--- This file is bundled with @vibecc/paykit-cli and applied by `paykit migrate up`.
+-- This file is bundled with @xeko-git-1/paykit-cli and applied by `paykit migrate up`.
 
 CREATE SCHEMA IF NOT EXISTS paykit;
 

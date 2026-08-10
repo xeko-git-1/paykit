@@ -27,13 +27,13 @@ import type {
   PaymentProviderAdapter,
   ProviderRegistry,
   ScreeningService,
-} from "@vibecc/paykit";
-import { screeningServiceFromOnBeforeCredit } from "@vibecc/paykit";
-import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
+} from "@xeko-git-1/paykit";
+import { screeningServiceFromOnBeforeCredit } from "@xeko-git-1/paykit";
+import type { DbClient } from "@xeko-git-1/paykit-auth-core/db/client.js";
 import {
   claimDeliveryById,
   recordDelivery,
-} from "@vibecc/paykit-auth-core/db/repos/webhook-inbox.repo.js";
+} from "@xeko-git-1/paykit-auth-core/db/repos/webhook-inbox.repo.js";
 import type { Context } from "hono";
 import { Hono } from "hono";
 import type { PaykitEventHandlers } from "../../events/emitter.js";

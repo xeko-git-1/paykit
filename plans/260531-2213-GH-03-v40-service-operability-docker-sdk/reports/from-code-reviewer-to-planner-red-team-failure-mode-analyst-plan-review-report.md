@@ -31,7 +31,7 @@ cli/src/lib/migration-runner.ts, cli/src/lib/doctor.ts, migrations/*.up.sql, v1/
 - **Severity:** Critical
 - **Location:** Phase 3, "Implementation Steps" step 2 (line 66-70) + Risk table (line 89-90)
 - **Flaw:** main.ts `migrate` delegate bằng `execSync("paykit migrate ${subCmd} ...")` (main.ts:135).
-  `paykit` là bin của `@vibecc/paykit-cli` (cli/package.json:8-10 `"bin":{"paykit":"./dist/bin/paykit.js"}`).
+  `paykit` là bin của `@xeko-git-1/paykit-cli` (cli/package.json:8-10 `"bin":{"paykit":"./dist/bin/paykit.js"}`).
   Runtime stage Dockerfile chỉ COPY các `dist/` + `pnpm install --prod` (Dockerfile:51-74), KHÔNG link bin
   vào PATH, KHÔNG set `ENV PATH=.../node_modules/.bin` (grep: chỉ có `RUN pnpm install`, không `ln -s`,
   không `ENV PATH`). pnpm workspace bin nằm ở `node_modules/.bin` — KHÔNG có trên PATH của `/bin/sh`.
@@ -79,8 +79,8 @@ cli/src/lib/migration-runner.ts, cli/src/lib/doctor.ts, migrations/*.up.sql, v1/
 - **Severity:** High
 - **Location:** Phase 2, "Related Code Files" (line 57-58) + Phase 1, "Related Code Files" (line 61)
 - **Flaw:** Cả 2 stage Dockerfile dùng `pnpm install --frozen-lockfile` (Dockerfile:25, 74). Phase 2 thêm 3
-  workspace dep vào `packages/service/package.json` (`@vibecc/paykit-vnpay/-momo/-zalopay`), Phase 1 thêm
-  `@vibecc/paykit-server` vào `packages/cli/package.json`. Đổi dependency graph → `pnpm-lock.yaml` PHẢI được
+  workspace dep vào `packages/service/package.json` (`@xeko-git-1/paykit-vnpay/-momo/-zalopay`), Phase 1 thêm
+  `@xeko-git-1/paykit-server` vào `packages/cli/package.json`. Đổi dependency graph → `pnpm-lock.yaml` PHẢI được
   regenerate + commit. Không phase nào nhắc bước này; bước verify chỉ ghi `pnpm install` (phase-02:76) chứ
   không nói regenerate lockfile, và `docker compose build` (phase-03) dùng frozen.
 - **Failure scenario:** Dev sửa package.json, `pnpm install` local (cập nhật lockfile trong working tree
@@ -155,17 +155,17 @@ cli/src/lib/migration-runner.ts, cli/src/lib/doctor.ts, migrations/*.up.sql, v1/
 - **Severity:** Medium
 - **Location:** Phase 4, "Related Code Files" (line 62) + "Implementation Steps" step 2 (line 72)
 - **Flaw:** `spec-snapshot.test.ts` so `packages/sdk/openapi.json` (committed) với "service `getOpenAPIDocument()`".
-  Để import hàm đó, `packages/sdk` phải có devDep `@vibecc/paykit-service` — plan "Related Code Files" (line
+  Để import hàm đó, `packages/sdk` phải có devDep `@xeko-git-1/paykit-service` — plan "Related Code Files" (line
   56-62) không liệt dep này. Ngoài ra service serve qua `c.json(getOpenAPIDocument())` (main.ts:88); snapshot
   so trực tiếp pure-fn, KHÔNG so bytes thực `/v1/openapi.json` HTTP → khác biệt serialization/ordering không
   được phát hiện (dù rủi ro thấp). Spec là OpenAPI **3.1** (openapi.ts:109 `getOpenAPI31Document` / "3.1.0")
   — Phase 4 đã đúng khi đặt blocking gate verify 3.1 generator (phase-04:66-69), điểm này ổn.
-- **Failure scenario:** SDK package được build/test độc lập (`pnpm --filter @vibecc/paykit-sdk`) → import
-  `@vibecc/paykit-service` fail vì chưa khai dep → test không compile, hoặc tệ hơn dev hardcode copy spec →
+- **Failure scenario:** SDK package được build/test độc lập (`pnpm --filter @xeko-git-1/paykit-sdk`) → import
+  `@xeko-git-1/paykit-service` fail vì chưa khai dep → test không compile, hoặc tệ hơn dev hardcode copy spec →
   snapshot tự so chính nó, mất tác dụng chống drift.
 - **Evidence:** main.ts:88 (`c.json(getOpenAPIDocument())`); openapi.ts:99-118 (pure fn, 3.1.0); phase-04:56-62
   (Related Files không có devDep service); phase-04:72 (snapshot === service getOpenAPIDocument).
-- **Suggested fix:** Khai báo `@vibecc/paykit-service` (devDep) trong sdk package.json + thêm vào lockfile
+- **Suggested fix:** Khai báo `@xeko-git-1/paykit-service` (devDep) trong sdk package.json + thêm vào lockfile
   (xem Finding 4). Cân nhắc snapshot so qua `buildServiceApp().request("/v1/openapi.json")` để bắt cả lớp
   serialization, không chỉ pure fn.
 
@@ -182,7 +182,7 @@ cli/src/lib/migration-runner.ts, cli/src/lib/doctor.ts, migrations/*.up.sql, v1/
 - Phase 2 CÓ liệt "Modify Dockerfile COPY 3 package" (phase-02:58) — không bỏ sót COPY (chỉ thiếu lockfile, F4).
 - Phase 4 CÓ blocking gate verify OpenAPI 3.1 generator trước khi thêm dep (phase-04:66-69) — đúng, spec là 3.1.
 - VN adapter factories + package names verify khớp plan: `createVnpayAdapter/createMomoAdapter/createZaloPayAdapter`,
-  `@vibecc/paykit-vnpay/-momo/-zalopay` đều tồn tại.
+  `@xeko-git-1/paykit-vnpay/-momo/-zalopay` đều tồn tại.
 - Không có `DROP TABLE` trong up migrations → migrate up thuần additive (giảm rủi ro data-loss khi re-run).
 
 ## Unresolved questions

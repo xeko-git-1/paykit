@@ -25,14 +25,14 @@ describe("v0.2.1 hotfix V1.5 adapter version baseline (Phase 0a — RT F4)", () 
     expect(json.version).toBe("0.1.5");
   });
 
-  it.each(V1_5_PACKAGES)("%s declares peerDependency on @vibecc/paykit with range >=0.1.5 <0.4.0", (pkg) => {
+  it.each(V1_5_PACKAGES)("%s declares peerDependency on @xeko-git-1/paykit with range >=0.1.5 <0.4.0", (pkg) => {
     const json = readPkg(pkg);
-    expect(json.peerDependencies?.["@vibecc/paykit"]).toBe(">=0.1.5 <0.4.0");
+    expect(json.peerDependencies?.["@xeko-git-1/paykit"]).toBe(">=0.1.5 <0.4.0");
   });
 
-  it.each(V1_5_PACKAGES)("%s no longer carries @vibecc/paykit in dependencies (converted to peerDep)", (pkg) => {
+  it.each(V1_5_PACKAGES)("%s no longer carries @xeko-git-1/paykit in dependencies (converted to peerDep)", (pkg) => {
     const json = readPkg(pkg);
-    expect(json.dependencies?.["@vibecc/paykit"]).toBeUndefined();
+    expect(json.dependencies?.["@xeko-git-1/paykit"]).toBeUndefined();
   });
 });
 

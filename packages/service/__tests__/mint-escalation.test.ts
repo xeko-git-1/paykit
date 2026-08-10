@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { buildV1TestApp, createMockDbState } from "./helpers/build-v1-test-app.js";
-import type { PaykitAuthContext } from "@vibecc/paykit-server";
+import type { PaykitAuthContext } from "@xeko-git-1/paykit-server";
 
 describe("/v1/api-keys mint escalation prevention", () => {
   const jwtAuth: PaykitAuthContext = {

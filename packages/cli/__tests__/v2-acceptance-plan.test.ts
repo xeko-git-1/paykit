@@ -40,10 +40,10 @@ describe("V2 acceptance test plan (Phase 10)", () => {
 
   it("documents 11 packages for v0.2.0-rc.0 publish", () => {
     expect(DOC).toMatch(/v0\.2\.0-rc\.0/);
-    expect(DOC).toContain("@vibecc/paykit-stripe-subscription");
-    expect(DOC).toContain("@vibecc/paykit-server");
-    expect(DOC).toContain("@vibecc/paykit-workers");
-    expect(DOC).toContain("@vibecc/paykit-react");
+    expect(DOC).toContain("@xeko-git-1/paykit-stripe-subscription");
+    expect(DOC).toContain("@xeko-git-1/paykit-server");
+    expect(DOC).toContain("@xeko-git-1/paykit-workers");
+    expect(DOC).toContain("@xeko-git-1/paykit-react");
   });
 
   it("identifies which specs are already covered by unit/handler tests", () => {

@@ -38,7 +38,7 @@ This document lists the 19 in-monorepo acceptance specs, the external-repo insta
 
 | Spec | Status |
 |---|---|
-| install-and-smoke (separate repo `xeko-git-1/paykit-test-consumer`) | TODO: provision companion repo, configure NPM_TOKEN with read:packages, install @vibecc/paykit@0.1.0, run minimal smoke |
+| install-and-smoke (separate repo `xeko-git-1/paykit-test-consumer`) | TODO: provision companion repo, configure NPM_TOKEN with read:packages, install @xeko-git-1/paykit@0.1.0, run minimal smoke |
 
 ## Live-Smoke Test (1, pre-publish only)
 

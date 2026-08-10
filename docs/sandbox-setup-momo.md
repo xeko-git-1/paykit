@@ -35,7 +35,7 @@ For local dev: Cloudflare Tunnel or ngrok (Momo's IPN must be public-reachable).
 ## Step 3 — Wire adapter
 
 ```ts
-import { createMomoAdapter } from "@vibecc/paykit-momo";
+import { createMomoAdapter } from "@xeko-git-1/paykit-momo";
 
 const momo = createMomoAdapter({
   partnerCode: process.env.MOMO_PARTNER_CODE!,

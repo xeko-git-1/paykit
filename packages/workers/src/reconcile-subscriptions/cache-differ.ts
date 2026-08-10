@@ -5,7 +5,7 @@
  * real Postgres + Stripe SDK. The orchestrator wires the real adapter +
  * subscription.repo when running in production.
  */
-import type { SubscriptionResult, SubscriptionStatus } from "@vibecc/paykit";
+import type { SubscriptionResult, SubscriptionStatus } from "@xeko-git-1/paykit";
 import type { CacheDiscrepancy, QuarantineEntry } from "./types.js";
 import { evaluateDriftGate, type DriftGateAdapter } from "./drift-gate.js";
 

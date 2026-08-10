@@ -60,7 +60,7 @@ correctness. Không đụng business logic.
    - health: readyz khi DB "treo" (mock chậm) → trả 503 trong ~2s, KHÔNG hang; happy path clear timer.
    Chạy → FAIL.
 2. **GREEN:** thực thi Requirements (functional). Document-only items: cập nhật README + comment.
-3. **VERIFY:** `pnpm --filter @vibecc/paykit-service build && pnpm vitest run packages/service` → PASS.
+3. **VERIFY:** `pnpm --filter @xeko-git-1/paykit-service build && pnpm vitest run packages/service` → PASS.
    `docker build` (nếu daemon có) → image build; `docker compose up` → migrate chạy được trong container
    (Open Q3 resolved). Nếu daemon vắng → xác nhận Dockerfile + compose syntactically sound + nêu rõ skip.
 

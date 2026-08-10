@@ -11,12 +11,12 @@
  * the request-shape guard below; we use the operator-friendly version that
  * does NOT require tenant resolution.
  */
-import type { AdminGuard, AdminGuardResult, SubscriptionAdapter } from "@vibecc/paykit";
+import type { AdminGuard, AdminGuardResult, SubscriptionAdapter } from "@xeko-git-1/paykit";
 import type { Context } from "hono";
 import { Hono } from "hono";
 import { z } from "zod";
-import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
-import * as subscriptionRepo from "@vibecc/paykit-auth-core/db/repos/subscription.repo.js";
+import type { DbClient } from "@xeko-git-1/paykit-auth-core/db/client.js";
+import * as subscriptionRepo from "@xeko-git-1/paykit-auth-core/db/repos/subscription.repo.js";
 import { dataJson, errorJson } from "../shared/response.js";
 import { adminGuardMiddleware } from "../admin/admin-guard.js";
 import { parseStatusFilter, toDto } from "./subscription-dto.js";
@@ -197,7 +197,7 @@ async function listAllProvider(
   providerId: string,
   statuses: readonly string[] | null,
 ) {
-  const { subscriptions } = await import("@vibecc/paykit-auth-core/db/schema/subscriptions.js");
+  const { subscriptions } = await import("@xeko-git-1/paykit-auth-core/db/schema/subscriptions.js");
   const { and, desc, eq, inArray } = await import("drizzle-orm");
   const conds = [eq(subscriptions.provider, providerId)];
   if (statuses && statuses.length > 0) conds.push(inArray(subscriptions.status, [...statuses]));

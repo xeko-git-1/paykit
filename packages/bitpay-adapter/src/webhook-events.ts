@@ -21,7 +21,7 @@
  * amount drifts > 5 bps from the invoice price, emit payment.amount_mismatch so
  * the server quarantines instead of crediting.
  */
-import type { NormalizedWebhookEvent, WebhookEventType } from "@vibecc/paykit";
+import type { NormalizedWebhookEvent, WebhookEventType } from "@xeko-git-1/paykit";
 
 export interface BitpayInvoice {
   readonly id?: string;

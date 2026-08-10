@@ -17,7 +17,7 @@
  *     stored copy — which is exactly why the hash is stored separately.
  */
 import { createHash } from "node:crypto";
-import { redactString } from "@vibecc/paykit";
+import { redactString } from "@xeko-git-1/paykit";
 
 /**
  * Upper bound on a stored body, in characters.

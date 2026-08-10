@@ -210,7 +210,7 @@ Trước đây `skipped` bị gộp thành `completed`, nên một lock giữ su
 
 ```mermaid
 flowchart BT
-    core["@vibecc/paykit (core)<br/>zero workspace deps"]
+    core["@xeko-git-1/paykit (core)<br/>zero workspace deps"]
     authcore["paykit-auth-core<br/>DB, repos, schema"]
     server["paykit-server<br/>HTTP + services"]
     workers["paykit-workers<br/>reconcile"]

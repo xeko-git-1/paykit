@@ -6,7 +6,7 @@
  * `constructWebhookEvent` tries each secret in order; first success wins.
  * On all failures, throws WebhookSignatureError (not raw Stripe error).
  */
-import { WebhookSignatureError } from "@vibecc/paykit";
+import { WebhookSignatureError } from "@xeko-git-1/paykit";
 import Stripe from "stripe";
 
 export interface StripeConfig {

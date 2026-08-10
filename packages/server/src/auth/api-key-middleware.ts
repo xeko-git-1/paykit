@@ -9,8 +9,8 @@
  * Mirrors the adminGuardMiddleware shape (declare-module + errorJson).
  */
 import type { MiddlewareHandler } from "hono";
-import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
-import { hashApiKey, verifyApiKey } from "@vibecc/paykit-auth-core/auth/api-key.js";
+import type { DbClient } from "@xeko-git-1/paykit-auth-core/db/client.js";
+import { hashApiKey, verifyApiKey } from "@xeko-git-1/paykit-auth-core/auth/api-key.js";
 import type { PaykitAuthContext } from "./auth-context.js";
 import { errorJson } from "../routes/shared/response.js";
 

@@ -1,5 +1,5 @@
 /**
- * @vibecc/paykit-zalopay — V1.5 adapter for ZaloPay e-wallet.
+ * @xeko-git-1/paykit-zalopay — V1.5 adapter for ZaloPay e-wallet.
  *
  * Notable design quirks:
  * - **TWO HMAC keys**: key1 signs create-order; key2 verifies callback (ZaloPay convention)

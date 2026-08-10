@@ -57,11 +57,11 @@ Remediation cho các finding từ đợt code-review V4 (2026-05-31), đã qua r
 pnpm -r build
 
 # Test server + adapter (string-match + unit; chứa regression mới mỗi phase)
-pnpm --filter @vibecc/paykit-server test
+pnpm --filter @xeko-git-1/paykit-server test
 pnpm -r --filter './packages/*-adapter' test
 
 # Migration 013 (Phase 1) + 014 (Phase 4) — lên/xuống trên Postgres thật
-pnpm --filter @vibecc/paykit-cli exec paykit migrate
+pnpm --filter @xeko-git-1/paykit-cli exec paykit migrate
 psql "$PAYKIT_DB_URL" -c "\d paykit.payment_transactions"   # composite unique (tenant_id, idempotency_key)
 psql "$PAYKIT_DB_URL" -c "\d paykit.idempotency_records"     # cột state + response_status nullable
 ```

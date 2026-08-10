@@ -15,8 +15,8 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { DbClient } from "@vibecc/paykit-auth-core";
-import { SCOPES } from "@vibecc/paykit-auth-core";
+import type { DbClient } from "@xeko-git-1/paykit-auth-core";
+import { SCOPES } from "@xeko-git-1/paykit-auth-core";
 import cac from "cac";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Client } from "pg";
@@ -148,8 +148,8 @@ cli.command("reconcile-now", "Print reconciler invocation guide (V1.5)").action(
   console.log("");
   console.log("Wire it in your app:");
   console.log("");
-  console.log("  import { reconcileV15 } from '@vibecc/paykit-workers';");
-  console.log("  import { createPaykit } from '@vibecc/paykit-server';");
+  console.log("  import { reconcileV15 } from '@xeko-git-1/paykit-workers';");
+  console.log("  import { createPaykit } from '@xeko-git-1/paykit-server';");
   console.log("");
   console.log("  const paykit = await createPaykit({ ... });");
   console.log("  const result = await reconcileV15(");

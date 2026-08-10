@@ -14,7 +14,7 @@
  * record outside that page as missing — thousands of fabricated discrepancies per
  * batch, which is worse than not reconciling, because it buries the real ones.
  */
-import type { PaymentProviderAdapter, ProviderRegistry } from "@vibecc/paykit";
+import type { PaymentProviderAdapter, ProviderRegistry } from "@xeko-git-1/paykit";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockStartRun = vi.fn();
@@ -25,7 +25,7 @@ const mockPageOfPayments = vi.fn();
 const mockAdvanceCursor = vi.fn();
 const mockMarkWindowExhausted = vi.fn();
 
-vi.mock("@vibecc/paykit-server", () => ({
+vi.mock("@xeko-git-1/paykit-server", () => ({
   paymentTransactions: {
     transactionId: "transaction_id",
     createdAt: "created_at",

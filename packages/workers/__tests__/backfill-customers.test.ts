@@ -30,7 +30,7 @@ interface PaymentTx {
 const customerRows: CustomerRow[] = [];
 const paymentTxRows: PaymentTx[] = [];
 
-vi.mock("@vibecc/paykit-server", () => ({
+vi.mock("@xeko-git-1/paykit-server", () => ({
   paymentTransactions: { __table: "payment_transactions" },
   customerRepo: {
     findCustomer: vi.fn(async (_db: unknown, tenantId: string, provider: string) =>

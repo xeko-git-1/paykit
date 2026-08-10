@@ -1,4 +1,4 @@
-// @vibecc/paykit-cli — bin entry exposed via `npx paykit`.
+// @xeko-git-1/paykit-cli — bin entry exposed via `npx paykit`.
 // Library API (for testing + programmatic invocation):
 export { runDoctor, type CheckResult, type CheckLevel } from "./lib/doctor.js";
 export { loadEnv, type PaykitEnv } from "./lib/env-loader.js";

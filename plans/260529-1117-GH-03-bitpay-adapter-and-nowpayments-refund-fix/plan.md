@@ -14,7 +14,7 @@ blocks: [260529-1312-GH-03-v4-service-shell-and-auth]
 
 ## Context
 
-V3 Phase 03 shipped `@vibecc/paykit-nowpayments` with a `refund_pending_webhook`
+V3 Phase 03 shipped `@xeko-git-1/paykit-nowpayments` with a `refund_pending_webhook`
 payment state (migration 011). Analysis found the **resolution half of that flow
 is broken**: the generic webhook router requires `evt.refundAmountMicros` on
 `payment.refunded` (webhook-router.ts:178) but `parseNpIpn` never populates it

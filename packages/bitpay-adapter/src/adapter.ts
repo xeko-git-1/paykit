@@ -36,7 +36,7 @@ import {
   type RefundInput,
   type RefundResult,
   UnsupportedCurrencyError,
-} from "@vibecc/paykit";
+} from "@xeko-git-1/paykit";
 import { extractRefundTriggerId, resolveRefundWebhook } from "./refund-webhook.js";
 import { type BitpayInvoice, invoiceToEvent } from "./webhook-events.js";
 

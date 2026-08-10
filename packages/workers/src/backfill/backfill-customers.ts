@@ -2,7 +2,7 @@
  * V1.5 → V2 customer backfill (RT F13).
  *
  * Idempotent. Reads V1.5 `payment_transactions` rows where the metadata
- * carries a Stripe customer id (set by `@vibecc/paykit-stripe` since V1)
+ * carries a Stripe customer id (set by `@xeko-git-1/paykit-stripe` since V1)
  * and UPSERTs into `paykit.customers`. Re-running produces zero new rows.
  *
  * Used during V1.5 → V2 upgrade so the first V2 subscribe call doesn't
@@ -12,7 +12,7 @@ import {
   customerRepo,
   type DbClient,
   paymentTransactions,
-} from "@vibecc/paykit-server";
+} from "@xeko-git-1/paykit-server";
 import { eq } from "drizzle-orm";
 
 export interface BackfillCustomersInput {

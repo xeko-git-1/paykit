@@ -16,7 +16,7 @@ Date: 2026-05-29 | Branch: `feat/v3-phase-03-nowpayments-adapter` | Read-only in
   V1 → V1.5 (VN providers + cross-provider refund) → V2 (stripe-subscription) → V3 (crypto).
 
 ## 2. V3 Phase 03 (NowPayments) — what shipped
-- `@vibecc/paykit-nowpayments` v0.3.0-rc.0: `adapter.ts` (checkout/refund/fetchTransactions),
+- `@xeko-git-1/paykit-nowpayments` v0.3.0-rc.0: `adapter.ts` (checkout/refund/fetchTransactions),
   `webhook-verifier.ts` (HMAC-SHA512 over canonical sorted-JSON, header `x-nowpayments-sig`,
   rotation-array secrets, constant-time compare), `webhook-events.ts` (NP status → event map).
 - New payment state `refund_pending_webhook` via **migration 011** (`011_*.up.sql:18-28`); 010
@@ -51,7 +51,7 @@ Date: 2026-05-29 | Branch: `feat/v3-phase-03-nowpayments-adapter` | Read-only in
 
 ## 5. Adapter consistency
 - All 7 adapters share the `PaymentProviderAdapter` contract from core; zero-runtime-dep ESM
-  packages with `peerDependencies: @vibecc/paykit`. Webhook normalization to
+  packages with `peerDependencies: @xeko-git-1/paykit`. Webhook normalization to
   `NormalizedWebhookEvent` is uniform.
 - **Divergence:** NowPayments introduced `pending_webhook` refund state (correct, server
   supports it) BUT failed to emit `refundAmountMicros` on refund events (the bug above). VN

@@ -40,8 +40,8 @@ Some crypto providers process refunds asynchronously: the adapter POSTs a refund
 
 **Providers using this state:**
 
-- **NowPayments** (`@vibecc/paykit-nowpayments`) — signed IPN (HMAC-SHA512); refund IPN resolves the ledger debit + flips status to `refunded`.
-- **BitPay** (`@vibecc/paykit-bitpay`) — adapter shipped. BitPay does NOT sign webhooks, so authentication is **fetch-back** (`GET /invoices/:id`) via the adapter's async `resolveWebhook` hook rather than a signature check. Refund requires an injected merchant ECDSA signer (`BitpayMerchantSigner`); the refund returns `pending_webhook`, but the refund-confirmation webhook shape is not yet sandbox-verified, so refunds resolve via **manual reconcile** until that wiring lands.
+- **NowPayments** (`@xeko-git-1/paykit-nowpayments`) — signed IPN (HMAC-SHA512); refund IPN resolves the ledger debit + flips status to `refunded`.
+- **BitPay** (`@xeko-git-1/paykit-bitpay`) — adapter shipped. BitPay does NOT sign webhooks, so authentication is **fetch-back** (`GET /invoices/:id`) via the adapter's async `resolveWebhook` hook rather than a signature check. Refund requires an injected merchant ECDSA signer (`BitpayMerchantSigner`); the refund returns `pending_webhook`, but the refund-confirmation webhook shape is not yet sandbox-verified, so refunds resolve via **manual reconcile** until that wiring lands.
 
 ## Cumulative refund logic
 

@@ -15,7 +15,7 @@ the embedded mode in [installation.md](./installation.md).
   enabled only when its credentials are present.
 - **`/v1` HTTP API**: scope-gated, rate-limited, OpenAPI-described.
 - **CLI bootstrap**: create the first merchant + API key without the service running.
-- **Thin TypeScript SDK** (`@vibecc/paykit-sdk`): type-safe client over `/v1`.
+- **Thin TypeScript SDK** (`@xeko-git-1/paykit-sdk`): type-safe client over `/v1`.
 
 ## Prerequisites
 
@@ -124,7 +124,7 @@ The OpenAPI spec is public at `GET /v1/openapi.json`.
 ## 5. TypeScript SDK
 
 ```ts
-import { createPaykitClient } from "@vibecc/paykit-sdk";
+import { createPaykitClient } from "@xeko-git-1/paykit-sdk";
 
 const pk = createPaykitClient({
   baseUrl: "https://pay.example.com",

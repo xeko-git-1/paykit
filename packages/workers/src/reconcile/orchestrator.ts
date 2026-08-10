@@ -3,7 +3,7 @@ import {
   type PaymentTransaction,
   paymentTransactions,
   reconciliationRepo,
-} from "@vibecc/paykit-server";
+} from "@xeko-git-1/paykit-server";
 /**
  * Reconciliation orchestrator — main entry point.
  *

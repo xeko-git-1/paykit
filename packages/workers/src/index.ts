@@ -1,4 +1,4 @@
-// @vibecc/paykit-workers — reconciliation engine. Designed to be invoked
+// @xeko-git-1/paykit-workers — reconciliation engine. Designed to be invoked
 // from a cron / BullMQ / Cloudflare Cron — not a long-running daemon.
 
 export {

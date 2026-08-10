@@ -5,8 +5,8 @@
  *   - V1.5 array shape: providers: PaymentProviderAdapter[]
  *   - V1 legacy shape:  providers: { stripe?: StripeConfig, sepay?: SePayConfig }
  *
- * Legacy shape is converted via lazy-import of @vibecc/paykit-stripe and
- * @vibecc/paykit-sepay packages. Consumer must `pnpm add` them; missing
+ * Legacy shape is converted via lazy-import of @xeko-git-1/paykit-stripe and
+ * @xeko-git-1/paykit-sepay packages. Consumer must `pnpm add` them; missing
  * package surfaces clear migration error.
  *
  * Webhook URLs become `/webhooks/{adapterId}` (V1: /webhooks/stripe stays
@@ -21,9 +21,9 @@ import {
   ProviderRegistry,
   type ScreeningService,
   type TenantResolver,
-} from "@vibecc/paykit";
+} from "@xeko-git-1/paykit";
 import { Hono } from "hono";
-import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
+import type { DbClient } from "@xeko-git-1/paykit-auth-core/db/client.js";
 import type { PaykitEventHandlers } from "../events/emitter.js";
 import type { SePayConfig } from "../providers/sepay/client.js";
 import type { StripeConfig } from "../providers/stripe/client.js";
