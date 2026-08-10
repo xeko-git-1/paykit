@@ -6,8 +6,8 @@
  * subscription.repo when running in production.
  */
 import type { SubscriptionResult, SubscriptionStatus } from "@xeko-git-1/paykit";
+import { type DriftGateAdapter, evaluateDriftGate } from "./drift-gate.js";
 import type { CacheDiscrepancy, QuarantineEntry } from "./types.js";
-import { evaluateDriftGate, type DriftGateAdapter } from "./drift-gate.js";
 
 export interface CacheRow {
   readonly tenantId: string;
@@ -64,9 +64,7 @@ export interface CachePassOutcome {
   transientAbort: boolean;
 }
 
-export async function runCachePassForCustomer(
-  input: RunCachePassInput,
-): Promise<CachePassOutcome> {
+export async function runCachePassForCustomer(input: RunCachePassInput): Promise<CachePassOutcome> {
   const out: CachePassOutcome = {
     discrepancies: [],
     quarantine: [],
@@ -142,10 +140,7 @@ export async function runCachePassForCustomer(
         details: { paykitStatus: r.status },
       });
       // Mark canceled because retrieve confirms absence (positive proof).
-      await input.cache.markCanceled(
-        r.providerSubscriptionId,
-        input.now ?? new Date(),
-      );
+      await input.cache.markCanceled(r.providerSubscriptionId, input.now ?? new Date());
       out.canceled++;
       continue;
     }
@@ -197,11 +192,8 @@ export async function runCachePassForCustomer(
   return out;
 }
 
-async function detectFieldDrift(
-  cache: CacheRow,
-  stripe: SubscriptionResult,
-): Promise<string[]> {
-  const drift: string[] =[];
+async function detectFieldDrift(cache: CacheRow, stripe: SubscriptionResult): Promise<string[]> {
+  const drift: string[] = [];
   if (cache.status !== stripe.status) drift.push("status");
   if (cache.currentPeriodEnd.getTime() !== stripe.currentPeriodEnd.getTime()) {
     drift.push("currentPeriodEnd");

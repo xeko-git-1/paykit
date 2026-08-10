@@ -97,9 +97,7 @@ function readErrorMessage(body: string): string {
   return body.length > 200 ? `${body.slice(0, 200)}…` : body;
 }
 
-export function createNowpaymentsAdapter(
-  config: NowpaymentsAdapterConfig,
-): PaymentProviderAdapter {
+export function createNowpaymentsAdapter(config: NowpaymentsAdapterConfig): PaymentProviderAdapter {
   const id = config.id ?? "nowpayments";
   const env = config.environment ?? "sandbox";
   const baseUrl = env === "production" ? PRODUCTION_BASE : SANDBOX_BASE;
@@ -290,7 +288,8 @@ export function createNowpaymentsAdapter(
         const settlementCurrency = (row.outcome_currency ?? row.price_currency ?? "USD")
           .toString()
           .toUpperCase();
-        const n = typeof settlementAmount === "number" ? settlementAmount : Number(settlementAmount);
+        const n =
+          typeof settlementAmount === "number" ? settlementAmount : Number(settlementAmount);
         if (!Number.isFinite(n) || n < 0) continue;
         records.push({
           providerRef: row.order_id,

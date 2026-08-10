@@ -1,6 +1,6 @@
-import { describe, expect, expectTypeOf, it } from "vitest";
 import type { DbOrTx } from "@xeko-git-1/paykit-auth-core/db/client.js";
 import * as pendingRefundRepo from "@xeko-git-1/paykit-auth-core/db/repos/pending-refund.repo.js";
+import { describe, expect, expectTypeOf, it } from "vitest";
 
 describe("pendingRefundRepo public API", () => {
   it("exposes lifecycle helpers", () => {

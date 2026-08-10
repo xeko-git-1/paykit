@@ -4,9 +4,9 @@
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  buildCustomerService,
-  CustomerTenantMismatchError,
   type CustomerProviderPort,
+  CustomerTenantMismatchError,
+  buildCustomerService,
 } from "../src/services/customer-service.js";
 
 interface CustomerRow {

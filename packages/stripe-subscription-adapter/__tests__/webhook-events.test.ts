@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { getHandledEventTypes, isHandledEventType, mapEvent } from "../src/webhook-events.js";
 
-function fakeEvent(type: string, dataObject: Record<string, unknown>, created = 1_700_000_000): {
+function fakeEvent(
+  type: string,
+  dataObject: Record<string, unknown>,
+  created = 1_700_000_000,
+): {
   id: string;
   type: string;
   created: number;
@@ -46,7 +50,9 @@ describe("mapEvent — 5 sub/invoice events", () => {
       customer: "cus_abc",
       status: "active",
       cancel_at_period_end: false,
-      items: { data: [{ id: "si_1", price: { id: "price_p1" }, current_period_end: 1_700_010_000 }] },
+      items: {
+        data: [{ id: "si_1", price: { id: "price_p1" }, current_period_end: 1_700_010_000 }],
+      },
       currency: "usd",
     });
     const r = mapEvent(ev as never);

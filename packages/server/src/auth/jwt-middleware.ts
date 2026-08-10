@@ -1,3 +1,8 @@
+import {
+  type JwtSecretLoader,
+  type SecretLoaderDeps,
+  createJwtSecretLoader,
+} from "@xeko-git-1/paykit-auth-core/auth/jwt-secret-loader.js";
 /**
  * JWT auth middleware for Hono (dashboard/frontend plane).
  *
@@ -12,14 +17,9 @@
  * enabling rotation without restart.
  */
 import type { MiddlewareHandler } from "hono";
-import { verify, decode } from "hono/jwt";
-import {
-  createJwtSecretLoader,
-  type JwtSecretLoader,
-  type SecretLoaderDeps,
-} from "@xeko-git-1/paykit-auth-core/auth/jwt-secret-loader.js";
-import type { PaykitAuthContext } from "./auth-context.js";
+import { decode, verify } from "hono/jwt";
 import { errorJson } from "../routes/shared/response.js";
+import type { PaykitAuthContext } from "./auth-context.js";
 
 // Re-exported for back-compat: the secret loader now lives in auth-core (it is
 // HTTP-free and shared with the CLI), but consumers still import it from here.
@@ -52,12 +52,10 @@ export function jwtAuthMiddleware(deps: JwtAuthDeps): MiddlewareHandler {
       return errorJson(c, 401, "AUTH_REQUIRED", "authentication required");
     }
 
-    const parts = authHeader.split(" ");
-    if (parts.length !== 2 || parts[0] !== "Bearer") {
+    const [scheme, token, ...rest] = authHeader.split(" ");
+    if (scheme !== "Bearer" || token === undefined || rest.length > 0) {
       return errorJson(c, 401, "AUTH_INVALID", "invalid authorization header");
     }
-
-    const token = parts[1]!;
 
     // Reject API keys on JWT routes (plane separation)
     if (token.startsWith("pk_")) {

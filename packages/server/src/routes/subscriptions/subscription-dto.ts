@@ -52,7 +52,10 @@ export const ALL_STATUSES: readonly SubscriptionStatus[] = [
 
 export function parseStatusFilter(raw: string | undefined): readonly SubscriptionStatus[] | null {
   if (raw === undefined || raw === "") return null;
-  const parts = raw.split(",").map((s) => s.trim()).filter((s) => s.length > 0);
+  const parts = raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
   const valid: SubscriptionStatus[] = [];
   for (const p of parts) {
     if ((ALL_STATUSES as readonly string[]).includes(p)) valid.push(p as SubscriptionStatus);

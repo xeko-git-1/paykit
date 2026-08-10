@@ -11,9 +11,7 @@
       "import": "./dist/main.js"
     }
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",
     "access": "restricted"

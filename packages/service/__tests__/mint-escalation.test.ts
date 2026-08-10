@@ -1,3 +1,4 @@
+import type { PaykitAuthContext } from "@xeko-git-1/paykit-server";
 /**
  * Mint escalation tests (F3 + F14) — verifies:
  * - api_key plane cannot call /v1/api-keys (plane rejection)
@@ -7,7 +8,6 @@
  */
 import { describe, expect, it } from "vitest";
 import { buildV1TestApp, createMockDbState } from "./helpers/build-v1-test-app.js";
-import type { PaykitAuthContext } from "@xeko-git-1/paykit-server";
 
 describe("/v1/api-keys mint escalation prevention", () => {
   const jwtAuth: PaykitAuthContext = {

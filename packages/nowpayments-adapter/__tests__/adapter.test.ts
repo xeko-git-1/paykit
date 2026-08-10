@@ -17,7 +17,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { createNowpaymentsAdapter } from "../src/adapter.js";
 import { canonicalize } from "../src/canonical-json.js";
-import { computeNpSignature, NP_SIGNATURE_HEADER } from "../src/webhook-verifier.js";
+import { NP_SIGNATURE_HEADER, computeNpSignature } from "../src/webhook-verifier.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, "..", "..", "..");
@@ -39,9 +39,7 @@ function mockFetch(
     const url = typeof input === "string" ? input : input.toString();
     const method = init?.method ?? "GET";
     const body = typeof init?.body === "string" ? init.body : undefined;
-    calls.push(
-      body !== undefined ? { url, method, body } : { url, method },
-    );
+    calls.push(body !== undefined ? { url, method, body } : { url, method });
     const result = responder({ url, init });
     return new Response(result.body, {
       status: result.status,

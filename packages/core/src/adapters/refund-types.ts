@@ -14,12 +14,7 @@
  * - 'failed':          provider rejected (over-window, already-refunded, etc.); no ledger write
  * - 'unsupported':     adapter cannot refund (SePay one-way bank transfers); admin uses /admin/billing/ledger/adjust
  */
-export type RefundState =
-  | "completed"
-  | "pending"
-  | "pending_webhook"
-  | "failed"
-  | "unsupported";
+export type RefundState = "completed" | "pending" | "pending_webhook" | "failed" | "unsupported";
 
 export interface RefundInput {
   readonly transactionId: string;

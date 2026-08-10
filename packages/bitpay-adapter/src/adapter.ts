@@ -50,9 +50,7 @@ export interface BitpayMerchantSigner {
   sign(
     fullUrl: string,
     body: string,
-  ):
-    | { identity: string; signature: string }
-    | Promise<{ identity: string; signature: string }>;
+  ): { identity: string; signature: string } | Promise<{ identity: string; signature: string }>;
 }
 
 export interface BitpayAdapterConfig {
@@ -171,8 +169,11 @@ export function createBitpayAdapter(config: BitpayAdapterConfig): PaymentProvide
           `BitPay invoice creation failed: HTTP ${res.status} ${readErrorMessage(text)}`,
         );
       }
-      const json = (await res.json()) as BitpayEnvelope<BitpayInvoice & { url?: string; expirationTime?: number }>;
-      const invoice = json.data ?? (json as unknown as BitpayInvoice & { url?: string; expirationTime?: number });
+      const json = (await res.json()) as BitpayEnvelope<
+        BitpayInvoice & { url?: string; expirationTime?: number }
+      >;
+      const invoice =
+        json.data ?? (json as unknown as BitpayInvoice & { url?: string; expirationTime?: number });
 
       // Do NOT return the BitPay invoice id as providerSessionId. Both the
       // credit path (resolveWebhook → invoiceToEvent) and reconciliation

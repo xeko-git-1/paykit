@@ -57,7 +57,11 @@ describe("createCheckout", () => {
       status: 200,
       body: JSON.stringify({
         state: 0,
-        result: { uuid: "cm-uuid-99", order_id: "tx-uuid-1", url: "https://pay.cryptomus.com/pay/abc" },
+        result: {
+          uuid: "cm-uuid-99",
+          order_id: "tx-uuid-1",
+          url: "https://pay.cryptomus.com/pay/abc",
+        },
       }),
     }));
     const adapter = makeAdapter(fetcher);
@@ -230,7 +234,10 @@ describe("refund", () => {
   });
 
   it("returns pending_webhook on 5xx", async () => {
-    const { fetcher } = mockFetch(() => ({ status: 502, body: JSON.stringify({ message: "Bad Gateway" }) }));
+    const { fetcher } = mockFetch(() => ({
+      status: 502,
+      body: JSON.stringify({ message: "Bad Gateway" }),
+    }));
     const adapter = makeAdapter(fetcher);
     const result = await adapter.refund({
       transactionId: "tx-1",

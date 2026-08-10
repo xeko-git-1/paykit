@@ -8,11 +8,7 @@
  * Used during V1.5 → V2 upgrade so the first V2 subscribe call doesn't
  * orphan an existing Stripe customer per tenant.
  */
-import {
-  customerRepo,
-  type DbClient,
-  paymentTransactions,
-} from "@xeko-git-1/paykit-server";
+import { type DbClient, customerRepo, paymentTransactions } from "@xeko-git-1/paykit-server";
 import { eq } from "drizzle-orm";
 
 export interface BackfillCustomersInput {

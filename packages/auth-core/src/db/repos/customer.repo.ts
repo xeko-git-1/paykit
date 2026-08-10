@@ -7,7 +7,7 @@
  */
 import { and, eq } from "drizzle-orm";
 import type { DbOrTx } from "../client.js";
-import { type Customer, customers, type NewCustomer } from "../schema/customers.js";
+import { type Customer, type NewCustomer, customers } from "../schema/customers.js";
 
 export interface UpsertCustomerInput {
   readonly tenantId: string;
@@ -39,10 +39,7 @@ export async function findByProviderCustomerId(
     .select()
     .from(customers)
     .where(
-      and(
-        eq(customers.provider, provider),
-        eq(customers.providerCustomerId, providerCustomerId),
-      ),
+      and(eq(customers.provider, provider), eq(customers.providerCustomerId, providerCustomerId)),
     )
     .limit(1);
   return row;
@@ -78,9 +75,6 @@ export async function deleteCustomerForCascade(
   await db
     .delete(customers)
     .where(
-      and(
-        eq(customers.provider, provider),
-        eq(customers.providerCustomerId, providerCustomerId),
-      ),
+      and(eq(customers.provider, provider), eq(customers.providerCustomerId, providerCustomerId)),
     );
 }

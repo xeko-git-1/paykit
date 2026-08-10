@@ -1,3 +1,7 @@
+import type { ProviderRegistry, RefundResult } from "@xeko-git-1/paykit";
+import type { LedgerEntry } from "@xeko-git-1/paykit-auth-core/db/schema/ledger-entries.js";
+import type { PaymentTransaction } from "@xeko-git-1/paykit-auth-core/db/schema/payment-transactions.js";
+import type { PendingRefund } from "@xeko-git-1/paykit-auth-core/db/schema/pending-refunds.js";
 /**
  * Tests for reserve-then-reconcile refund correctness.
  * Validates:
@@ -8,11 +12,7 @@
  *   - Full refund marks tx status='refunded'
  *   - Mutation-resistant: reverting reserve-before-PSP ordering fails tests
  */
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import type { ProviderRegistry, RefundResult } from "@xeko-git-1/paykit";
-import type { PaymentTransaction } from "@xeko-git-1/paykit-auth-core/db/schema/payment-transactions.js";
-import type { LedgerEntry } from "@xeko-git-1/paykit-auth-core/db/schema/ledger-entries.js";
-import type { PendingRefund } from "@xeko-git-1/paykit-auth-core/db/schema/pending-refunds.js";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ---------------------------------------------------------------------------
 // Mock repo modules
@@ -25,7 +25,9 @@ vi.mock("@xeko-git-1/paykit-auth-core/db/repos/ledger.repo.js", () => ({
 }));
 
 vi.mock("@xeko-git-1/paykit-auth-core/db/repos/balance.repo.js", () => ({
-  applyDelta: vi.fn().mockResolvedValue({ tenantId: "t", currencyCode: "USD", currentBalanceMicros: "0" }),
+  applyDelta: vi
+    .fn()
+    .mockResolvedValue({ tenantId: "t", currencyCode: "USD", currentBalanceMicros: "0" }),
 }));
 
 vi.mock("@xeko-git-1/paykit-auth-core/db/repos/pending-refund.repo.js", () => ({
@@ -36,11 +38,25 @@ vi.mock("@xeko-git-1/paykit-auth-core/db/repos/pending-refund.repo.js", () => ({
   sumActiveReservationsByTransaction: vi.fn(),
 }));
 
-// Import AFTER mocks
-import { executeRefund, type RefundCoreDeps, type RefundActor } from "../src/services/refund-core.js";
-import { appendLedgerEntryIdempotent, findLedgerEntryBySourceId, sumRefundsByOriginalTransaction } from "@xeko-git-1/paykit-auth-core/db/repos/ledger.repo.js";
 import { applyDelta } from "@xeko-git-1/paykit-auth-core/db/repos/balance.repo.js";
-import { createPendingRefund, findByProviderAndKey, markCompleted, markFailed, sumActiveReservationsByTransaction } from "@xeko-git-1/paykit-auth-core/db/repos/pending-refund.repo.js";
+import {
+  appendLedgerEntryIdempotent,
+  findLedgerEntryBySourceId,
+  sumRefundsByOriginalTransaction,
+} from "@xeko-git-1/paykit-auth-core/db/repos/ledger.repo.js";
+import {
+  createPendingRefund,
+  findByProviderAndKey,
+  markCompleted,
+  markFailed,
+  sumActiveReservationsByTransaction,
+} from "@xeko-git-1/paykit-auth-core/db/repos/pending-refund.repo.js";
+// Import AFTER mocks
+import {
+  type RefundActor,
+  type RefundCoreDeps,
+  executeRefund,
+} from "../src/services/refund-core.js";
 
 const mockAppendIdempotent = appendLedgerEntryIdempotent as ReturnType<typeof vi.fn>;
 const mockFindLedgerBySourceId = findLedgerEntryBySourceId as ReturnType<typeof vi.fn>;
@@ -78,7 +94,9 @@ function makeTxRow(overrides?: Partial<PaymentTransaction>): PaymentTransaction 
 
 const ADMIN_ACTOR: RefundActor = { kind: "admin", adminUserId: "admin-1", role: "super_admin" };
 
-function createFakeAdapter(result: RefundResult = { state: "completed", providerRefundId: "prov-ref-1" }) {
+function createFakeAdapter(
+  result: RefundResult = { state: "completed", providerRefundId: "prov-ref-1" },
+) {
   return { refund: vi.fn().mockResolvedValue(result) };
 }
 
@@ -155,7 +173,10 @@ function createRefundStore() {
     /** Mock for findLedgerEntryBySourceId */
     findLedger(_tx: unknown, opts: { provider: string; sourceId: string; entryType: string }) {
       return ledgerEntries.find(
-        (e) => e.provider === opts.provider && e.sourceId === opts.sourceId && e.entryType === opts.entryType,
+        (e) =>
+          e.provider === opts.provider &&
+          e.sourceId === opts.sourceId &&
+          e.entryType === opts.entryType,
       ) as unknown as LedgerEntry | undefined;
     },
 
@@ -175,13 +196,25 @@ function createRefundStore() {
     /** Mock for sumRefundsByOriginalTransaction (committed refunds in ledger) */
     sumCommittedRefunds(_tx: unknown, opts: { originalTransactionId: string }) {
       const sum = ledgerEntries
-        .filter((e) => e.entryType === "refund" && e.sourceId.startsWith(`tx:${opts.originalTransactionId}:`))
+        .filter(
+          (e) =>
+            e.entryType === "refund" && e.sourceId.startsWith(`tx:${opts.originalTransactionId}:`),
+        )
         .reduce((acc, e) => acc + BigInt(e.amountMicros.split(".")[0] ?? "0"), 0n);
       return sum.toString();
     },
 
     /** Mock for createPendingRefund */
-    createReservation(_tx: unknown, data: { provider: string; idempotencyKey: string; transactionId: string; amountMicros: string; currencyCode: string }) {
+    createReservation(
+      _tx: unknown,
+      data: {
+        provider: string;
+        idempotencyKey: string;
+        transactionId: string;
+        amountMicros: string;
+        currencyCode: string;
+      },
+    ) {
       // Idempotent: return existing on conflict
       const existing = reservations.find(
         (r) => r.provider === data.provider && r.idempotencyKey === data.idempotencyKey,
@@ -202,9 +235,15 @@ function createRefundStore() {
     },
 
     /** Mock for appendLedgerEntryIdempotent */
-    appendLedger(_tx: unknown, data: { provider: string; sourceId: string; entryType: string; amountMicros: string }) {
+    appendLedger(
+      _tx: unknown,
+      data: { provider: string; sourceId: string; entryType: string; amountMicros: string },
+    ) {
       const existing = ledgerEntries.find(
-        (e) => e.provider === data.provider && e.sourceId === data.sourceId && e.entryType === data.entryType,
+        (e) =>
+          e.provider === data.provider &&
+          e.sourceId === data.sourceId &&
+          e.entryType === data.entryType,
       );
       if (existing) return { row: existing as unknown as LedgerEntry, inserted: false };
 
@@ -263,7 +302,11 @@ describe("executeRefund — reserve-then-reconcile correctness", () => {
     mockAppendIdempotent.mockImplementation(store.appendLedger.bind(store));
     mockMarkCompleted.mockImplementation(store.completeReservation.bind(store));
     mockMarkFailed.mockImplementation(store.failReservation.bind(store));
-    mockApplyDelta.mockResolvedValue({ tenantId: TENANT_ID, currencyCode: "USD", currentBalanceMicros: "0" });
+    mockApplyDelta.mockResolvedValue({
+      tenantId: TENANT_ID,
+      currencyCode: "USD",
+      currentBalanceMicros: "0",
+    });
   });
 
   // ─── Basic flow ────────────────────────────────────────────────────────────
@@ -428,7 +471,18 @@ describe("executeRefund — reserve-then-reconcile correctness", () => {
 
     mockCreatePendingRefund.mockImplementation((...args: unknown[]) => {
       callOrder.push("createPendingRefund");
-      return store.createReservation(...(args as [unknown, { provider: string; idempotencyKey: string; transactionId: string; amountMicros: string; currencyCode: string }]));
+      return store.createReservation(
+        ...(args as [
+          unknown,
+          {
+            provider: string;
+            idempotencyKey: string;
+            transactionId: string;
+            amountMicros: string;
+            currencyCode: string;
+          },
+        ]),
+      );
     });
 
     adapter.refund.mockImplementation(async () => {
@@ -454,7 +508,10 @@ describe("executeRefund — reserve-then-reconcile correctness", () => {
   // ─── PSP failure releases headroom ─────────────────────────────────────────
 
   it("PSP failure after reservation → reservation marked failed, headroom released", async () => {
-    const failAdapter = createFakeAdapter({ state: "failed", error: { message: "Insufficient funds" } } as RefundResult);
+    const failAdapter = createFakeAdapter({
+      state: "failed",
+      error: { message: "Insufficient funds" },
+    } as RefundResult);
     const failRegistry = createFakeRegistry(failAdapter);
     const failDeps: RefundCoreDeps = { db: fakeDb.db, registry: failRegistry };
 
@@ -546,7 +603,10 @@ describe("executeRefund — reserve-then-reconcile correctness", () => {
   // ─── Pending / pending_webhook paths ───────────────────────────────────────
 
   it("PSP returns pending → reservation stays active, returns pending state", async () => {
-    const pendingAdapter = createFakeAdapter({ state: "pending", providerRefundId: "zp-ref-1" } as RefundResult);
+    const pendingAdapter = createFakeAdapter({
+      state: "pending",
+      providerRefundId: "zp-ref-1",
+    } as RefundResult);
     const pendingRegistry = createFakeRegistry(pendingAdapter);
     const pendingDeps: RefundCoreDeps = { db: fakeDb.db, registry: pendingRegistry };
 
@@ -618,13 +678,14 @@ describe("executeRefund — reserve-then-reconcile correctness", () => {
       reason: "verify DB sum",
     });
 
-    expect(mockSumRefunds).toHaveBeenCalledWith(
-      expect.anything(),
-      { tenantId: TENANT_ID, currencyCode: "USD", originalTransactionId: TX_ID },
-    );
-    expect(mockSumActiveReservations).toHaveBeenCalledWith(
-      expect.anything(),
-      { transactionId: TX_ID, currencyCode: "USD" },
-    );
+    expect(mockSumRefunds).toHaveBeenCalledWith(expect.anything(), {
+      tenantId: TENANT_ID,
+      currencyCode: "USD",
+      originalTransactionId: TX_ID,
+    });
+    expect(mockSumActiveReservations).toHaveBeenCalledWith(expect.anything(), {
+      transactionId: TX_ID,
+      currencyCode: "USD",
+    });
   });
 });

@@ -12,7 +12,7 @@
  *   - fetchTransactions: no signer → []; with signer → settled records
  */
 import { describe, expect, it } from "vitest";
-import { createBitpayAdapter, type BitpayMerchantSigner } from "../src/adapter.js";
+import { type BitpayMerchantSigner, createBitpayAdapter } from "../src/adapter.js";
 
 interface MockCall {
   readonly url: string;
@@ -59,7 +59,11 @@ describe("createCheckout", () => {
     const { fetcher, calls } = mockFetch(() => ({
       status: 200,
       body: JSON.stringify({
-        data: { id: "inv-123", url: "https://test.bitpay.com/invoice?id=inv-123", expirationTime: 1900000000000 },
+        data: {
+          id: "inv-123",
+          url: "https://test.bitpay.com/invoice?id=inv-123",
+          expirationTime: 1900000000000,
+        },
       }),
     }));
     const adapter = makeAdapter(fetcher);
@@ -99,13 +103,22 @@ describe("createCheckout", () => {
         return {
           status: 200,
           body: JSON.stringify({
-            data: { id: "inv-rt", orderId: TX_ID, status: "confirmed", price: 10, currency: "USD", amountPaid: 10 },
+            data: {
+              id: "inv-rt",
+              orderId: TX_ID,
+              status: "confirmed",
+              price: 10,
+              currency: "USD",
+              amountPaid: 10,
+            },
           }),
         };
       }
       return {
         status: 200,
-        body: JSON.stringify({ data: { id: "inv-rt", url: "https://test.bitpay.com/invoice?id=inv-rt" } }),
+        body: JSON.stringify({
+          data: { id: "inv-rt", url: "https://test.bitpay.com/invoice?id=inv-rt" },
+        }),
       };
     });
     const adapter = makeAdapter(fetcher);
@@ -443,7 +456,10 @@ describe("resolveWebhook — refund IPN resolution", () => {
     });
     const adapter = makeAdapter(fetcher, { merchantSigner: STUB_SIGNER });
     const evt = await adapter.resolveWebhook?.(
-      JSON.stringify({ event: { code: 1003, name: "invoice_confirmed" }, data: { id: "inv-plain" } }),
+      JSON.stringify({
+        event: { code: 1003, name: "invoice_confirmed" },
+        data: { id: "inv-plain" },
+      }),
       {},
     );
     expect(evt?.type).toBe("payment.completed");

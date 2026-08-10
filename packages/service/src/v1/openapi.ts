@@ -29,11 +29,26 @@ const checkoutRoute = createRoute({
   summary: "Create a payment checkout session",
   request: { body: { content: { "application/json": { schema: CreateCheckoutBody } } } },
   responses: {
-    200: { description: "Checkout created", content: { "application/json": { schema: CheckoutResponse } } },
-    400: { description: "Validation error", content: { "application/json": { schema: ErrorEnvelope } } },
-    401: { description: "Authentication required", content: { "application/json": { schema: ErrorEnvelope } } },
-    403: { description: "Insufficient scope", content: { "application/json": { schema: ErrorEnvelope } } },
-    429: { description: "Rate limited", content: { "application/json": { schema: ErrorEnvelope } } },
+    200: {
+      description: "Checkout created",
+      content: { "application/json": { schema: CheckoutResponse } },
+    },
+    400: {
+      description: "Validation error",
+      content: { "application/json": { schema: ErrorEnvelope } },
+    },
+    401: {
+      description: "Authentication required",
+      content: { "application/json": { schema: ErrorEnvelope } },
+    },
+    403: {
+      description: "Insufficient scope",
+      content: { "application/json": { schema: ErrorEnvelope } },
+    },
+    429: {
+      description: "Rate limited",
+      content: { "application/json": { schema: ErrorEnvelope } },
+    },
   },
 });
 
@@ -42,10 +57,22 @@ const balancesRoute = createRoute({
   path: "/v1/balances",
   summary: "List currency balances for the authenticated merchant",
   responses: {
-    200: { description: "Balances list", content: { "application/json": { schema: BalanceResponse } } },
-    401: { description: "Authentication required", content: { "application/json": { schema: ErrorEnvelope } } },
-    403: { description: "Insufficient scope", content: { "application/json": { schema: ErrorEnvelope } } },
-    429: { description: "Rate limited", content: { "application/json": { schema: ErrorEnvelope } } },
+    200: {
+      description: "Balances list",
+      content: { "application/json": { schema: BalanceResponse } },
+    },
+    401: {
+      description: "Authentication required",
+      content: { "application/json": { schema: ErrorEnvelope } },
+    },
+    403: {
+      description: "Insufficient scope",
+      content: { "application/json": { schema: ErrorEnvelope } },
+    },
+    429: {
+      description: "Rate limited",
+      content: { "application/json": { schema: ErrorEnvelope } },
+    },
   },
 });
 
@@ -55,10 +82,22 @@ const paymentsRoute = createRoute({
   summary: "List payment transactions for the authenticated merchant",
   request: { query: PaymentsQueryParams },
   responses: {
-    200: { description: "Payments list", content: { "application/json": { schema: PaymentsResponse } } },
-    401: { description: "Authentication required", content: { "application/json": { schema: ErrorEnvelope } } },
-    403: { description: "Insufficient scope", content: { "application/json": { schema: ErrorEnvelope } } },
-    429: { description: "Rate limited", content: { "application/json": { schema: ErrorEnvelope } } },
+    200: {
+      description: "Payments list",
+      content: { "application/json": { schema: PaymentsResponse } },
+    },
+    401: {
+      description: "Authentication required",
+      content: { "application/json": { schema: ErrorEnvelope } },
+    },
+    403: {
+      description: "Insufficient scope",
+      content: { "application/json": { schema: ErrorEnvelope } },
+    },
+    429: {
+      description: "Rate limited",
+      content: { "application/json": { schema: ErrorEnvelope } },
+    },
   },
 });
 
@@ -79,13 +118,34 @@ const refundsRoute = createRoute({
     body: { content: { "application/json": { schema: CreateRefundBody } } },
   },
   responses: {
-    200: { description: "Refund processed", content: { "application/json": { schema: RefundResponse } } },
-    202: { description: "Refund accepted (async)", content: { "application/json": { schema: RefundResponse } } },
-    400: { description: "Validation error", content: { "application/json": { schema: ErrorEnvelope } } },
-    401: { description: "Authentication required", content: { "application/json": { schema: ErrorEnvelope } } },
-    403: { description: "Insufficient scope", content: { "application/json": { schema: ErrorEnvelope } } },
-    404: { description: "Transaction not found or not owned", content: { "application/json": { schema: ErrorEnvelope } } },
-    429: { description: "Rate limited", content: { "application/json": { schema: ErrorEnvelope } } },
+    200: {
+      description: "Refund processed",
+      content: { "application/json": { schema: RefundResponse } },
+    },
+    202: {
+      description: "Refund accepted (async)",
+      content: { "application/json": { schema: RefundResponse } },
+    },
+    400: {
+      description: "Validation error",
+      content: { "application/json": { schema: ErrorEnvelope } },
+    },
+    401: {
+      description: "Authentication required",
+      content: { "application/json": { schema: ErrorEnvelope } },
+    },
+    403: {
+      description: "Insufficient scope",
+      content: { "application/json": { schema: ErrorEnvelope } },
+    },
+    404: {
+      description: "Transaction not found or not owned",
+      content: { "application/json": { schema: ErrorEnvelope } },
+    },
+    429: {
+      description: "Rate limited",
+      content: { "application/json": { schema: ErrorEnvelope } },
+    },
   },
 });
 
@@ -95,11 +155,26 @@ const mintApiKeyRoute = createRoute({
   summary: "Mint a new API key (JWT/admin plane only)",
   request: { body: { content: { "application/json": { schema: MintApiKeyBody } } } },
   responses: {
-    200: { description: "Key minted", content: { "application/json": { schema: MintApiKeyResponse } } },
-    400: { description: "Validation error", content: { "application/json": { schema: ErrorEnvelope } } },
-    401: { description: "Authentication required or wrong plane", content: { "application/json": { schema: ErrorEnvelope } } },
-    403: { description: "Scope escalation", content: { "application/json": { schema: ErrorEnvelope } } },
-    429: { description: "Key limit exceeded or rate limited", content: { "application/json": { schema: ErrorEnvelope } } },
+    200: {
+      description: "Key minted",
+      content: { "application/json": { schema: MintApiKeyResponse } },
+    },
+    400: {
+      description: "Validation error",
+      content: { "application/json": { schema: ErrorEnvelope } },
+    },
+    401: {
+      description: "Authentication required or wrong plane",
+      content: { "application/json": { schema: ErrorEnvelope } },
+    },
+    403: {
+      description: "Scope escalation",
+      content: { "application/json": { schema: ErrorEnvelope } },
+    },
+    429: {
+      description: "Key limit exceeded or rate limited",
+      content: { "application/json": { schema: ErrorEnvelope } },
+    },
   },
 });
 

@@ -289,8 +289,7 @@ export async function main(): Promise<void> {
   }
 
   console.error(
-    `Unknown command: ${command}. The service image supports only: serve. ` +
-      "Run migrations with the paykit CLI (node packages/cli/dist/bin/paykit.js migrate up).",
+    `Unknown command: ${command}. The service image supports only: serve. Run migrations with the paykit CLI (paykit migrate up).`,
   );
   process.exit(1);
 }

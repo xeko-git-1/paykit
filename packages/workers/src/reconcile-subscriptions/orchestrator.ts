@@ -78,7 +78,7 @@ export async function reconcileSubscriptionsV2(
     cacheCanceledCount: 0,
     skippedRecentEvent: 0,
   };
-  const ledgerStats: LedgerPassStats = { tenantsScanned: 0, drifts:[]};
+  const ledgerStats: LedgerPassStats = { tenantsScanned: 0, drifts: [] };
   const quarantine: QuarantineEntry[] = [];
   let status: V2ReconcilerSummary["status"] = "completed";
 

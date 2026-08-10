@@ -12,8 +12,8 @@ import type { PaymentProviderAdapter, ProviderRegistry } from "@xeko-git-1/payki
 import type { PaykitAuthContext } from "@xeko-git-1/paykit-server";
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it } from "vitest";
-import { buildV1Router } from "../src/v1/router.js";
 import { resetAllBuckets } from "../src/v1/rate-limit.js";
+import { buildV1Router } from "../src/v1/router.js";
 
 const AUTH: PaykitAuthContext = {
   merchantId: "merchant-1",

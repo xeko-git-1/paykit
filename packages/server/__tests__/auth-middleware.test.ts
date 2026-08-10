@@ -1,14 +1,18 @@
+import { mintApiKey } from "@xeko-git-1/paykit-auth-core/auth/api-key.js";
+import { Hono } from "hono";
+import { sign } from "hono/jwt";
 /**
  * Auth middleware tests — covers API-key middleware, JWT middleware,
  * plane separation, fail-closed behavior, and requireScope.
  */
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import { Hono } from "hono";
-import { sign } from "hono/jwt";
-import { apiKeyAuthMiddleware, type ApiKeyAuthDeps } from "../src/auth/api-key-middleware.js";
-import { jwtAuthMiddleware, createJwtSecretLoader, type JwtAuthDeps } from "../src/auth/jwt-middleware.js";
-import { requireScope, requirePlane } from "../src/auth/require-scope.js";
-import { mintApiKey } from "@xeko-git-1/paykit-auth-core/auth/api-key.js";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { type ApiKeyAuthDeps, apiKeyAuthMiddleware } from "../src/auth/api-key-middleware.js";
+import {
+  type JwtAuthDeps,
+  createJwtSecretLoader,
+  jwtAuthMiddleware,
+} from "../src/auth/jwt-middleware.js";
+import { requirePlane, requireScope } from "../src/auth/require-scope.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -22,7 +26,11 @@ const MERCHANT_ID = "merchant-uuid-123";
 const TENANT = { tenantId: "tenant-uuid-456", ownerId: "owner-uuid-789" };
 
 function makeApiKeyDeps(overrides: Partial<ApiKeyAuthDeps> = {}): ApiKeyAuthDeps {
-  const minted = mintApiKey({ merchantId: MERCHANT_ID, mode: "live", scopes: ["checkout:write", "balance:read"] });
+  const minted = mintApiKey({
+    merchantId: MERCHANT_ID,
+    mode: "live",
+    scopes: ["checkout:write", "balance:read"],
+  });
   return {
     db: {} as never,
     findByHash: vi.fn().mockResolvedValue({
@@ -117,7 +125,11 @@ describe("apiKeyAuthMiddleware", () => {
   });
 
   it("returns 401 when key is revoked", async () => {
-    const minted = mintApiKey({ merchantId: MERCHANT_ID, mode: "live", scopes: ["checkout:write"] });
+    const minted = mintApiKey({
+      merchantId: MERCHANT_ID,
+      mode: "live",
+      scopes: ["checkout:write"],
+    });
     const { app } = buildApiKeyApp({
       findByHash: vi.fn().mockResolvedValue({
         keyId: "key-1",
@@ -153,7 +165,11 @@ describe("apiKeyAuthMiddleware", () => {
   });
 
   it("sets paykitAuth with correct tenant and plane on valid key", async () => {
-    const minted = mintApiKey({ merchantId: MERCHANT_ID, mode: "live", scopes: ["checkout:write", "balance:read"] });
+    const minted = mintApiKey({
+      merchantId: MERCHANT_ID,
+      mode: "live",
+      scopes: ["checkout:write", "balance:read"],
+    });
     const { app } = buildApiKeyApp({
       findByHash: vi.fn().mockResolvedValue({
         keyId: "key-1",
@@ -178,7 +194,11 @@ describe("apiKeyAuthMiddleware", () => {
   });
 
   it("calls touchLastUsed after successful auth (fire-and-forget)", async () => {
-    const minted = mintApiKey({ merchantId: MERCHANT_ID, mode: "live", scopes: ["checkout:write"] });
+    const minted = mintApiKey({
+      merchantId: MERCHANT_ID,
+      mode: "live",
+      scopes: ["checkout:write"],
+    });
     const touchLastUsed = vi.fn().mockResolvedValue(undefined);
     const { app } = buildApiKeyApp({
       findByHash: vi.fn().mockResolvedValue({

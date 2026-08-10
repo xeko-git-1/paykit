@@ -1,3 +1,10 @@
+import type { DbOrTx } from "@xeko-git-1/paykit-auth-core/db/client.js";
+import {
+  commitReservation,
+  findActiveByCode,
+  releaseReservation,
+  reserve,
+} from "@xeko-git-1/paykit-auth-core/db/repos/discount.repo.js";
 /**
  * discount.repo unit tests.
  *
@@ -9,13 +16,6 @@
  * UPDATE shape.
  */
 import { describe, expect, it } from "vitest";
-import {
-  commitReservation,
-  findActiveByCode,
-  releaseReservation,
-  reserve,
-} from "@xeko-git-1/paykit-auth-core/db/repos/discount.repo.js";
-import type { DbOrTx } from "@xeko-git-1/paykit-auth-core/db/client.js";
 
 function selectDb(row: unknown): DbOrTx {
   return {

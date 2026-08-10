@@ -1,14 +1,14 @@
-/**
- * V2 repo signature tests — same pattern as V1/V1.5 repo-signatures.
- * Live DB tests live in Phase 10 testcontainer suite.
- */
-import { describe, expect, expectTypeOf, it } from "vitest";
 import type { DbOrTx } from "@xeko-git-1/paykit-auth-core/db/client.js";
 import * as customerRepo from "@xeko-git-1/paykit-auth-core/db/repos/customer.repo.js";
 import * as idempotencyRepo from "@xeko-git-1/paykit-auth-core/db/repos/idempotency.repo.js";
 import * as runtimeConfigRepo from "@xeko-git-1/paykit-auth-core/db/repos/runtime-config.repo.js";
 import * as subscriptionEventRepo from "@xeko-git-1/paykit-auth-core/db/repos/subscription-event.repo.js";
 import * as subscriptionRepo from "@xeko-git-1/paykit-auth-core/db/repos/subscription.repo.js";
+/**
+ * V2 repo signature tests — same pattern as V1/V1.5 repo-signatures.
+ * Live DB tests live in Phase 10 testcontainer suite.
+ */
+import { describe, expect, expectTypeOf, it } from "vitest";
 
 describe("customerRepo public API (V2 Phase 02, Phase 04 source-of-truth)", () => {
   it("exposes lookup + lazy upsert + cascade-delete helpers", () => {

@@ -1,3 +1,7 @@
+import type { ProviderRegistry, RefundResult } from "@xeko-git-1/paykit";
+import type { LedgerEntry } from "@xeko-git-1/paykit-auth-core/db/schema/ledger-entries.js";
+import type { PaymentTransaction } from "@xeko-git-1/paykit-auth-core/db/schema/payment-transactions.js";
+import type { PendingRefund } from "@xeko-git-1/paykit-auth-core/db/schema/pending-refunds.js";
 /**
  * Tests for async refund RESOLUTION paths — the lifecycle AFTER executeRefund
  * returns pending/pending_webhook.
@@ -9,11 +13,7 @@
  *     the double-count test to fail (remaining incorrectly reduced by both
  *     committed entry AND stale reservation)
  */
-import { describe, expect, it, vi, beforeEach } from "vitest";
-import type { ProviderRegistry, RefundResult } from "@xeko-git-1/paykit";
-import type { PaymentTransaction } from "@xeko-git-1/paykit-auth-core/db/schema/payment-transactions.js";
-import type { LedgerEntry } from "@xeko-git-1/paykit-auth-core/db/schema/ledger-entries.js";
-import type { PendingRefund } from "@xeko-git-1/paykit-auth-core/db/schema/pending-refunds.js";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ---------------------------------------------------------------------------
 // Mock repo modules
@@ -26,7 +26,9 @@ vi.mock("@xeko-git-1/paykit-auth-core/db/repos/ledger.repo.js", () => ({
 }));
 
 vi.mock("@xeko-git-1/paykit-auth-core/db/repos/balance.repo.js", () => ({
-  applyDelta: vi.fn().mockResolvedValue({ tenantId: "t", currencyCode: "USD", currentBalanceMicros: "0" }),
+  applyDelta: vi
+    .fn()
+    .mockResolvedValue({ tenantId: "t", currencyCode: "USD", currentBalanceMicros: "0" }),
 }));
 
 vi.mock("@xeko-git-1/paykit-auth-core/db/repos/pending-refund.repo.js", () => ({
@@ -46,24 +48,28 @@ vi.mock("@xeko-git-1/paykit-auth-core/db/repos/webhook-event.repo.js", () => ({
   tryRecordWebhookEvent: vi.fn(),
 }));
 
-// Import AFTER mocks
-import { executeRefund, type RefundCoreDeps, type RefundActor } from "../src/services/refund-core.js";
+import { applyDelta } from "@xeko-git-1/paykit-auth-core/db/repos/balance.repo.js";
 import {
   appendLedgerEntryIdempotent,
   findLedgerEntryBySourceId,
   sumRefundsByOriginalTransaction,
 } from "@xeko-git-1/paykit-auth-core/db/repos/ledger.repo.js";
-import { applyDelta } from "@xeko-git-1/paykit-auth-core/db/repos/balance.repo.js";
+import { updateTransactionStatus } from "@xeko-git-1/paykit-auth-core/db/repos/payment.repo.js";
 import {
   createPendingRefund,
-  findByProviderAndKey,
   findActiveByTransaction,
+  findByProviderAndKey,
   markCompleted,
   markFailed,
   sumActiveReservationsByTransaction,
 } from "@xeko-git-1/paykit-auth-core/db/repos/pending-refund.repo.js";
-import { updateTransactionStatus } from "@xeko-git-1/paykit-auth-core/db/repos/payment.repo.js";
 import { tryRecordWebhookEvent } from "@xeko-git-1/paykit-auth-core/db/repos/webhook-event.repo.js";
+// Import AFTER mocks
+import {
+  type RefundActor,
+  type RefundCoreDeps,
+  executeRefund,
+} from "../src/services/refund-core.js";
 
 const mockAppendIdempotent = appendLedgerEntryIdempotent as ReturnType<typeof vi.fn>;
 const mockFindLedgerBySourceId = findLedgerEntryBySourceId as ReturnType<typeof vi.fn>;
@@ -141,7 +147,10 @@ function createAsyncRefundStore() {
 
     findLedger(_tx: unknown, opts: { provider: string; sourceId: string; entryType: string }) {
       return ledgerEntries.find(
-        (e) => e.provider === opts.provider && e.sourceId === opts.sourceId && e.entryType === opts.entryType,
+        (e) =>
+          e.provider === opts.provider &&
+          e.sourceId === opts.sourceId &&
+          e.entryType === opts.entryType,
       ) as unknown as LedgerEntry | undefined;
     },
 
@@ -177,7 +186,16 @@ function createAsyncRefundStore() {
       return sum.toString();
     },
 
-    createReservation(_tx: unknown, data: { provider: string; idempotencyKey: string; transactionId: string; amountMicros: string; currencyCode: string }) {
+    createReservation(
+      _tx: unknown,
+      data: {
+        provider: string;
+        idempotencyKey: string;
+        transactionId: string;
+        amountMicros: string;
+        currencyCode: string;
+      },
+    ) {
       const existing = reservations.find(
         (r) => r.provider === data.provider && r.idempotencyKey === data.idempotencyKey,
       );
@@ -196,9 +214,21 @@ function createAsyncRefundStore() {
       return row as unknown as PendingRefund;
     },
 
-    appendLedger(_tx: unknown, data: { provider: string; sourceId: string; entryType: string; amountMicros: string; metadataJson?: Record<string, unknown> }) {
+    appendLedger(
+      _tx: unknown,
+      data: {
+        provider: string;
+        sourceId: string;
+        entryType: string;
+        amountMicros: string;
+        metadataJson?: Record<string, unknown>;
+      },
+    ) {
       const existing = ledgerEntries.find(
-        (e) => e.provider === data.provider && e.sourceId === data.sourceId && e.entryType === data.entryType,
+        (e) =>
+          e.provider === data.provider &&
+          e.sourceId === data.sourceId &&
+          e.entryType === data.entryType,
       );
       if (existing) return { row: existing as unknown as LedgerEntry, inserted: false };
 
@@ -326,7 +356,9 @@ describe("webhook payment.refunded — releases reservation (BUG A)", () => {
     store = createAsyncRefundStore();
     fakeDb = createFakeDb();
     const pendingWebhookAdapter = {
-      refund: vi.fn().mockResolvedValue({ state: "pending_webhook", error: { providerCode: "NP-001" } }),
+      refund: vi
+        .fn()
+        .mockResolvedValue({ state: "pending_webhook", error: { providerCode: "NP-001" } }),
     };
     const registry = { get: () => pendingWebhookAdapter } as unknown as ProviderRegistry;
     deps = { db: fakeDb.db, registry };
@@ -340,7 +372,11 @@ describe("webhook payment.refunded — releases reservation (BUG A)", () => {
     mockMarkCompleted.mockImplementation(store.completeReservation.bind(store));
     mockMarkFailed.mockImplementation(store.failReservation.bind(store));
     mockFindActiveByTransaction.mockImplementation(store.findActiveByTx.bind(store));
-    mockApplyDelta.mockResolvedValue({ tenantId: TENANT_ID, currencyCode: "USD", currentBalanceMicros: "0" });
+    mockApplyDelta.mockResolvedValue({
+      tenantId: TENANT_ID,
+      currencyCode: "USD",
+      currentBalanceMicros: "0",
+    });
   });
 
   it("full lifecycle: reserve → pending_webhook → webhook fires → reservation released → subsequent refund sees correct remaining", async () => {
@@ -470,7 +506,9 @@ describe("executeRefund — refund ref selection (provider_payment_id vs provide
       providerRef: "order-id-tx-uuid",
       providerPaymentId: "5524759814",
     } as Partial<PaymentTransaction>);
-    const adapter = { refund: vi.fn().mockResolvedValue({ state: "pending_webhook" } as RefundResult) };
+    const adapter = {
+      refund: vi.fn().mockResolvedValue({ state: "pending_webhook" } as RefundResult),
+    };
     const registry = { get: () => adapter } as unknown as ProviderRegistry;
     const deps: RefundCoreDeps = { db: fakeDb.db, registry };
 
@@ -487,7 +525,11 @@ describe("executeRefund — refund ref selection (provider_payment_id vs provide
 
   it("falls back to provider_ref when provider_payment_id is null (Stripe/VNPay refund by the same ref)", async () => {
     const txRow = makeTxRow({ providerRef: "cs_test_session", provider: "stripe" });
-    const adapter = { refund: vi.fn().mockResolvedValue({ state: "completed", providerRefundId: "re_1" } as RefundResult) };
+    const adapter = {
+      refund: vi
+        .fn()
+        .mockResolvedValue({ state: "completed", providerRefundId: "re_1" } as RefundResult),
+    };
     const registry = { get: () => adapter } as unknown as ProviderRegistry;
     const deps: RefundCoreDeps = { db: fakeDb.db, registry };
 

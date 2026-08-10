@@ -43,7 +43,8 @@ function toResult(sub: Stripe.Subscription, lastEventCreated: Date): Subscriptio
   const status = mapStripeStatus(sub.status).status;
   const periodEndUnix =
     (item?.current_period_end as number | undefined) ??
-    ((sub as unknown as { current_period_end?: number }).current_period_end ?? 0);
+    (sub as unknown as { current_period_end?: number }).current_period_end ??
+    0;
   const currentPeriodEnd = new Date(periodEndUnix * 1000);
   const latestInvoiceId =
     typeof sub.latest_invoice === "string"
@@ -74,7 +75,10 @@ export function createStripeSubscriptionAdapter(
     new Stripe(config.secretKey, { apiVersion: config.apiVersion ?? DEFAULT_API_VERSION });
   const id = config.id ?? "stripe-subscription";
 
-  async function findLatestEventCreated(subscriptionId: string, since?: Date): Promise<Date | null> {
+  async function findLatestEventCreated(
+    subscriptionId: string,
+    since?: Date,
+  ): Promise<Date | null> {
     const params: Stripe.EventListParams = { types: ["customer.subscription.*"], limit: 100 };
     if (since !== undefined) params.created = { gte: Math.floor(since.getTime() / 1000) };
     let cursor: string | undefined;

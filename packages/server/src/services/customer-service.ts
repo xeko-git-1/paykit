@@ -81,10 +81,7 @@ export function buildCustomerService(deps: {
     return upserted.providerCustomerId;
   }
 
-  async function linkExistingCustomer(
-    tenantId: string,
-    providerCustomerId: string,
-  ): Promise<void> {
+  async function linkExistingCustomer(tenantId: string, providerCustomerId: string): Promise<void> {
     if (!provider.retrieveCustomer) {
       throw new Error(
         `Provider ${provider.id} does not support linking existing customers (V2.1 path)`,

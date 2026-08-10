@@ -65,9 +65,7 @@ export async function buildAdaptersFromConfig(
         ...(config.cryptomus.toCurrency !== undefined
           ? { toCurrency: config.cryptomus.toCurrency }
           : {}),
-        ...(config.cryptomus.network !== undefined
-          ? { network: config.cryptomus.network }
-          : {}),
+        ...(config.cryptomus.network !== undefined ? { network: config.cryptomus.network } : {}),
         ...(config.cryptomus.returnUrl !== undefined
           ? { returnUrl: config.cryptomus.returnUrl }
           : {}),
@@ -85,12 +83,8 @@ export async function buildAdaptersFromConfig(
         apiKey: config.binance.apiKey,
         apiSecret: config.binance.apiSecret,
         webhookPublicKey: config.binance.webhookPublicKey,
-        ...(config.binance.returnUrl !== undefined
-          ? { returnUrl: config.binance.returnUrl }
-          : {}),
-        ...(config.binance.cancelUrl !== undefined
-          ? { cancelUrl: config.binance.cancelUrl }
-          : {}),
+        ...(config.binance.returnUrl !== undefined ? { returnUrl: config.binance.returnUrl } : {}),
+        ...(config.binance.cancelUrl !== undefined ? { cancelUrl: config.binance.cancelUrl } : {}),
         ...(config.binance.webhookUrl !== undefined
           ? { webhookUrl: config.binance.webhookUrl }
           : {}),

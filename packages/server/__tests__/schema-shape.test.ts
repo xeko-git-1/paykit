@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import {
   balanceProjections,
   ledgerEntries,
@@ -6,6 +5,7 @@ import {
   reconciliationRuns,
   webhookEvents,
 } from "@xeko-git-1/paykit-auth-core/db/schema/index.js";
+import { describe, expect, it } from "vitest";
 
 describe("paykit schema shape", () => {
   it("payment_transactions has expected columns", () => {

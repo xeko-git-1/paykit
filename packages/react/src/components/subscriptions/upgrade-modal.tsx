@@ -17,7 +17,7 @@ export function UpgradeModal(props: UpgradeModalProps): React.ReactElement {
   const valid = priceId.trim().length >= 3;
 
   return (
-    <div className="paykit-subs-modal" role="dialog" aria-modal="true">
+    <dialog className="paykit-subs-modal" open aria-modal="true">
       <label>
         {props.t("paykit.subscriptions.upgrade.priceIdLabel")}
         <input
@@ -47,6 +47,6 @@ export function UpgradeModal(props: UpgradeModalProps): React.ReactElement {
       >
         {props.t("paykit.subscriptions.action.upgrade")}
       </button>
-    </div>
+    </dialog>
   );
 }

@@ -1,11 +1,11 @@
+import type { DbOrTx } from "@xeko-git-1/paykit-auth-core/db/client.js";
+import * as merchantRepo from "@xeko-git-1/paykit-auth-core/db/repos/merchant.repo.js";
 /**
  * merchant.repo unit tests — insert/findById round-trip + list, against an
  * in-memory Drizzle-shaped handle (live-DB integration is gated separately).
  */
 import { getTableName } from "drizzle-orm";
 import { describe, expect, expectTypeOf, it } from "vitest";
-import type { DbOrTx } from "@xeko-git-1/paykit-auth-core/db/client.js";
-import * as merchantRepo from "@xeko-git-1/paykit-auth-core/db/repos/merchant.repo.js";
 
 type Row = Record<string, unknown>;
 

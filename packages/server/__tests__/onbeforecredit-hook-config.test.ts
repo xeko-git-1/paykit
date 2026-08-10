@@ -1,5 +1,5 @@
-import { describe, expectTypeOf, it } from "vitest";
 import type { NormalizedWebhookEvent } from "@xeko-git-1/paykit";
+import { describe, expectTypeOf, it } from "vitest";
 import type { PaykitConfig } from "../src/server/create-paykit.js";
 
 describe("PaykitConfig onBeforeCredit hook (Phase 0b — Val Session 2 D7)", () => {

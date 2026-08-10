@@ -25,8 +25,7 @@ vi.mock("@xeko-git-1/paykit-auth-core/db/repos/subscription.repo.js", () => ({
   upsertFromEvent: vi.fn(async (_db: unknown, input: Record<string, unknown>) => {
     const existing = subscriptionRows.find(
       (r) =>
-        r.provider === input.provider &&
-        r.providerSubscriptionId === input.providerSubscriptionId,
+        r.provider === input.provider && r.providerSubscriptionId === input.providerSubscriptionId,
     );
     if (existing) {
       const incoming = input.lastEventCreated as Date;
@@ -50,9 +49,7 @@ vi.mock("@xeko-git-1/paykit-auth-core/db/repos/subscription.repo.js", () => ({
     return row;
   }),
   findByProviderSub: vi.fn(async (_db: unknown, provider: string, id: string) =>
-    subscriptionRows.find(
-      (r) => r.provider === provider && r.providerSubscriptionId === id,
-    ),
+    subscriptionRows.find((r) => r.provider === provider && r.providerSubscriptionId === id),
   ),
   findById: vi.fn(),
   listForTenant: vi.fn(async () => []),
@@ -152,10 +149,12 @@ interface ParsedEvent {
   metadata: Record<string, unknown>;
 }
 
-function makeAdapter(opts: {
-  parseReturns?: ParsedEvent | null;
-  signatureValid?: boolean;
-} = {}) {
+function makeAdapter(
+  opts: {
+    parseReturns?: ParsedEvent | null;
+    signatureValid?: boolean;
+  } = {},
+) {
   return {
     id: "stripe-subscription",
     subscribe: vi.fn(),
@@ -275,7 +274,9 @@ describe("Sub lifecycle (RT F9 last-write-wins)", () => {
   });
 
   it("out-of-order: older event does NOT roll back newer state (RT F9)", async () => {
-    subscriptionRows.push(baseSub({ status: "canceled", lastEventCreated: new Date("2026-05-10") }));
+    subscriptionRows.push(
+      baseSub({ status: "canceled", lastEventCreated: new Date("2026-05-10") }),
+    );
     const evt: ParsedEvent = {
       eventId: "evt_old",
       type: "sub.updated",

@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
 import type { PaymentTransaction } from "@xeko-git-1/paykit-auth-core/db/schema/payment-transactions.js";
+import { describe, expect, it, vi } from "vitest";
 import { type PaykitEventHandlers, emitEvent } from "../src/events/emitter.js";
 
 const FAKE_TX: PaymentTransaction = {

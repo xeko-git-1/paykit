@@ -11,11 +11,7 @@
  */
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import type { DbOrTx } from "../client.js";
-import {
-  type NewSubscription,
-  type Subscription,
-  subscriptions,
-} from "../schema/subscriptions.js";
+import { type NewSubscription, type Subscription, subscriptions } from "../schema/subscriptions.js";
 
 export interface UpsertSubscriptionInput {
   readonly tenantId: string;

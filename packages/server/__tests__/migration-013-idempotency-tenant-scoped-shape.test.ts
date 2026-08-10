@@ -68,7 +68,7 @@ describe("Manifest entry 013", () => {
   });
 
   it("manifest ids are ascending and contiguous from 001 with no gaps", () => {
-    const ids = manifest.migrations.map((m) => parseInt(m.id, 10));
+    const ids = manifest.migrations.map((m) => Number.parseInt(m.id, 10));
     expect(ids.length).toBeGreaterThanOrEqual(13);
     for (let i = 0; i < ids.length; i++) {
       expect(ids[i]).toBe(i + 1);

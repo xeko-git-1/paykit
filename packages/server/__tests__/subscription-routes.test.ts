@@ -64,11 +64,7 @@ vi.mock("@xeko-git-1/paykit-auth-core/db/repos/subscription.repo.js", () => {
       subscriptionRows.find((r) => r.subscriptionId === id),
     ),
     listForTenant: vi.fn(
-      async (
-        _db: unknown,
-        tenantId: string,
-        opts: { statuses?: readonly string[] } = {},
-      ) => {
+      async (_db: unknown, tenantId: string, opts: { statuses?: readonly string[] } = {}) => {
         let rows = subscriptionRows.filter((r) => r.tenantId === tenantId);
         if (opts.statuses && opts.statuses.length > 0) {
           rows = rows.filter((r) => opts.statuses!.includes(r.status as string));
@@ -169,8 +165,7 @@ vi.mock("@xeko-git-1/paykit-auth-core/db/repos/idempotency.repo.js", async () =>
         // Guarded by state='in_flight' — a finalize whose claim was reclaimed
         // by a racing request matches nothing and returns null.
         const row = idempotencyRows.find(
-          (r) =>
-            r.tenantId === input.tenantId && r.key === input.key && r.state === "in_flight",
+          (r) => r.tenantId === input.tenantId && r.key === input.key && r.state === "in_flight",
         );
         if (!row) return null;
         row.state = "done";
@@ -402,9 +397,7 @@ describe("Cancel routes", () => {
       body: JSON.stringify({}),
     });
     expect(res.status).toBe(200);
-    expect(a.adapter.cancel).toHaveBeenCalledWith(
-      expect.objectContaining({ atPeriodEnd: true }),
-    );
+    expect(a.adapter.cancel).toHaveBeenCalledWith(expect.objectContaining({ atPeriodEnd: true }));
   });
 
   it("explicit immediate: atPeriodEnd:false → adapter.cancel({atPeriodEnd:false})", async () => {
@@ -420,9 +413,7 @@ describe("Cancel routes", () => {
       headers: headers("idem-c-4"),
       body: JSON.stringify({ atPeriodEnd: false }),
     });
-    expect(a.adapter.cancel).toHaveBeenCalledWith(
-      expect.objectContaining({ atPeriodEnd: false }),
-    );
+    expect(a.adapter.cancel).toHaveBeenCalledWith(expect.objectContaining({ atPeriodEnd: false }));
   });
 });
 

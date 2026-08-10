@@ -29,14 +29,9 @@ const idempotencyDeleted = { count: 0 };
 
 vi.mock("@xeko-git-1/paykit-server", () => ({
   runtimeConfigRepo: {
-    getKey: vi.fn(async (_db: unknown, key: string) =>
-      runtimeRows.find((r) => r.key === key),
-    ),
+    getKey: vi.fn(async (_db: unknown, key: string) => runtimeRows.find((r) => r.key === key)),
     setKey: vi.fn(
-      async (
-        _db: unknown,
-        input: { key: string; value: string; expiresAt: Date | null },
-      ) => {
+      async (_db: unknown, input: { key: string; value: string; expiresAt: Date | null }) => {
         const existing = runtimeRows.find((r) => r.key === input.key);
         if (existing) {
           existing.value = input.value;
@@ -68,6 +63,7 @@ const {
   CANARY_KEY,
 } = await import("../src/reconcile-subscriptions/index.js");
 
+import type { SubscriptionResult } from "@xeko-git-1/paykit";
 import type {
   CacheRepoPort,
   CacheRow,
@@ -75,7 +71,6 @@ import type {
   StripeAdapterPort,
   StripeFinancePort,
 } from "../src/reconcile-subscriptions/index.js";
-import type { SubscriptionResult } from "@xeko-git-1/paykit";
 
 const TENANT_A = "00000000-0000-0000-0000-000000000001";
 
@@ -125,9 +120,7 @@ function buildCachePort(initial: CacheRow[]): CacheRepoPort & {
     listForTenantActive: async () => rows.filter((r) => r.status !== "canceled"),
     upsert: async (input) => {
       upserted.push(input);
-      const existing = rows.find(
-        (r) => r.providerSubscriptionId === input.providerSubscriptionId,
-      );
+      const existing = rows.find((r) => r.providerSubscriptionId === input.providerSubscriptionId);
       if (existing) {
         Object.assign(existing, input);
       } else {
@@ -248,7 +241,9 @@ describe("Pass A — cache pass per customer (RT 15c, F14)", () => {
   });
 
   it("field_drift: status differs → UPDATE cache via drift gate (RT F2)", async () => {
-    const cache = buildCachePort([row({ status: "active", lastEventCreated: new Date("2026-05-01") })]);
+    const cache = buildCachePort([
+      row({ status: "active", lastEventCreated: new Date("2026-05-01") }),
+    ]);
     const adapter = buildAdapterPort({
       list: [stripeSub({ status: "past_due" })],
       latestEvents: { sub_x: new Date("2026-05-20") },
@@ -313,12 +308,14 @@ describe("evaluateDriftGate primitive", () => {
 });
 
 describe("Pass B — ledger reconciliation (Val S4 Q2)", () => {
-  function buildStripePort(net: Partial<{
-    invoicesPaidMicros: bigint;
-    chargeRefundsMicros: bigint;
-    disputesLostMicros: bigint;
-    creditNotesMicros: bigint;
-  }>): StripeFinancePort {
+  function buildStripePort(
+    net: Partial<{
+      invoicesPaidMicros: bigint;
+      chargeRefundsMicros: bigint;
+      disputesLostMicros: bigint;
+      creditNotesMicros: bigint;
+    }>,
+  ): StripeFinancePort {
     return {
       fetchWindow: async () => ({
         invoicesPaidMicros: net.invoicesPaidMicros ?? 0n,
@@ -328,12 +325,14 @@ describe("Pass B — ledger reconciliation (Val S4 Q2)", () => {
       }),
     };
   }
-  function buildLedgerPort(net: Partial<{
-    subscriptionCreditMicros: bigint;
-    refundDebitMicros: bigint;
-    disputeDebitMicros: bigint;
-    creditNoteDebitMicros: bigint;
-  }>): PaykitLedgerPort {
+  function buildLedgerPort(
+    net: Partial<{
+      subscriptionCreditMicros: bigint;
+      refundDebitMicros: bigint;
+      disputeDebitMicros: bigint;
+      creditNoteDebitMicros: bigint;
+    }>,
+  ): PaykitLedgerPort {
     return {
       fetchWindow: async () => ({
         subscriptionCreditMicros: net.subscriptionCreditMicros ?? 0n,
@@ -428,18 +427,22 @@ describe("Orchestrator — advisory lock + canary auto-flip (Val S4 Q3)", () => 
       providerId: "stripe-subscription",
       cache: buildCachePort([]),
       adapter: buildAdapterPort({}),
-      stripeFinance: { fetchWindow: async () => ({
-        invoicesPaidMicros: 0n,
-        chargeRefundsMicros: 0n,
-        disputesLostMicros: 0n,
-        creditNotesMicros: 0n,
-      }) },
-      ledger: { fetchWindow: async () => ({
-        subscriptionCreditMicros: 0n,
-        refundDebitMicros: 0n,
-        disputeDebitMicros: 0n,
-        creditNoteDebitMicros: 0n,
-      }) },
+      stripeFinance: {
+        fetchWindow: async () => ({
+          invoicesPaidMicros: 0n,
+          chargeRefundsMicros: 0n,
+          disputesLostMicros: 0n,
+          creditNotesMicros: 0n,
+        }),
+      },
+      ledger: {
+        fetchWindow: async () => ({
+          subscriptionCreditMicros: 0n,
+          refundDebitMicros: 0n,
+          disputeDebitMicros: 0n,
+          creditNoteDebitMicros: 0n,
+        }),
+      },
       tenants: [],
       window: { since: new Date(), until: new Date() },
     });
@@ -457,18 +460,22 @@ describe("Orchestrator — advisory lock + canary auto-flip (Val S4 Q3)", () => 
       providerId: "stripe-subscription",
       cache: buildCachePort([]),
       adapter: buildAdapterPort({}),
-      stripeFinance: { fetchWindow: async () => ({
-        invoicesPaidMicros: 0n,
-        chargeRefundsMicros: 0n,
-        disputesLostMicros: 0n,
-        creditNotesMicros: 0n,
-      }) },
-      ledger: { fetchWindow: async () => ({
-        subscriptionCreditMicros: 0n,
-        refundDebitMicros: 0n,
-        disputeDebitMicros: 0n,
-        creditNoteDebitMicros: 0n,
-      }) },
+      stripeFinance: {
+        fetchWindow: async () => ({
+          invoicesPaidMicros: 0n,
+          chargeRefundsMicros: 0n,
+          disputesLostMicros: 0n,
+          creditNotesMicros: 0n,
+        }),
+      },
+      ledger: {
+        fetchWindow: async () => ({
+          subscriptionCreditMicros: 0n,
+          refundDebitMicros: 0n,
+          disputeDebitMicros: 0n,
+          creditNoteDebitMicros: 0n,
+        }),
+      },
       tenants: [],
       window: { since: new Date(), until: new Date() },
       now: () => new Date("2026-05-30"),
@@ -489,18 +496,22 @@ describe("Orchestrator — advisory lock + canary auto-flip (Val S4 Q3)", () => 
       providerId: "stripe-subscription",
       cache: buildCachePort([]),
       adapter: buildAdapterPort({}),
-      stripeFinance: { fetchWindow: async () => ({
-        invoicesPaidMicros: 0n,
-        chargeRefundsMicros: 0n,
-        disputesLostMicros: 0n,
-        creditNotesMicros: 0n,
-      }) },
-      ledger: { fetchWindow: async () => ({
-        subscriptionCreditMicros: 0n,
-        refundDebitMicros: 0n,
-        disputeDebitMicros: 0n,
-        creditNoteDebitMicros: 0n,
-      }) },
+      stripeFinance: {
+        fetchWindow: async () => ({
+          invoicesPaidMicros: 0n,
+          chargeRefundsMicros: 0n,
+          disputesLostMicros: 0n,
+          creditNotesMicros: 0n,
+        }),
+      },
+      ledger: {
+        fetchWindow: async () => ({
+          subscriptionCreditMicros: 0n,
+          refundDebitMicros: 0n,
+          disputeDebitMicros: 0n,
+          creditNoteDebitMicros: 0n,
+        }),
+      },
       tenants: [],
       window: { since: new Date(), until: new Date() },
       now: () => new Date("2026-05-30"),

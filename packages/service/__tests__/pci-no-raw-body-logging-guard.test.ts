@@ -10,7 +10,7 @@
  * into logs). Structured logging of metadata is fine; logging the raw/parsed
  * body is not.
  */
-import { readdirSync, readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";

@@ -74,9 +74,7 @@ function parseMicros(value: string): bigint | null {
   }
 }
 
-export function evaluateSettlementAmount(
-  input: EvaluateSettlementAmountInput,
-): SettlementDecision {
+export function evaluateSettlementAmount(input: EvaluateSettlementAmountInput): SettlementDecision {
   // Exact-settling rails: the provider owns the amount, so there is nothing to
   // compare. Credit exactly what the adapter reported, as today.
   if (input.settlesExactAmount) {

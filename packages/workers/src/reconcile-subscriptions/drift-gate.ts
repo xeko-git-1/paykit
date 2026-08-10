@@ -11,8 +11,7 @@
  */
 import type { SubscriptionAdapter } from "@xeko-git-1/paykit";
 
-export interface DriftGateAdapter
-  extends Pick<SubscriptionAdapter, "id"> {
+export interface DriftGateAdapter extends Pick<SubscriptionAdapter, "id"> {
   findLatestEventCreated(subscriptionId: string, since?: Date): Promise<Date | null>;
 }
 

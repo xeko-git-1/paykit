@@ -1,7 +1,11 @@
 // Server barrel — db schema + repos. Phases 04-07 will add provider clients,
 // routes, middleware. Phase 13 adds observability + secret rotation hooks.
 
-export type { DbClient, DbOrTx, DbTransactionHandle } from "@xeko-git-1/paykit-auth-core/db/client.js";
+export type {
+  DbClient,
+  DbOrTx,
+  DbTransactionHandle,
+} from "@xeko-git-1/paykit-auth-core/db/client.js";
 
 // Full Drizzle schema namespace — pass to drizzle(pool, { schema }) so the
 // relational query API (db.query.*) is available. Service mode builds its own

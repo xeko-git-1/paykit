@@ -1,11 +1,11 @@
+import type { PaykitAuthContext } from "@xeko-git-1/paykit-server";
 /**
  * Rate-limit tests — verifies per-key token bucket behavior,
  * X-RateLimit-* headers, and isolation between different keys.
  */
-import { describe, expect, it, beforeEach } from "vitest";
-import { buildV1TestApp } from "./helpers/build-v1-test-app.js";
+import { beforeEach, describe, expect, it } from "vitest";
 import { resetAllBuckets } from "../src/v1/rate-limit.js";
-import type { PaykitAuthContext } from "@xeko-git-1/paykit-server";
+import { buildV1TestApp } from "./helpers/build-v1-test-app.js";
 
 describe("/v1 rate limiting", () => {
   beforeEach(() => {

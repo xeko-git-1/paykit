@@ -28,7 +28,9 @@ const STATUS_OPTIONS = [
 export type SubscriptionStatusFilter = (typeof STATUS_OPTIONS)[number];
 
 export interface SubscriptionPanelFetchClient {
-  list(params: { status?: string; tenantId?: string }): Promise<{ subscriptions: SubscriptionRow[] }>;
+  list(params: { status?: string; tenantId?: string }): Promise<{
+    subscriptions: SubscriptionRow[];
+  }>;
   cancel(id: string, atPeriodEnd: boolean, idempotencyKey: string): Promise<void>;
   upgrade(id: string, newPriceId: string, idempotencyKey: string): Promise<void>;
   refund(input: {
@@ -52,6 +54,11 @@ export function SubscriptionPanel(props: SubscriptionPanelProps): React.ReactEle
   const [loading, setLoading] = React.useState<boolean>(false);
   const [upgrading, setUpgrading] = React.useState<SubscriptionRow | null>(null);
   const [refunding, setRefunding] = React.useState<SubscriptionRow | null>(null);
+  // Narrowed once so the modal and its submit handler share one non-null id.
+  // Reading `refunding.latestInvoiceId` again inside the async callback would
+  // widen back to `string | undefined`, since the state can change while the
+  // request is in flight.
+  const refundingInvoiceId = refunding?.latestInvoiceId ?? null;
 
   const refresh = React.useCallback(async () => {
     setLoading(true);
@@ -131,14 +138,14 @@ export function SubscriptionPanel(props: SubscriptionPanelProps): React.ReactEle
         />
       ) : null}
 
-      {refunding && refunding.latestInvoiceId ? (
+      {refundingInvoiceId ? (
         <RefundModal
           t={t}
-          invoiceId={refunding.latestInvoiceId}
+          invoiceId={refundingInvoiceId}
           onCancel={() => setRefunding(null)}
           onSubmit={async ({ amountMicros, reason }) => {
             await client.refund({
-              invoiceId: refunding.latestInvoiceId!,
+              invoiceId: refundingInvoiceId,
               amountMicros,
               reason,
               idempotencyKey: randomKey(),
