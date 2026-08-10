@@ -54,6 +54,10 @@
 
 **VI —** Cryptomus là lựa chọn đa chain thứ hai; ép chain bằng `CRYPTOMUS_NETWORK` (`bsc` / `tron` / `eth` / `polygon`) hoặc để khách tự chọn.
 
+**EN —** These codes are checked at startup. An unrecognised value refuses to boot and names the codes paykit knows — without the check, a typo boots cleanly and then fails every checkout with a 502 that advises a retry which can never succeed. The authoritative list lives in `packages/core/src/adapters/crypto-chain-codes.ts`; the providers add combinations faster than paykit tracks them, so set `PAYKIT_ALLOW_UNKNOWN_CHAIN_CODES=true` to pass a newer code through unchecked.
+
+**VI —** Các mã này được kiểm tra lúc khởi động. Giá trị không nhận dạng được sẽ chặn boot và in ra danh sách mã paykit biết — nếu không có bước này, lỗi chính tả vẫn boot bình thường rồi làm mọi checkout trả 502 kèm lời khuyên retry không bao giờ thành công. Danh sách chuẩn nằm ở `packages/core/src/adapters/crypto-chain-codes.ts`; các cổng thêm chain nhanh hơn paykit theo dõi, nên đặt `PAYKIT_ALLOW_UNKNOWN_CHAIN_CODES=true` để cho mã mới đi qua mà không kiểm tra.
+
 ---
 
 ## 4. Setup steps (new project) / Các bước thiết lập (project mới)
