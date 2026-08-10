@@ -1,10 +1,10 @@
+import type { PaykitAuthContext } from "@xeko-git-1/paykit-server";
 /**
  * Refund ownership tests (F4) — verifies that merchant A cannot refund
  * transactions belonging to merchant B, preventing IDOR attacks.
  */
 import { describe, expect, it } from "vitest";
 import { buildV1TestApp, createMockDbState } from "./helpers/build-v1-test-app.js";
-import type { PaykitAuthContext } from "@vibecc/paykit-server";
 
 describe("/v1/refunds ownership enforcement", () => {
   const merchantAAuth: PaykitAuthContext = {

@@ -1,5 +1,5 @@
 /**
- * @vibecc/paykit-binance — adapter for Binance Pay merchant payments.
+ * @xeko-git-1/paykit-binance — adapter for Binance Pay merchant payments.
  *
  * Binance Pay is OFF-CHAIN: the payer settles from their Binance wallet balance
  * and funds land in the merchant's Binance account. There is no transaction hash,

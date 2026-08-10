@@ -1,5 +1,5 @@
 {
-  "name": "@vibecc/paykit-server",
+  "name": "@xeko-git-1/paykit-server",
   "version": "0.3.0-rc.0",
   "description": "Paykit server: Hono routes (checkout, webhooks, billing, admin), DB schema, repos, provider clients",
   "type": "module",
@@ -26,21 +26,21 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@vibecc/paykit": "workspace:*",
-    "@vibecc/paykit-auth-core": "workspace:*",
+    "@xeko-git-1/paykit": "workspace:*",
+    "@xeko-git-1/paykit-auth-core": "workspace:*",
     "zod": "^4.4.3"
   },
   "peerDependencies": {
-    "@vibecc/paykit-sepay": "workspace:^",
-    "@vibecc/paykit-stripe": "workspace:^",
+    "@xeko-git-1/paykit-sepay": "workspace:^",
+    "@xeko-git-1/paykit-stripe": "workspace:^",
     "drizzle-orm": "^0.36.0",
     "hono": "^4.6.0",
     "pg": "^8.13.0",
     "stripe": "^18.0.0"
   },
   "peerDependenciesMeta": {
-    "@vibecc/paykit-stripe": { "optional": true },
-    "@vibecc/paykit-sepay": { "optional": true },
+    "@xeko-git-1/paykit-stripe": { "optional": true },
+    "@xeko-git-1/paykit-sepay": { "optional": true },
     "stripe": { "optional": true }
   },
   "engines": {

@@ -71,10 +71,7 @@ describe("Rotation array within a single instance", () => {
     });
     expect(a.verifyWebhookSignature(PAYLOAD, { "stripe-signature": "sig" })).toBe(true);
     // Both secrets attempted (mock fails on whsec_old_disabled, succeeds on whsec_ok_active)
-    expect(callRecord.map((c) => c.secret)).toEqual([
-      "whsec_old_disabled",
-      "whsec_ok_active",
-    ]);
+    expect(callRecord.map((c) => c.secret)).toEqual(["whsec_old_disabled", "whsec_ok_active"]);
   });
 
   it("returns false when ALL rotation secrets fail", () => {

@@ -69,7 +69,7 @@ Deny-by-default: scope không khớp → 403; key không tồn tại/revoked →
    - timing-safe: verify dùng `timingSafeEqual` (assert qua không so sánh `===` chuỗi — review-level, hoặc test hành vi reject).
    Chạy → FAIL.
 2. **GREEN:** implement `api-key.ts` + `scope.ts` + repo (repo unit test dùng fake DB theo pattern `admin-routes.test.ts`).
-3. **VERIFY:** `pnpm --filter @vibecc/paykit-server build && pnpm vitest run packages/server/__tests__/api-key-auth-primitives.test.ts` → PASS.
+3. **VERIFY:** `pnpm --filter @xeko-git-1/paykit-server build && pnpm vitest run packages/server/__tests__/api-key-auth-primitives.test.ts` → PASS.
 
 ## Success Criteria
 

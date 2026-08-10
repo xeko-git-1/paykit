@@ -51,7 +51,7 @@ TRƯỚC**, V4.0 sau. Plan này khóa định hướng trong khi V3 ship. `block
 | D2 | API key lưu **hashed** (sha256), prefix `pk_live_`/`pk_test_` | Theo chuẩn Stripe; DB leak không lộ key dùng được |
 | D3 | `merchant_id` = `tenantId` = `ownerId` cho V4.0 | Sub-account/team deferred. Giữ ledger schema bất biến |
 | D4 | Auth = Hono middleware, mirror `adminGuardMiddleware` | Pattern đã có (`admin-guard.ts`); set tenant vào `c` context |
-| D5 | Service shell = **package mới** `packages/service`, import `@vibecc/paykit-server` | Giữ server là library; service chỉ là deployable shell + bootstrap |
+| D5 | Service shell = **package mới** `packages/service`, import `@xeko-git-1/paykit-server` | Giữ server là library; service chỉ là deployable shell + bootstrap |
 | D6 | JWT V4.0 = verify middleware + mint helper + plane-separation only | Dashboard login flow đầy đủ defer V4.4 — tránh over-build |
 | D7 | Rate-limit in-memory per-key cho V4.0; Redis path documented, defer | KISS single-instance; multi-instance là V4.x |
 | D8 | **PCI lock:** service KHÔNG BAO GIỜ nhận PAN/thẻ — chỉ token/redirect | Sai = rơi PCI-DSS đầy đủ. Khóa từ design |

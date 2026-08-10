@@ -1,5 +1,5 @@
 {
-  "name": "@vibecc/paykit-sdk",
+  "name": "@xeko-git-1/paykit-sdk",
   "version": "0.4.0-rc.0",
   "description": "Thin, type-safe TypeScript client for the Paykit /v1 API. Types generated from the OpenAPI 3.1 spec; transport is a hand-written fetch wrapper with zero runtime dependencies.",
   "type": "module",
@@ -28,7 +28,7 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "@vibecc/paykit-service": "workspace:*",
+    "@xeko-git-1/paykit-service": "workspace:*",
     "openapi-typescript": "7.4.4",
     "tsx": "^4.19.2"
   },

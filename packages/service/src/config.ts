@@ -3,7 +3,7 @@
  *
  * JWT signing secret is NOT read from env. It lives in the runtime_config
  * table and is loaded/seeded at service start by createJwtSecretLoader
- * (see @vibecc/paykit-server jwt-middleware).
+ * (see @xeko-git-1/paykit-server jwt-middleware).
  */
 import { z } from "zod";
 
@@ -180,26 +180,33 @@ export interface ServiceConfig {
  * with the exact missing field names rather than silently starting without the
  * provider. Never echoes secret values.
  */
-function resolveProviderCreds<T>(
+function resolveProviderCreds<K extends string, T>(
   providerName: string,
-  required: Record<string, string | undefined>,
-  build: () => T,
+  required: Record<K, string | undefined>,
+  build: (credentials: Record<K, string>) => T,
 ): T | undefined {
-  const present = Object.entries(required)
-    .filter(([, v]) => v !== undefined && v !== "")
-    .map(([k]) => k);
-  if (present.length === 0) return undefined;
+  const present: string[] = [];
+  const missing: string[] = [];
+  const credentials = {} as Record<K, string>;
 
-  const missing = Object.entries(required)
-    .filter(([, v]) => v === undefined || v === "")
-    .map(([k]) => k);
+  for (const key of Object.keys(required) as K[]) {
+    const value = required[key];
+    if (value === undefined || value === "") {
+      missing.push(key);
+    } else {
+      present.push(key);
+      credentials[key] = value;
+    }
+  }
+
+  if (present.length === 0) return undefined;
   if (missing.length > 0) {
     throw new Error(
       `Incomplete ${providerName} configuration: set [${present.join(", ")}] ` +
         `but missing [${missing.join(", ")}]. Provide all required vars or none.`,
     );
   }
-  return build();
+  return build(credentials);
 }
 
 export function parseServiceConfig(env: Record<string, string | undefined>): ServiceConfig {
@@ -218,9 +225,9 @@ export function parseServiceConfig(env: Record<string, string | undefined>): Ser
       STRIPE_SECRET_KEY: parsed.STRIPE_SECRET_KEY,
       STRIPE_WEBHOOK_SECRET: parsed.STRIPE_WEBHOOK_SECRET,
     },
-    () => ({
-      secretKey: parsed.STRIPE_SECRET_KEY!,
-      webhookSecret: parsed.STRIPE_WEBHOOK_SECRET!,
+    (creds) => ({
+      secretKey: creds.STRIPE_SECRET_KEY,
+      webhookSecret: creds.STRIPE_WEBHOOK_SECRET,
       successUrl: parsed.STRIPE_SUCCESS_URL ?? "http://localhost:3000/success",
       cancelUrl: parsed.STRIPE_CANCEL_URL ?? "http://localhost:3000/cancel",
     }),
@@ -235,12 +242,12 @@ export function parseServiceConfig(env: Record<string, string | undefined>): Ser
       SEPAY_ACCOUNT_NAME: parsed.SEPAY_ACCOUNT_NAME,
       SEPAY_BANK_BIN: parsed.SEPAY_BANK_BIN,
     },
-    () => ({
-      apiKey: parsed.SEPAY_API_KEY!,
-      secretKey: parsed.SEPAY_SECRET_KEY!,
-      accountNumber: parsed.SEPAY_ACCOUNT_NUMBER!,
-      accountName: parsed.SEPAY_ACCOUNT_NAME!,
-      bankBin: parsed.SEPAY_BANK_BIN!,
+    (creds) => ({
+      apiKey: creds.SEPAY_API_KEY,
+      secretKey: creds.SEPAY_SECRET_KEY,
+      accountNumber: creds.SEPAY_ACCOUNT_NUMBER,
+      accountName: creds.SEPAY_ACCOUNT_NAME,
+      bankBin: creds.SEPAY_BANK_BIN,
     }),
   );
 
@@ -250,15 +257,14 @@ export function parseServiceConfig(env: Record<string, string | undefined>): Ser
       NOWPAYMENTS_API_KEY: parsed.NOWPAYMENTS_API_KEY,
       NOWPAYMENTS_IPN_SECRET: parsed.NOWPAYMENTS_IPN_SECRET,
     },
-    () => ({
-      apiKey: parsed.NOWPAYMENTS_API_KEY!,
-      ipnSecret: parsed.NOWPAYMENTS_IPN_SECRET!,
+    (creds) => ({
+      apiKey: creds.NOWPAYMENTS_API_KEY,
+      ipnSecret: creds.NOWPAYMENTS_IPN_SECRET,
       environment: parsed.NOWPAYMENTS_ENVIRONMENT ?? ("production" as const),
       // Optional. Leave unset so the customer picks any USDT chain (BEP20/TRC20/
       // ERC20/…) on the NowPayments page; set to force one chain, e.g.
       // 'usdtbsc' (BEP20), 'usdttrc20', 'usdterc20', 'usdtmatic'.
-      ...(parsed.NOWPAYMENTS_PAY_CURRENCY !== undefined &&
-      parsed.NOWPAYMENTS_PAY_CURRENCY !== ""
+      ...(parsed.NOWPAYMENTS_PAY_CURRENCY !== undefined && parsed.NOWPAYMENTS_PAY_CURRENCY !== ""
         ? { payCurrency: parsed.NOWPAYMENTS_PAY_CURRENCY }
         : {}),
     }),
@@ -272,11 +278,11 @@ export function parseServiceConfig(env: Record<string, string | undefined>): Ser
       VNPAY_RETURN_URL: parsed.VNPAY_RETURN_URL,
       VNPAY_IPN_URL: parsed.VNPAY_IPN_URL,
     },
-    () => ({
-      tmnCode: parsed.VNPAY_TMN_CODE!,
-      hashSecret: parsed.VNPAY_HASH_SECRET!,
-      returnUrl: parsed.VNPAY_RETURN_URL!,
-      ipnUrl: parsed.VNPAY_IPN_URL!,
+    (creds) => ({
+      tmnCode: creds.VNPAY_TMN_CODE,
+      hashSecret: creds.VNPAY_HASH_SECRET,
+      returnUrl: creds.VNPAY_RETURN_URL,
+      ipnUrl: creds.VNPAY_IPN_URL,
       environment: parsed.VNPAY_ENVIRONMENT ?? ("sandbox" as const),
     }),
   );
@@ -290,12 +296,12 @@ export function parseServiceConfig(env: Record<string, string | undefined>): Ser
       MOMO_RETURN_URL: parsed.MOMO_RETURN_URL,
       MOMO_IPN_URL: parsed.MOMO_IPN_URL,
     },
-    () => ({
-      partnerCode: parsed.MOMO_PARTNER_CODE!,
-      accessKey: parsed.MOMO_ACCESS_KEY!,
-      secretKey: parsed.MOMO_SECRET_KEY!,
-      returnUrl: parsed.MOMO_RETURN_URL!,
-      ipnUrl: parsed.MOMO_IPN_URL!,
+    (creds) => ({
+      partnerCode: creds.MOMO_PARTNER_CODE,
+      accessKey: creds.MOMO_ACCESS_KEY,
+      secretKey: creds.MOMO_SECRET_KEY,
+      returnUrl: creds.MOMO_RETURN_URL,
+      ipnUrl: creds.MOMO_IPN_URL,
       environment: parsed.MOMO_ENVIRONMENT ?? ("sandbox" as const),
     }),
   );
@@ -309,12 +315,12 @@ export function parseServiceConfig(env: Record<string, string | undefined>): Ser
       ZALOPAY_RETURN_URL: parsed.ZALOPAY_RETURN_URL,
       ZALOPAY_CALLBACK_URL: parsed.ZALOPAY_CALLBACK_URL,
     },
-    () => ({
-      appId: parsed.ZALOPAY_APP_ID!,
-      key1: parsed.ZALOPAY_KEY1!,
-      key2: parsed.ZALOPAY_KEY2!,
-      returnUrl: parsed.ZALOPAY_RETURN_URL!,
-      callbackUrl: parsed.ZALOPAY_CALLBACK_URL!,
+    (creds) => ({
+      appId: creds.ZALOPAY_APP_ID,
+      key1: creds.ZALOPAY_KEY1,
+      key2: creds.ZALOPAY_KEY2,
+      returnUrl: creds.ZALOPAY_RETURN_URL,
+      callbackUrl: creds.ZALOPAY_CALLBACK_URL,
       environment: parsed.ZALOPAY_ENVIRONMENT ?? ("sandbox" as const),
     }),
   );
@@ -325,9 +331,9 @@ export function parseServiceConfig(env: Record<string, string | undefined>): Ser
       CRYPTOMUS_MERCHANT_ID: parsed.CRYPTOMUS_MERCHANT_ID,
       CRYPTOMUS_PAYMENT_API_KEY: parsed.CRYPTOMUS_PAYMENT_API_KEY,
     },
-    () => ({
-      merchantId: parsed.CRYPTOMUS_MERCHANT_ID!,
-      paymentApiKey: parsed.CRYPTOMUS_PAYMENT_API_KEY!,
+    (creds) => ({
+      merchantId: creds.CRYPTOMUS_MERCHANT_ID,
+      paymentApiKey: creds.CRYPTOMUS_PAYMENT_API_KEY,
       // All optional. Leave to_currency/network unset so the customer picks any
       // USDT chain (BEP20/TRC20/ERC20/…) on the Cryptomus page; set to pin one.
       ...(parsed.CRYPTOMUS_TO_CURRENCY !== undefined && parsed.CRYPTOMUS_TO_CURRENCY !== ""
@@ -354,10 +360,10 @@ export function parseServiceConfig(env: Record<string, string | undefined>): Ser
       // fails signature verification, so a paid order would never be credited.
       BINANCE_WEBHOOK_PUBLIC_KEY: parsed.BINANCE_WEBHOOK_PUBLIC_KEY,
     },
-    () => ({
-      apiKey: parsed.BINANCE_API_KEY!,
-      apiSecret: parsed.BINANCE_API_SECRET!,
-      webhookPublicKey: parsed.BINANCE_WEBHOOK_PUBLIC_KEY!,
+    (creds) => ({
+      apiKey: creds.BINANCE_API_KEY,
+      apiSecret: creds.BINANCE_API_SECRET,
+      webhookPublicKey: creds.BINANCE_WEBHOOK_PUBLIC_KEY,
       ...(parsed.BINANCE_RETURN_URL !== undefined && parsed.BINANCE_RETURN_URL !== ""
         ? { returnUrl: parsed.BINANCE_RETURN_URL }
         : {}),

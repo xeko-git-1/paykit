@@ -29,7 +29,7 @@ cloudflared tunnel --url http://localhost:3000
 ## Step 3 — Wire paykit adapter
 
 ```ts
-import { createVnpayAdapter } from "@vibecc/paykit-vnpay";
+import { createVnpayAdapter } from "@xeko-git-1/paykit-vnpay";
 
 const vnpay = createVnpayAdapter({
   tmnCode: process.env.VNPAY_TMN_CODE!,

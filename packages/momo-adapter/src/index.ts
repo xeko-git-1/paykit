@@ -1,5 +1,5 @@
 /**
- * @vibecc/paykit-momo — V1.5 adapter for Momo e-wallet payments.
+ * @xeko-git-1/paykit-momo — V1.5 adapter for Momo e-wallet payments.
  *
  * Flow:
  *   1. createCheckout: POST /v2/gateway/api/create with HMAC-SHA256 signed body

@@ -54,7 +54,7 @@ item is gated by a test or a verified manual step.
 
 ## Deferred
 
-- [ ] Extract `@vibecc/paykit-auth-core` so the CLI no longer imports `@vibecc/paykit-server`
+- [ ] Extract `@xeko-git-1/paykit-auth-core` so the CLI no longer imports `@xeko-git-1/paykit-server`
       (the boundary test is currently skipped) — see
       `plans/260531-2213-GH-03-v40-service-operability-docker-sdk/phase-06-extract-auth-core.md`
 

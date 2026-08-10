@@ -62,7 +62,10 @@ describe("subscribe forwards idempotency_key (RT F4/F8)", () => {
       idempotencyKey: "key-abc",
     });
     expect(stripeCalls.create).toHaveBeenCalledTimes(1);
-    const [params, opts] = stripeCalls.create.mock.calls[0] as [Record<string, unknown>, Record<string, unknown>];
+    const [params, opts] = stripeCalls.create.mock.calls[0] as [
+      Record<string, unknown>,
+      Record<string, unknown>,
+    ];
     expect((params.metadata as Record<string, string>).paykit_tenant_id).toBe(
       "00000000-0000-0000-0000-000000000001",
     );
@@ -86,7 +89,9 @@ describe("subscribe forwards idempotency_key (RT F4/F8)", () => {
       paykitTenantId: "t",
       trialDays: 7,
     });
-    expect((stripeCalls.create.mock.calls[0]?.[0] as Record<string, unknown>).trial_period_days).toBe(7);
+    expect(
+      (stripeCalls.create.mock.calls[0]?.[0] as Record<string, unknown>).trial_period_days,
+    ).toBe(7);
 
     stripeCalls.create.mockClear();
     await adapter.subscribe({ customerId: "c", priceId: "p", paykitTenantId: "t", trialDays: 0 });
@@ -132,7 +137,9 @@ describe("upgrade forwards idempotency_key + sets prorate", () => {
     stripeCalls.retrieve.mockResolvedValueOnce(baseSub);
     stripeCalls.update.mockResolvedValueOnce({
       ...baseSub,
-      items: { data: [{ id: "si_1", price: { id: "price_p2" }, current_period_end: 1_700_010_000 }] },
+      items: {
+        data: [{ id: "si_1", price: { id: "price_p2" }, current_period_end: 1_700_010_000 }],
+      },
     });
     const adapter = createStripeSubscriptionAdapter({ secretKey: "sk", webhookSecret: "w" });
     const r = await adapter.upgrade({

@@ -15,7 +15,7 @@ import type {
   ProviderTxnRecord,
   RefundInput,
   RefundResult,
-} from "@vibecc/paykit";
+} from "@xeko-git-1/paykit";
 import { paramsToWebhookEvent, parseFormUrlencoded } from "./ipn-parser.js";
 import { signParams, verifySignature } from "./signature.js";
 import { encodeRfc3986 } from "./url-encoder.js";

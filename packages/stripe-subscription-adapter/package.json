@@ -1,5 +1,5 @@
 {
-  "name": "@vibecc/paykit-stripe-subscription",
+  "name": "@xeko-git-1/paykit-stripe-subscription",
   "version": "0.2.1",
   "description": "Paykit V2 adapter for Stripe Subscriptions — pass-through over stripe.subscriptions.{create,cancel,update,list}; webhook normalization for 10 events",
   "type": "module",
@@ -26,7 +26,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@vibecc/paykit": "workspace:*"
+    "@xeko-git-1/paykit": "workspace:*"
   },
   "peerDependencies": {
     "stripe": "^18.0.0"

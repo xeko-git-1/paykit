@@ -1,5 +1,5 @@
 {
-  "name": "@vibecc/paykit-workers",
+  "name": "@xeko-git-1/paykit-workers",
   "version": "0.2.1",
   "description": "Paykit workers: reconciliation engine (Stripe + SePay match)",
   "type": "module",
@@ -26,7 +26,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@vibecc/paykit": "workspace:*"
+    "@xeko-git-1/paykit": "workspace:*"
   },
   "peerDependencies": {
     "drizzle-orm": "^0.36.0",
@@ -38,7 +38,7 @@
   },
   "devDependencies": {
     "@types/pg": "^8.20.0",
-    "@vibecc/paykit-server": "workspace:^",
+    "@xeko-git-1/paykit-server": "workspace:^",
     "drizzle-orm": "^0.36.0",
     "pg": "^8.13.0"
   }

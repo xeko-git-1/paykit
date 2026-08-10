@@ -17,7 +17,7 @@
  * payment.amount_mismatch instead of payment.completed → server quarantines
  * (Val D3) until admin reconciles.
  */
-import type { NormalizedWebhookEvent, WebhookEventType } from "@vibecc/paykit";
+import type { NormalizedWebhookEvent, WebhookEventType } from "@xeko-git-1/paykit";
 
 export interface NpIpnPayload {
   readonly payment_id?: number | string;

@@ -1,5 +1,5 @@
 /**
- * @vibecc/paykit-auth-core — HTTP-free foundation shared by paykit-server and
+ * @xeko-git-1/paykit-auth-core — HTTP-free foundation shared by paykit-server and
  * paykit-cli: Drizzle schema + client types, repos, and auth primitives (API-key
  * mint/verify, scopes, JWT claims + signing + secret loader).
  *

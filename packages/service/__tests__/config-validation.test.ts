@@ -1,4 +1,4 @@
-import { createJwtSecretLoader } from "@vibecc/paykit-server";
+import { createJwtSecretLoader } from "@xeko-git-1/paykit-server";
 /**
  * Config validation tests — verifies fail-fast behavior for missing/invalid env.
  * Also exercises createJwtSecretLoader (the real runtime path) including the

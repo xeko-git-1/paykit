@@ -21,7 +21,7 @@ dependencies: [3]
 ## Overview
 
 Package mới `packages/service`: bootstrap chạy được standalone (`@hono/node-server`),
-import `@vibecc/paykit-server`, wire auth middleware (phase 3) + adapters từ env config,
+import `@xeko-git-1/paykit-server`, wire auth middleware (phase 3) + adapters từ env config,
 sở hữu Postgres riêng. Dockerfile + healthcheck. Đây là biến library → deployable service.
 
 ## Requirements
@@ -40,7 +40,7 @@ sở hữu Postgres riêng. Dockerfile + healthcheck. Đây là biến library �
 - CLI subcommand trong cùng image: `migrate` + `doctor` (reuse `paykit-cli`). Single container, command tách (open Q1).
 
 **Non-functional**
-- `packages/service` import `@vibecc/paykit-server` + adapters; KHÔNG copy logic (trừ wiring + adapters-from-env mới).
+- `packages/service` import `@xeko-git-1/paykit-server` + adapters; KHÔNG copy logic (trừ wiring + adapters-from-env mới).
 - Dockerfile multi-stage (build → slim runtime, node:20-alpine), non-root user.
 - **F2 structural rule:** webhook path mount trên tree mà auth/rate-limit glob KHÔNG match được.
 
@@ -81,7 +81,7 @@ Request ─► Hono app
    Dùng `app.fetch(Request)` không cần listen. Chạy → FAIL.
 2. **GREEN:** implement config.ts (zod, secret-length) + adapters-from-env + main wiring (webhook top-level — F2) + health (readyz timeout+cache — F14). Tách `buildServiceApp()` khỏi `serve()` để test fetch app không mở socket.
 3. Viết Dockerfile multi-stage + docker-compose dev.
-4. **VERIFY:** `pnpm --filter @vibecc/paykit-service build && pnpm vitest run packages/service` → PASS. `docker build` thành công; `docker compose up` → `/healthz` 200, `/readyz` 200 sau khi pg sẵn sàng. Synthetic signed IPN → `/webhooks/sepay` trả 2xx (KHÔNG 401) — deploy-smoke.
+4. **VERIFY:** `pnpm --filter @xeko-git-1/paykit-service build && pnpm vitest run packages/service` → PASS. `docker build` thành công; `docker compose up` → `/healthz` 200, `/readyz` 200 sau khi pg sẵn sàng. Synthetic signed IPN → `/webhooks/sepay` trả 2xx (KHÔNG 401) — deploy-smoke.
 
 ## Success Criteria
 

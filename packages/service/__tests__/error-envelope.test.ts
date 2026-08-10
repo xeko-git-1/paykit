@@ -1,10 +1,10 @@
+import { Hono } from "hono";
 /**
  * Error-handler contract: any uncaught route throw must surface as the same
  * { error: { code, message } } envelope the routes emit explicitly, carry
  * apiVersion, and never leak a stack trace or the original message.
  */
 import { describe, expect, it } from "vitest";
-import { Hono } from "hono";
 import { serviceErrorHandler } from "../src/error-handler.js";
 import { API_VERSION } from "../src/v1/dto.js";
 

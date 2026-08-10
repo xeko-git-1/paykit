@@ -27,7 +27,12 @@ export interface PaykitLedgerWindow {
 }
 
 export interface PaykitLedgerPort {
-  fetchWindow(tenantId: string, providerId: string, since: Date, until: Date): Promise<PaykitLedgerWindow>;
+  fetchWindow(
+    tenantId: string,
+    providerId: string,
+    since: Date,
+    until: Date,
+  ): Promise<PaykitLedgerWindow>;
 }
 
 export interface RunLedgerPassInput {

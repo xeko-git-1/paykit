@@ -29,9 +29,9 @@ Correctness rests on the parked state being durable. If the process dies at any 
 ## Configuring it
 
 ```ts
-import { createPaykit } from "@vibecc/paykit-server";
-import type { ScreeningDecision, ScreeningRequest } from "@vibecc/paykit";
-import { ScreeningUnavailableError } from "@vibecc/paykit";
+import { createPaykit } from "@xeko-git-1/paykit-server";
+import type { ScreeningDecision, ScreeningRequest } from "@xeko-git-1/paykit";
+import { ScreeningUnavailableError } from "@xeko-git-1/paykit";
 
 const paykit = await createPaykit({
   db,
@@ -89,7 +89,7 @@ The webhook request path attempts the verdict once, immediately after its transa
 **A job that needs a retry has nothing else to pick it up.** Nothing in the request path will come back for it, so a deployment that configures screening must also drain the queue from a cron or worker tick:
 
 ```ts
-import { drainScreeningJobs } from "@vibecc/paykit-server";
+import { drainScreeningJobs } from "@xeko-git-1/paykit-server";
 
 // Every minute, from your scheduler of choice.
 await drainScreeningJobs({ db, screeningService, logger, events }, 50);

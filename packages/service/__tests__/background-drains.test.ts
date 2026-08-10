@@ -19,7 +19,7 @@ const server = vi.hoisted(() => ({
   sweepWebhookInbox: vi.fn(),
 }));
 
-vi.mock("@vibecc/paykit-server", () => server);
+vi.mock("@xeko-git-1/paykit-server", () => server);
 
 import { startBackgroundDrains } from "../src/background-drains.js";
 

@@ -21,12 +21,11 @@ const ledgerRows: Array<Record<string, unknown>> = [];
 const eventRows: Array<Record<string, unknown>> = [];
 const webhookEventRows: Array<{ provider: string; eventId: string }> = [];
 
-vi.mock("@vibecc/paykit-auth-core/db/repos/subscription.repo.js", () => ({
+vi.mock("@xeko-git-1/paykit-auth-core/db/repos/subscription.repo.js", () => ({
   upsertFromEvent: vi.fn(async (_db: unknown, input: Record<string, unknown>) => {
     const existing = subscriptionRows.find(
       (r) =>
-        r.provider === input.provider &&
-        r.providerSubscriptionId === input.providerSubscriptionId,
+        r.provider === input.provider && r.providerSubscriptionId === input.providerSubscriptionId,
     );
     if (existing) {
       const incoming = input.lastEventCreated as Date;
@@ -50,9 +49,7 @@ vi.mock("@vibecc/paykit-auth-core/db/repos/subscription.repo.js", () => ({
     return row;
   }),
   findByProviderSub: vi.fn(async (_db: unknown, provider: string, id: string) =>
-    subscriptionRows.find(
-      (r) => r.provider === provider && r.providerSubscriptionId === id,
-    ),
+    subscriptionRows.find((r) => r.provider === provider && r.providerSubscriptionId === id),
   ),
   findById: vi.fn(),
   listForTenant: vi.fn(async () => []),
@@ -79,14 +76,14 @@ vi.mock("@vibecc/paykit-auth-core/db/repos/subscription.repo.js", () => ({
   }),
 }));
 
-vi.mock("@vibecc/paykit-auth-core/db/repos/customer.repo.js", () => ({
+vi.mock("@xeko-git-1/paykit-auth-core/db/repos/customer.repo.js", () => ({
   findCustomer: vi.fn(),
   findByProviderCustomerId: vi.fn(),
   getOrInsertCustomer: vi.fn(),
   deleteCustomerForCascade: vi.fn(async () => undefined),
 }));
 
-vi.mock("@vibecc/paykit-auth-core/db/repos/ledger.repo.js", async () => {
+vi.mock("@xeko-git-1/paykit-auth-core/db/repos/ledger.repo.js", async () => {
   return {
     appendLedgerEntry: vi.fn(),
     appendLedgerEntryIdempotent: vi.fn(
@@ -111,7 +108,7 @@ vi.mock("@vibecc/paykit-auth-core/db/repos/ledger.repo.js", async () => {
   };
 });
 
-vi.mock("@vibecc/paykit-auth-core/db/repos/subscription-event.repo.js", () => ({
+vi.mock("@xeko-git-1/paykit-auth-core/db/repos/subscription-event.repo.js", () => ({
   appendSubscriptionEvent: vi.fn(async (_db: unknown, input: Record<string, unknown>) => {
     const row = { eventId: crypto.randomUUID(), createdAt: new Date(), ...input };
     eventRows.push(row);
@@ -120,7 +117,7 @@ vi.mock("@vibecc/paykit-auth-core/db/repos/subscription-event.repo.js", () => ({
   listEventsForSubscription: vi.fn(),
 }));
 
-vi.mock("@vibecc/paykit-auth-core/db/repos/webhook-event.repo.js", () => ({
+vi.mock("@xeko-git-1/paykit-auth-core/db/repos/webhook-event.repo.js", () => ({
   tryRecordWebhookEvent: vi.fn(async (_db: unknown, provider: string, eventId: string) => {
     if (webhookEventRows.some((r) => r.provider === provider && r.eventId === eventId)) {
       return { recorded: false };
@@ -152,10 +149,12 @@ interface ParsedEvent {
   metadata: Record<string, unknown>;
 }
 
-function makeAdapter(opts: {
-  parseReturns?: ParsedEvent | null;
-  signatureValid?: boolean;
-} = {}) {
+function makeAdapter(
+  opts: {
+    parseReturns?: ParsedEvent | null;
+    signatureValid?: boolean;
+  } = {},
+) {
   return {
     id: "stripe-subscription",
     subscribe: vi.fn(),
@@ -275,7 +274,9 @@ describe("Sub lifecycle (RT F9 last-write-wins)", () => {
   });
 
   it("out-of-order: older event does NOT roll back newer state (RT F9)", async () => {
-    subscriptionRows.push(baseSub({ status: "canceled", lastEventCreated: new Date("2026-05-10") }));
+    subscriptionRows.push(
+      baseSub({ status: "canceled", lastEventCreated: new Date("2026-05-10") }),
+    );
     const evt: ParsedEvent = {
       eventId: "evt_old",
       type: "sub.updated",

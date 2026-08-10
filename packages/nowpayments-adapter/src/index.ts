@@ -1,5 +1,5 @@
 /**
- * @vibecc/paykit-nowpayments — V3 adapter for crypto payments via NowPayments.
+ * @xeko-git-1/paykit-nowpayments — V3 adapter for crypto payments via NowPayments.
  *
  * Flow:
  *   1. createCheckout: POST /v1/invoice with USD amount → returns invoice_url

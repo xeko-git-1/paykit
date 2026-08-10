@@ -1,3 +1,18 @@
+import type {
+  CancelSubscriptionInput,
+  CreateSubscriptionInput,
+  SubscriptionAdapter,
+  SubscriptionResult,
+  TenantResolver,
+  UpgradeSubscriptionInput,
+} from "@xeko-git-1/paykit";
+import { TenantResolutionError } from "@xeko-git-1/paykit";
+import type { DbClient } from "@xeko-git-1/paykit-auth-core/db/client.js";
+import * as subscriptionRepo from "@xeko-git-1/paykit-auth-core/db/repos/subscription.repo.js";
+import type { Context } from "hono";
+import { Hono } from "hono";
+import { z } from "zod";
+import { getAuthTenant } from "../../auth/auth-context.js";
 /**
  * Tenant-scoped subscription routes (RT F8 outbox + RT F11 status filter).
  *
@@ -16,27 +31,9 @@
  * Pass A picks up the cache gap within minutes.
  */
 import type { CustomerProviderPort } from "../../services/customer-service.js";
-import type {
-  CancelSubscriptionInput,
-  CreateSubscriptionInput,
-  SubscriptionAdapter,
-  SubscriptionResult,
-  TenantResolver,
-  UpgradeSubscriptionInput,
-} from "@vibecc/paykit";
-import { TenantResolutionError } from "@vibecc/paykit";
-import type { Context } from "hono";
-import { Hono } from "hono";
-import { z } from "zod";
-import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
-import * as subscriptionRepo from "@vibecc/paykit-auth-core/db/repos/subscription.repo.js";
-import { getAuthTenant } from "../../auth/auth-context.js";
 import { buildCustomerService } from "../../services/customer-service.js";
 import { dataJson, errorJson } from "../shared/response.js";
-import {
-  buildIdempotencyMiddleware,
-  readBodyJson,
-} from "./idempotency-middleware.js";
+import { buildIdempotencyMiddleware, readBodyJson } from "./idempotency-middleware.js";
 import { parseStatusFilter, toDto } from "./subscription-dto.js";
 
 const subscribeSchema = z.object({
@@ -113,7 +110,8 @@ export function buildTenantSubscriptionRoutes(deps: TenantSubscriptionRoutesDeps
     const sub = await adapter.subscribe(stripeInput);
     await persistSub(deps, tenant, sub);
     const row = await subscriptionRepo.findByProviderSub(db, adapter.id, sub.id);
-    if (!row) return errorJson(c, 500, "SUBSCRIBE_PERSIST_FAILED", "subscription cache write failed");
+    if (!row)
+      return errorJson(c, 500, "SUBSCRIBE_PERSIST_FAILED", "subscription cache write failed");
     return dataJson(c, toDto(row), 201);
   });
 

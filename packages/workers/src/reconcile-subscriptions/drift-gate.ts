@@ -9,10 +9,9 @@
  *      since `lastEventCreated`. If Stripe has a newer event we don't, allow
  *      mutation; if no newer event, skip (paykit is current).
  */
-import type { SubscriptionAdapter } from "@vibecc/paykit";
+import type { SubscriptionAdapter } from "@xeko-git-1/paykit";
 
-export interface DriftGateAdapter
-  extends Pick<SubscriptionAdapter, "id"> {
+export interface DriftGateAdapter extends Pick<SubscriptionAdapter, "id"> {
   findLatestEventCreated(subscriptionId: string, since?: Date): Promise<Date | null>;
 }
 

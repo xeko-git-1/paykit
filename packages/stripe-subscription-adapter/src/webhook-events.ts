@@ -11,8 +11,8 @@
  * Returns null for any other Stripe event type — caller treats it as
  * uninteresting and ACKs without dispatch.
  */
-import type { NormalizedSubscriptionEvent, SubscriptionEventType } from "@vibecc/paykit";
-import { stripeUsdAmountToMicros } from "@vibecc/paykit";
+import type { NormalizedSubscriptionEvent, SubscriptionEventType } from "@xeko-git-1/paykit";
+import { stripeUsdAmountToMicros } from "@xeko-git-1/paykit";
 import type Stripe from "stripe";
 import { mapStripeStatus } from "./status-mapper.js";
 
@@ -59,7 +59,7 @@ function extractSubAndCustomer(event: Stripe.Event): SubLikePayload | null {
       const sub =
         typeof (inv as unknown as { subscription?: string | Stripe.Subscription }).subscription ===
         "string"
-          ? ((inv as unknown as { subscription: string }).subscription)
+          ? (inv as unknown as { subscription: string }).subscription
           : (inv as unknown as { subscription?: Stripe.Subscription }).subscription?.id;
       if (sub === undefined) return null;
       const cust = typeof inv.customer === "string" ? inv.customer : (inv.customer?.id ?? "");
@@ -74,7 +74,8 @@ function extractSubAndCustomer(event: Stripe.Event): SubLikePayload | null {
       // that linkage Phase 06 looks up via invoice→subscription resolution.
       const charge = event.data.object as Stripe.Charge | Stripe.Dispute;
       if ("customer" in charge && charge.customer !== null) {
-        const customerId = typeof charge.customer === "string" ? charge.customer : charge.customer.id;
+        const customerId =
+          typeof charge.customer === "string" ? charge.customer : charge.customer.id;
         const subId =
           typeof charge.metadata?.paykit_subscription_id === "string"
             ? charge.metadata.paykit_subscription_id
@@ -187,10 +188,7 @@ export function mapEvent(event: Stripe.Event): NormalizedSubscriptionEvent | nul
       const dispute = event.data.object as Stripe.Dispute;
       let micros: string | undefined;
       try {
-        micros = stripeUsdAmountToMicros(
-          dispute.amount,
-          dispute.currency ?? "usd",
-        ).toString();
+        micros = stripeUsdAmountToMicros(dispute.amount, dispute.currency ?? "usd").toString();
       } catch {
         micros = undefined;
       }

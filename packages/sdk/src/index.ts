@@ -1,5 +1,5 @@
 /**
- * @vibecc/paykit-sdk — thin, type-safe client for the Paykit /v1 API.
+ * @xeko-git-1/paykit-sdk — thin, type-safe client for the Paykit /v1 API.
  *
  * Public surface: createPaykitClient + PaykitApiError + types. The api-key plane
  * only; key minting is the jwt/admin plane and is not exposed here.

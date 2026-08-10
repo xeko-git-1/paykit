@@ -22,9 +22,7 @@ const cliManifest = JSON.parse(
 
 describe("Migration 017_discount_reserved — up", () => {
   it("adds a reserved column defaulting to 0 with a non-negative CHECK", () => {
-    expect(up).toMatch(
-      /ADD COLUMN reserved INTEGER NOT NULL DEFAULT 0 CHECK \(reserved >= 0\)/i,
-    );
+    expect(up).toMatch(/ADD COLUMN reserved INTEGER NOT NULL DEFAULT 0 CHECK \(reserved >= 0\)/i);
   });
 
   it("targets paykit.discounts", () => {

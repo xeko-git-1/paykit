@@ -7,7 +7,7 @@
  *   24: cancelled → unknown (skip; paykit doesn't credit)
  *   01-23, 75-79, 99: various failures → payment.failed
  */
-import type { NormalizedWebhookEvent, WebhookEventType } from "@vibecc/paykit";
+import type { NormalizedWebhookEvent, WebhookEventType } from "@xeko-git-1/paykit";
 
 /** Parse application/x-www-form-urlencoded body or URL search string into params object. */
 export function parseFormUrlencoded(rawBody: string): Record<string, string> {

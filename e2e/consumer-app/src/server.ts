@@ -11,12 +11,12 @@ import type {
   AdminGuard,
   PaymentProviderAdapter,
   TenantResolver,
-} from "@vibecc/paykit";
+} from "@xeko-git-1/paykit";
 import {
   type DbClient,
   type PaykitConfig,
   createPaykit,
-} from "@vibecc/paykit-server";
+} from "@xeko-git-1/paykit-server";
 import { Hono } from "hono";
 
 export interface HarnessOptions {

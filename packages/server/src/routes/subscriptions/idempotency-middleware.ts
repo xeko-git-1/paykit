@@ -16,14 +16,14 @@
  * The middleware stashes the canonical body string so the handler can re-read it.
  */
 import { createHash } from "node:crypto";
-import type { TenantResolver } from "@vibecc/paykit";
-import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
+import type { TenantResolver } from "@xeko-git-1/paykit";
+import type { DbClient } from "@xeko-git-1/paykit-auth-core/db/client.js";
 import {
   IdempotencyBodyMismatchError,
   claimIdempotency,
   finalizeIdempotency,
   releaseIdempotency,
-} from "@vibecc/paykit-auth-core/db/repos/idempotency.repo.js";
+} from "@xeko-git-1/paykit-auth-core/db/repos/idempotency.repo.js";
 import type { Context, MiddlewareHandler } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { errorJson } from "../shared/response.js";

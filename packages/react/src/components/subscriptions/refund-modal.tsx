@@ -24,7 +24,7 @@ export function RefundModal(props: RefundModalProps): React.ReactElement {
   const canSubmit = validAmount && validReason;
 
   return (
-    <div className="paykit-subs-modal" role="dialog" aria-modal="true">
+    <dialog className="paykit-subs-modal" open aria-modal="true">
       <h3>{props.t("paykit.subscriptions.refund.title")}</h3>
       <p>
         invoice: <code>{props.invoiceId}</code>
@@ -67,6 +67,6 @@ export function RefundModal(props: RefundModalProps): React.ReactElement {
       >
         {props.t("paykit.subscriptions.refund.confirm")}
       </button>
-    </div>
+    </dialog>
   );
 }

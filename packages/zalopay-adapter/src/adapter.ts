@@ -21,7 +21,7 @@ import type {
   RefundInput,
   RefundResult,
   WebhookEventType,
-} from "@vibecc/paykit";
+} from "@xeko-git-1/paykit";
 import {
   buildAppTransId,
   buildCreateCanonical,

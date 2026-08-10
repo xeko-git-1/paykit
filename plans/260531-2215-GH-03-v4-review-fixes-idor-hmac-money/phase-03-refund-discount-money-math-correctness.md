@@ -35,7 +35,7 @@ Phase này giờ chỉ còn **I4**: discount % phân số bị `Math.round` làm
 
 ## Success Criteria
 - [x] Discount 12.5% / 0.4% / 100% / 0% tính đúng (test chứng minh)
-- [x] `pnpm --filter @vibecc/paykit-server build` pass; `apply-discount.test.ts` xanh
+- [x] `pnpm --filter @xeko-git-1/paykit-server build` pass; `apply-discount.test.ts` xanh
 
 ## Risk Assessment
 - Thấp: thay đổi cục bộ một biểu thức. Clamp bps `[0,10000]` bắt buộc để tránh `BigInt(10000 - bps)` âm.

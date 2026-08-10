@@ -1,3 +1,4 @@
+import type { PaykitAuthContext } from "@xeko-git-1/paykit-server";
 /**
  * OpenAPI spec tests — verifies that GET /v1/openapi.json returns a valid
  * OpenAPI 3.1 document with paths matching the router and components
@@ -5,7 +6,6 @@
  */
 import { describe, expect, it } from "vitest";
 import { buildV1TestApp } from "./helpers/build-v1-test-app.js";
-import type { PaykitAuthContext } from "@vibecc/paykit-server";
 
 describe("GET /v1/openapi.json", () => {
   // OpenAPI endpoint should be accessible without auth (public documentation)

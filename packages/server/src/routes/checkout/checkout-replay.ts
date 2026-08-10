@@ -21,7 +21,7 @@
  * is the provider's answer kept whole, rather than reassembled from whichever
  * fields happened to survive in `metadata_json`.
  */
-import type { PaymentTransaction } from "@vibecc/paykit-auth-core/db/schema/payment-transactions.js";
+import type { PaymentTransaction } from "@xeko-git-1/paykit-auth-core/db/schema/payment-transactions.js";
 
 /** The body a checkout returns, on a first attempt and on a replay alike. */
 export interface CheckoutResponseBody {

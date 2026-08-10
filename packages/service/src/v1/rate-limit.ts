@@ -1,3 +1,4 @@
+import { errorJson } from "@xeko-git-1/paykit-server";
 /**
  * In-memory token-bucket rate limiter keyed by API key ID.
  *
@@ -9,7 +10,6 @@
  * draft standard (X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset).
  */
 import type { MiddlewareHandler } from "hono";
-import { errorJson } from "@vibecc/paykit-server";
 
 // ---------------------------------------------------------------------------
 // Token bucket implementation

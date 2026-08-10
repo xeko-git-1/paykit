@@ -14,12 +14,12 @@
 - **Priority:** P2
 - **Status:** pending
 - **Depends on:** Phase 01 (resolution path must work before BitPay reuses it)
-- Build `@vibecc/paykit-bitpay` implementing `PaymentProviderAdapter`, mirroring the
+- Build `@xeko-git-1/paykit-bitpay` implementing `PaymentProviderAdapter`, mirroring the
   NowPayments package, with BitPay's own IPN signature scheme + async (`pending_webhook`)
   refund semantics. No server/core code changes (adapter plugs into the generic router).
 
 ## Key insights (verified)
-- Adapters are self-contained packages with `peerDependencies: { "@vibecc/paykit": ">=0.3.0-rc.0 <0.4.0" }`
+- Adapters are self-contained packages with `peerDependencies: { "@xeko-git-1/paykit": ">=0.3.0-rc.0 <0.4.0" }`
   and zero runtime deps (`nowpayments-adapter/package.json`). BitPay should match.
 - The server already routes `pending_webhook` (refund-route.ts:186) and `payment.refunded`
   (webhook-router.ts:177) generically — **no server edits** needed once the adapter returns
@@ -60,7 +60,7 @@ underpaid/overpaid → `payment.underpaid` / amount-drift → `payment.amount_mi
 (reuse NowPayments' >5bps quarantine logic for parity).
 
 ## Related code files
-- **Create:** `packages/bitpay-adapter/package.json` (copy NP, rename to `@vibecc/paykit-bitpay`)
+- **Create:** `packages/bitpay-adapter/package.json` (copy NP, rename to `@xeko-git-1/paykit-bitpay`)
 - **Create:** `packages/bitpay-adapter/tsconfig.json`
 - **Create:** `packages/bitpay-adapter/src/index.ts`
 - **Create:** `packages/bitpay-adapter/src/adapter.ts`
@@ -81,12 +81,12 @@ underpaid/overpaid → `payment.underpaid` / amount-drift → `payment.amount_mi
 5. Implement `adapter.ts` (`createCheckout`/`refund`/`fetchTransactions`), refund returns
    `pending_webhook` on transient/accepted-unconfirmed.
 6. Mirror NP's test suite; add a refund→webhook resolution test (the Phase-01 lesson).
-7. `pnpm --filter @vibecc/paykit-bitpay build` + run its tests.
+7. `pnpm --filter @xeko-git-1/paykit-bitpay build` + run its tests.
 8. Update `docs/refund-flows.md:41` BitPay row from "pending" to shipped; bump release-manifest.
 
 ## Todo
 - [x] Confirm BitPay invoice/status/IPN-auth/refund API (no assumptions)
-- [x] Scaffold `@vibecc/paykit-bitpay` from NP shape
+- [x] Scaffold `@xeko-git-1/paykit-bitpay` from NP shape
 - [x] Signature verifier (real BitPay scheme)
 - [x] Status map + refund event sets `refundAmountMicros`
 - [x] adapter.ts checkout/refund(pending_webhook)/fetchTransactions
@@ -94,7 +94,7 @@ underpaid/overpaid → `payment.underpaid` / amount-drift → `payment.amount_mi
 - [x] Build + tests green; docs row flipped to shipped
 
 ## Success criteria
-- `@vibecc/paykit-bitpay` builds, exports `createBitpayAdapter`.
+- `@xeko-git-1/paykit-bitpay` builds, exports `createBitpayAdapter`.
 - Registering it adds `/webhooks/bitpay`; a refund returns `pending_webhook`; a subsequent
   signed refund IPN writes one ledger entry + flips status to `refunded` (end-to-end via the
   generic router — proves it inherited the Phase-01 fix, not the bug).

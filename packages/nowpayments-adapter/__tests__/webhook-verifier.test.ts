@@ -13,8 +13,8 @@ import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { canonicalize } from "../src/canonical-json.js";
 import {
-  computeNpSignature,
   NP_SIGNATURE_HEADER,
+  computeNpSignature,
   verifyNpSignature,
 } from "../src/webhook-verifier.js";
 
@@ -79,11 +79,7 @@ describe("signature-fixture-replay (synthetic — user TODO: replace with sandbo
   it("verifies all 6 synthetic NP IPN fixtures against the implemented HMAC-SHA512 sorted-JSON scheme", () => {
     for (const payload of FIXTURES) {
       const { rawBody, sig } = signed(payload, SECRET);
-      const ok = verifyNpSignature(
-        rawBody,
-        { [NP_SIGNATURE_HEADER]: sig },
-        [SECRET],
-      );
+      const ok = verifyNpSignature(rawBody, { [NP_SIGNATURE_HEADER]: sig }, [SECRET]);
       expect(ok).toBe(true);
     }
   });
@@ -130,19 +126,15 @@ describe("signature-rotation (RT F11 — V1.5 invariant)", () => {
     const oldSecret = "old-secret-rotated-out";
     const newSecret = "new-secret-active";
     const { rawBody, sig } = signed(FIXTURES[0], newSecret);
-    expect(
-      verifyNpSignature(rawBody, { [NP_SIGNATURE_HEADER]: sig }, [oldSecret, newSecret]),
-    ).toBe(true);
+    expect(verifyNpSignature(rawBody, { [NP_SIGNATURE_HEADER]: sig }, [oldSecret, newSecret])).toBe(
+      true,
+    );
   });
 
   it("returns false when no secret in the rotation array matches", () => {
     const { rawBody, sig } = signed(FIXTURES[0], SECRET);
     expect(
-      verifyNpSignature(
-        rawBody,
-        { [NP_SIGNATURE_HEADER]: sig },
-        ["wrong-1", "wrong-2", "wrong-3"],
-      ),
+      verifyNpSignature(rawBody, { [NP_SIGNATURE_HEADER]: sig }, ["wrong-1", "wrong-2", "wrong-3"]),
     ).toBe(false);
   });
 });

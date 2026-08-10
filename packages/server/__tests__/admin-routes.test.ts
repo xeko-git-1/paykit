@@ -1,6 +1,6 @@
-import type { AdminGuard, AdminGuardResult } from "@vibecc/paykit";
+import type { AdminGuard, AdminGuardResult } from "@xeko-git-1/paykit";
+import type { DbClient } from "@xeko-git-1/paykit-auth-core/db/client.js";
 import { describe, expect, it, vi } from "vitest";
-import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
 import { buildAdminLedgerAdjustRoute } from "../src/routes/admin/ledger-adjust-route.js";
 import { buildAdminTransactionsRoute } from "../src/routes/admin/transactions-route.js";
 import { buildAdminWebhookEventsRoute } from "../src/routes/admin/webhook-events-route.js";

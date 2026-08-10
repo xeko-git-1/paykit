@@ -2,7 +2,7 @@
  * <SubscriptionTable> — pure presentational component. Parent owns fetch
  * state + per-row actions slot.
  */
-import * as React from "react";
+import type * as React from "react";
 
 export interface SubscriptionRow {
   readonly id: string;

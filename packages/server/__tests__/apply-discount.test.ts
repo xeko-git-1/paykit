@@ -1,4 +1,4 @@
-import type { AppliedDiscount } from "@vibecc/paykit";
+import type { AppliedDiscount } from "@xeko-git-1/paykit";
 import { describe, expect, it, vi } from "vitest";
 import { applyDiscountInTx, resolveDiscount } from "../src/routes/checkout/apply-discount.js";
 

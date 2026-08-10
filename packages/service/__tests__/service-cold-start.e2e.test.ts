@@ -10,10 +10,10 @@ import { resolve } from "node:path";
  * postgres:16 service is provisioned. Uses a stub adapter for the checkout HTTP
  * contract (real provider creds belong to manual sandbox runs, not CI).
  */
-import type { PaymentProviderAdapter } from "@vibecc/paykit";
-import { migrateUp } from "@vibecc/paykit-cli";
-import { createMerchant, mintKey } from "@vibecc/paykit-cli";
-import { type DbClient, paykitDbSchema } from "@vibecc/paykit-server";
+import type { PaymentProviderAdapter } from "@xeko-git-1/paykit";
+import { migrateUp } from "@xeko-git-1/paykit-cli";
+import { createMerchant, mintKey } from "@xeko-git-1/paykit-cli";
+import { type DbClient, paykitDbSchema } from "@xeko-git-1/paykit-server";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Client, Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";

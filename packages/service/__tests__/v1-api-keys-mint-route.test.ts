@@ -1,3 +1,4 @@
+import type { ProviderRegistry } from "@xeko-git-1/paykit";
 /**
  * Router-level integration test for POST /v1/api-keys — the real mint route.
  *
@@ -22,14 +23,18 @@ import {
   authPlaneDispatcher,
   jwtAuthMiddleware,
   mintApiKey,
-} from "@vibecc/paykit-server";
+} from "@xeko-git-1/paykit-server";
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { describe, expect, it } from "vitest";
-import { buildV1Router } from "../src/v1/router.js";
 import { resetAllBuckets } from "../src/v1/rate-limit.js";
-import { createMockAdapter, createMockDb, createMockDbState, type MockDbState } from "./helpers/build-v1-test-app.js";
-import type { ProviderRegistry } from "@vibecc/paykit";
+import { buildV1Router } from "../src/v1/router.js";
+import {
+  type MockDbState,
+  createMockAdapter,
+  createMockDb,
+  createMockDbState,
+} from "./helpers/build-v1-test-app.js";
 
 // ---------------------------------------------------------------------------
 // Shared constants

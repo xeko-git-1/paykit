@@ -1,5 +1,5 @@
 /**
- * @vibecc/paykit-vnpay — V1.5 adapter for VNPay redirect-based payments.
+ * @xeko-git-1/paykit-vnpay — V1.5 adapter for VNPay redirect-based payments.
  *
  * Flow:
  *   1. createCheckout: build signed redirect URL (vnp_Amount × 100, HMAC-SHA512)

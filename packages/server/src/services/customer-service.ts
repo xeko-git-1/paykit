@@ -12,8 +12,8 @@
  * updates back (RT 15g). The optional metadata-tenant integrity check is
  * exposed for V2.1 multi-instance "link existing customer" flows.
  */
-import type { DbOrTx } from "@vibecc/paykit-auth-core/db/client.js";
-import * as customerRepo from "@vibecc/paykit-auth-core/db/repos/customer.repo.js";
+import type { DbOrTx } from "@xeko-git-1/paykit-auth-core/db/client.js";
+import * as customerRepo from "@xeko-git-1/paykit-auth-core/db/repos/customer.repo.js";
 
 export class CustomerTenantMismatchError extends Error {
   constructor(message = "Stripe customer.metadata.paykitTenantId does not match request tenant") {
@@ -81,10 +81,7 @@ export function buildCustomerService(deps: {
     return upserted.providerCustomerId;
   }
 
-  async function linkExistingCustomer(
-    tenantId: string,
-    providerCustomerId: string,
-  ): Promise<void> {
+  async function linkExistingCustomer(tenantId: string, providerCustomerId: string): Promise<void> {
     if (!provider.retrieveCustomer) {
       throw new Error(
         `Provider ${provider.id} does not support linking existing customers (V2.1 path)`,

@@ -11,7 +11,7 @@
  *   /v1/admin/*        — adminGuard (env-based for V4.0)
  */
 import { timingSafeEqual } from "node:crypto";
-import type { PaymentProviderAdapter } from "@vibecc/paykit";
+import type { PaymentProviderAdapter } from "@xeko-git-1/paykit";
 import {
   type ApiKeyAuthDeps,
   type DbClient,
@@ -26,7 +26,7 @@ import {
   jwtAuthMiddleware,
   paykitDbSchema,
   runtimeConfigRepo,
-} from "@vibecc/paykit-server";
+} from "@xeko-git-1/paykit-server";
 import { Hono } from "hono";
 import type { Pool } from "pg";
 import { serviceErrorHandler } from "./error-handler.js";
@@ -289,8 +289,7 @@ export async function main(): Promise<void> {
   }
 
   console.error(
-    `Unknown command: ${command}. The service image supports only: serve. ` +
-      "Run migrations with the paykit CLI (node packages/cli/dist/bin/paykit.js migrate up).",
+    `Unknown command: ${command}. The service image supports only: serve. Run migrations with the paykit CLI (paykit migrate up).`,
   );
   process.exit(1);
 }

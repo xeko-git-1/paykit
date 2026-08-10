@@ -1,8 +1,8 @@
 /**
- * @vibecc/paykit-stripe-subscription — V2 Stripe Subscription adapter.
+ * @xeko-git-1/paykit-stripe-subscription — V2 Stripe Subscription adapter.
  *
- * Implements SubscriptionAdapter from @vibecc/paykit core. Coexists with
- * V1.5 @vibecc/paykit-stripe (one-off Checkout); register both in the
+ * Implements SubscriptionAdapter from @xeko-git-1/paykit core. Coexists with
+ * V1.5 @xeko-git-1/paykit-stripe (one-off Checkout); register both in the
  * same paykit instance.
  */
 export {

@@ -7,7 +7,7 @@
  * state; we assert the status + error code the route maps it to, plus the
  * Idempotency-Key requirement and the not-found short-circuit.
  */
-import type { AdminGuard, AdminGuardResult } from "@vibecc/paykit";
+import type { AdminGuard, AdminGuardResult } from "@xeko-git-1/paykit";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { DbClient } from "../src/db/client.js";
 

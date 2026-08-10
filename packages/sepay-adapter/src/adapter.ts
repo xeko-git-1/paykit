@@ -22,7 +22,7 @@ import {
   type RefundResult,
   microsStringToBigInt,
   vndToMicros,
-} from "@vibecc/paykit";
+} from "@xeko-git-1/paykit";
 
 export interface SepayAdapterConfig {
   readonly id?: string;

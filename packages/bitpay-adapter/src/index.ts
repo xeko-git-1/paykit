@@ -1,5 +1,5 @@
 /**
- * @vibecc/paykit-bitpay — V3 adapter for crypto payments via BitPay.
+ * @xeko-git-1/paykit-bitpay — V3 adapter for crypto payments via BitPay.
  *
  * Flow:
  *   1. createCheckout: POST /invoices with USD price (POS-facade token) →

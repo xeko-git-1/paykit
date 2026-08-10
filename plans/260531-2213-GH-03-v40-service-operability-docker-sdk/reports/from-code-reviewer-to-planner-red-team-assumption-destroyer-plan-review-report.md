@@ -80,7 +80,7 @@
 - **Severity:** Medium
 - **Location:** plan.md "Overview" + "Dependencies"
 - **Flaw:** The plan builds on "260529-1312 V4 phases 1-5 đã xong … 733 test pass" as settled fact. But `auth/`, `db/repos/api-key.repo.ts`, `db/schema/merchants.ts|api-keys.ts`, migration 012, and the `/v1` surface are all untracked/modified in the working tree (per git status) with no V4 implementation commit in `git log` (latest is a docs/plans commit). The dependency targets the plan cites (`mintApiKey`, `SCOPES`, `apiKeyRepo`, barrel exports) do exist and are correctly referenced — but they live only in an uncommitted state.
-- **Failure scenario:** If that working tree is stashed/reverted or partially recommitted differently, every Phase 1 import (`@vibecc/paykit-server` → `mintApiKey`/`apiKeyRepo`/`SCOPES`) and the "no new migration needed" claim silently break. The "733 tests pass" figure is not reproducible from git.
+- **Failure scenario:** If that working tree is stashed/reverted or partially recommitted differently, every Phase 1 import (`@xeko-git-1/paykit-server` → `mintApiKey`/`apiKeyRepo`/`SCOPES`) and the "no new migration needed" claim silently break. The "733 tests pass" figure is not reproducible from git.
 - **Evidence:** git status: `?? packages/server/src/auth/`, `?? .../api-key.repo.ts`, `?? .../merchants.ts`, `?? migrations/012_*`; `git log` top commit `fe199fb docs(plans): …` (no V4 impl commit). Imports themselves verified real: `packages/server/src/index.ts:52-66,94` exports `mintApiKey`, `SCOPES`, `apiKeyRepo`.
 - **Suggested fix:** Add a Phase 0 / precondition: commit (or confirm committed) the 260529-1312 V4 surface and re-run the suite to re-establish the 733-pass baseline before starting Phase 1. State the dependency on uncommitted code explicitly in plan.md.
 
@@ -89,7 +89,7 @@
 ## Verified-OK (attacked, found solid — no action)
 - Barrel exports `mintApiKey`, `apiKeyRepo`, `SCOPES`, `merchants` types — all present (`index.ts:52-66,94`). Phase 1 import claim holds.
 - `MintApiKeyResult.record` = `{merchantId,keyHash,keyPrefix,mode,scopes}` is directly insertable as `NewApiKey` (all required cols present; keyId/timestamps default) (`api-key.ts:49-56` vs `api-keys.ts:15-27`). No missing fields.
-- No `server → cli` import → no dependency cycle when CLI adds `@vibecc/paykit-server` (grep clean).
+- No `server → cli` import → no dependency cycle when CLI adds `@xeko-git-1/paykit-server` (grep clean).
 - Phase 2 VN field names all correct: vnpay `tmnCode/hashSecret/returnUrl/ipnUrl/environment`; momo `partnerCode/accessKey/secretKey/returnUrl/ipnUrl`; zalopay `appId/key1/key2/returnUrl/callbackUrl` (verified in each `adapter.ts`). The plan even pre-empts the `callbackUrl` vs `ipnUrl` trap correctly.
 - Migration 012 creates BOTH `merchants` + `api_keys` with the columns the repos expect → "no new migration" claim is true.
 

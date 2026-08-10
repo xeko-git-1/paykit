@@ -1,19 +1,19 @@
 ---
 phase: 6
-title: "Extract @vibecc/paykit-auth-core (decouple CLI from server HTTP layer)"
+title: "Extract @xeko-git-1/paykit-auth-core (decouple CLI from server HTTP layer)"
 status: completed
 priority: P2
 effort: "varies — refactor only, no new behavior"
 dependencies: [1]
 ---
 
-# Phase 6: Extract @vibecc/paykit-auth-core
+# Phase 6: Extract @xeko-git-1/paykit-auth-core
 
 > **Why this exists (deferred from Phase 1):** Phase 1 (F5) had the CLI bootstrap
 > reuse server auth primitives + repos (`mintApiKey`, `SCOPES`,
 > `MAX_ACTIVE_KEYS_PER_MERCHANT`, merchant/api-key/runtime-config repos,
 > `createJwtSecretLoader`, `mintAdminJwt`) so the operator path enforces the SAME
-> invariants as the HTTP mint route. That import (`cli → @vibecc/paykit-server`)
+> invariants as the HTTP mint route. That import (`cli → @xeko-git-1/paykit-server`)
 > violates the checked-in boundary rule in `packages/core/__tests__/no-cross-imports.test.ts`
 > ("CLI must not bundle the HTTP layer"). User decision (2026-06-01): keep the
 > reuse (DRY > duplication, avoids cap/scope drift) but resolve it cleanly by
@@ -23,7 +23,7 @@ dependencies: [1]
 
 ## Overview
 
-Create `@vibecc/paykit-auth-core`: a dependency-light package holding the DB
+Create `@xeko-git-1/paykit-auth-core`: a dependency-light package holding the DB
 schema, Drizzle client types, repos, and auth primitives that have NO HTTP/Hono
 dependency. `server` re-exports from it (back-compat for all existing importers);
 `cli` imports from it directly (no longer from `server`). Pure refactor — zero
@@ -49,13 +49,13 @@ behavior change, all existing tests must stay green.
 ## Requirements
 
 **Functional (refactor — behavior identical)**
-- New package `packages/auth-core` (`@vibecc/paykit-auth-core`), no `hono` runtime dep
+- New package `packages/auth-core` (`@xeko-git-1/paykit-auth-core`), no `hono` runtime dep
   in its core entrypoint (isolate any hono/jwt use, see design note).
 - Move: `db/schema/*`, `db/client.ts`, `db/repos/{merchant,api-key,runtime-config,...}.repo.ts`
   (decide: move all repos, or only the dependency-closed set), `auth/{api-key,scope,jwt-claims,mint-admin-jwt}.ts`,
   and the secret-loader half of `jwt-middleware.ts`.
 - `server` re-exports every moved symbol from its barrel (no consumer churn).
-- `cli` imports auth-core only; drop `@vibecc/paykit-server` dep.
+- `cli` imports auth-core only; drop `@xeko-git-1/paykit-server` dep.
 - Re-enable the skipped boundary test (`cli does not import from server`).
 
 **Non-functional**
@@ -73,7 +73,7 @@ behavior change, all existing tests must stay green.
   secret-loader split from jwt-middleware.ts
 - **Modify:** `packages/server/src/index.ts` — re-export from auth-core
 - **Modify:** `packages/server/src/**` — repoint internal relative imports (or alias)
-- **Modify:** `packages/cli/package.json` — swap `@vibecc/paykit-server` → `@vibecc/paykit-auth-core`
+- **Modify:** `packages/cli/package.json` — swap `@xeko-git-1/paykit-server` → `@xeko-git-1/paykit-auth-core`
 - **Modify:** `packages/cli/src/{bin/paykit.ts,lib/bootstrap.ts}` — import from auth-core
 - **Modify:** `packages/service` — import schema/repos/auth from auth-core or via server re-export
 - **Modify:** `packages/core/__tests__/no-cross-imports.test.ts` — un-skip CLI rule;
@@ -82,7 +82,7 @@ behavior change, all existing tests must stay green.
 
 ## Implementation Steps
 
-1. Scaffold `@vibecc/paykit-auth-core` (mirror an existing leaf package's tsconfig).
+1. Scaffold `@xeko-git-1/paykit-auth-core` (mirror an existing leaf package's tsconfig).
 2. `git mv` schema + client + repos + auth primitives; fix intra-package imports.
 3. Split `jwt-middleware.ts`: secret-loader → auth-core; Hono middleware stays in server.
 4. Server barrel re-exports all moved symbols (grep old import sites — they keep working).
@@ -93,7 +93,7 @@ behavior change, all existing tests must stay green.
 
 ## Success Criteria
 
-- [x] `@vibecc/paykit-auth-core` exists; CLI imports it, not `@vibecc/paykit-server`
+- [x] `@xeko-git-1/paykit-auth-core` exists; CLI imports it, not `@xeko-git-1/paykit-server`
 - [x] Boundary test re-enabled (CLI→server) and PASSES
 - [x] auth-core entrypoint carries no Hono HTTP-layer dependency
 - [x] All existing tests green (zero behavior change); docker build OK

@@ -11,12 +11,12 @@
  *
  * Webhook routes do NOT call this — they read tenancy from the locked row.
  */
-import { TenantResolutionError } from "@vibecc/paykit";
-import type { TenantResolver } from "@vibecc/paykit";
+import { TenantResolutionError } from "@xeko-git-1/paykit";
+import type { TenantResolver } from "@xeko-git-1/paykit";
+import type { DbClient } from "@xeko-git-1/paykit-auth-core/db/client.js";
+import { listBalancesByTenant } from "@xeko-git-1/paykit-auth-core/db/repos/balance.repo.js";
+import { computeBalancesByTenant } from "@xeko-git-1/paykit-auth-core/db/repos/ledger.repo.js";
 import { Hono } from "hono";
-import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
-import { listBalancesByTenant } from "@vibecc/paykit-auth-core/db/repos/balance.repo.js";
-import { computeBalancesByTenant } from "@vibecc/paykit-auth-core/db/repos/ledger.repo.js";
 import { getAuthTenant } from "../../auth/auth-context.js";
 import { dataJson, errorJson } from "../shared/response.js";
 

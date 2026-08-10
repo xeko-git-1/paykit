@@ -13,7 +13,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { getOpenAPIDocument } from "@vibecc/paykit-service";
+import { getOpenAPIDocument } from "@xeko-git-1/paykit-service";
 import { describe, expect, it } from "vitest";
 
 const HERE = dirname(fileURLToPath(import.meta.url));

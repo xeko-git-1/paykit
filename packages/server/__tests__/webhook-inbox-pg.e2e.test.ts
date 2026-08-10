@@ -25,8 +25,8 @@ import {
   recordDelivery,
   requeueDeadLetteredDelivery,
   sweepInboxPayloads,
-} from "@vibecc/paykit-auth-core/db/repos/webhook-inbox.repo.js";
-import { webhookInbox } from "@vibecc/paykit-auth-core/db/schema/webhook-inbox.js";
+} from "@xeko-git-1/paykit-auth-core/db/repos/webhook-inbox.repo.js";
+import { webhookInbox } from "@xeko-git-1/paykit-auth-core/db/schema/webhook-inbox.js";
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";

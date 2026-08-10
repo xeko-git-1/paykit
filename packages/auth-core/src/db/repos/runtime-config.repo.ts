@@ -10,14 +10,14 @@
  */
 import { eq } from "drizzle-orm";
 import type { DbOrTx } from "../client.js";
-import { type NewRuntimeConfig, type RuntimeConfig, runtimeConfig } from "../schema/runtime-config.js";
+import {
+  type NewRuntimeConfig,
+  type RuntimeConfig,
+  runtimeConfig,
+} from "../schema/runtime-config.js";
 
 export async function getKey(db: DbOrTx, key: string): Promise<RuntimeConfig | undefined> {
-  const [row] = await db
-    .select()
-    .from(runtimeConfig)
-    .where(eq(runtimeConfig.key, key))
-    .limit(1);
+  const [row] = await db.select().from(runtimeConfig).where(eq(runtimeConfig.key, key)).limit(1);
   return row;
 }
 

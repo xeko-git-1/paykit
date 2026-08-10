@@ -1,6 +1,6 @@
 /**
  * SubscriptionAdapter — V2 contract. Parallel to V1.5 PaymentProviderAdapter.
- * Implemented by @vibecc/paykit-stripe-subscription. 9 methods (RT 15f: no displayName).
+ * Implemented by @xeko-git-1/paykit-stripe-subscription. 9 methods (RT 15f: no displayName).
  *
  * Lifecycle:
  *   - subscribe / cancel / upgrade: provider HTTP, idempotent via input.idempotencyKey

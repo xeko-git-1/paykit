@@ -26,7 +26,7 @@ ZALOPAY_CALLBACK_URL=https://your-app.com/webhooks/zalopay
 ## Step 3 — Wire adapter
 
 ```ts
-import { createZaloPayAdapter } from "@vibecc/paykit-zalopay";
+import { createZaloPayAdapter } from "@xeko-git-1/paykit-zalopay";
 
 const zalopay = createZaloPayAdapter({
   appId: process.env.ZALOPAY_APP_ID!,

@@ -1,3 +1,5 @@
+import { hashApiKey, verifyApiKey } from "@xeko-git-1/paykit-auth-core/auth/api-key.js";
+import type { DbClient } from "@xeko-git-1/paykit-auth-core/db/client.js";
 /**
  * API-key auth middleware for Hono.
  *
@@ -9,10 +11,8 @@
  * Mirrors the adminGuardMiddleware shape (declare-module + errorJson).
  */
 import type { MiddlewareHandler } from "hono";
-import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
-import { hashApiKey, verifyApiKey } from "@vibecc/paykit-auth-core/auth/api-key.js";
-import type { PaykitAuthContext } from "./auth-context.js";
 import { errorJson } from "../routes/shared/response.js";
+import type { PaykitAuthContext } from "./auth-context.js";
 
 // ---------------------------------------------------------------------------
 // Dependencies — injected for testability
@@ -21,7 +21,10 @@ import { errorJson } from "../routes/shared/response.js";
 export interface ApiKeyAuthDeps {
   readonly db: DbClient;
   /** Lookup function: (db, keyHash) => ApiKey | null */
-  readonly findByHash: (db: DbClient, keyHash: string) => Promise<{
+  readonly findByHash: (
+    db: DbClient,
+    keyHash: string,
+  ) => Promise<{
     keyId: string;
     merchantId: string;
     keyHash: string;
@@ -36,7 +39,9 @@ export interface ApiKeyAuthDeps {
   /** Fire-and-forget last-used timestamp update */
   readonly touchLastUsed: (db: DbClient, keyId: string) => Promise<void>;
   /** Resolve merchantId → tenant mapping. In V4.0, merchantId IS the tenantId. */
-  readonly resolveMerchantTenant: (merchantId: string) => Promise<{ tenantId: string; ownerId: string } | null>;
+  readonly resolveMerchantTenant: (
+    merchantId: string,
+  ) => Promise<{ tenantId: string; ownerId: string } | null>;
 }
 
 // ---------------------------------------------------------------------------
@@ -53,12 +58,10 @@ export function apiKeyAuthMiddleware(deps: ApiKeyAuthDeps): MiddlewareHandler {
     }
 
     // Expect "Bearer pk_..." format
-    const parts = authHeader.split(" ");
-    if (parts.length !== 2 || parts[0] !== "Bearer") {
+    const [scheme, plaintext, ...rest] = authHeader.split(" ");
+    if (scheme !== "Bearer" || plaintext === undefined || rest.length > 0) {
       return errorJson(c, 401, "AUTH_INVALID", "invalid authorization header");
     }
-
-    const plaintext = parts[1]!;
     if (!plaintext.startsWith("pk_")) {
       return errorJson(c, 401, "AUTH_INVALID", "invalid key format");
     }

@@ -71,7 +71,7 @@ jobs:
     if: ${{ secrets.STRIPE_TEST_SECRET_KEY != '' }}
     timeout-minutes: 15  # Val S4 Q4
     steps:
-      - run: pnpm test:e2e --filter=@vibecc/paykit-stripe-subscription
+      - run: pnpm test:e2e --filter=@xeko-git-1/paykit-stripe-subscription
         env:
           STRIPE_TEST_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
           STRIPE_TEST_WEBHOOK_SECRET: ${{ secrets.STRIPE_TEST_WEBHOOK_SECRET }}
@@ -95,17 +95,17 @@ ProviderRegistry; the adapter ids are distinct (`stripe` vs
 
 | Package | Version |
 |---|---|
-| @vibecc/paykit | 0.2.0-rc.0 |
-| @vibecc/paykit-server | 0.2.0-rc.0 |
-| @vibecc/paykit-stripe | 0.1.5-alpha.1 (unchanged) |
-| @vibecc/paykit-sepay | 0.1.5-alpha.1 (unchanged) |
-| @vibecc/paykit-vnpay | 0.1.5-alpha.1 (unchanged) |
-| @vibecc/paykit-momo | 0.1.5-alpha.1 (unchanged) |
-| @vibecc/paykit-zalopay | 0.1.5-alpha.1 (unchanged) |
-| @vibecc/paykit-stripe-subscription | 0.2.0-rc.0 |
-| @vibecc/paykit-workers | 0.2.0-rc.0 |
-| @vibecc/paykit-react | 0.2.0-rc.0 |
-| @vibecc/paykit-cli | 0.1.5-alpha.1 (unchanged) |
+| @xeko-git-1/paykit | 0.2.0-rc.0 |
+| @xeko-git-1/paykit-server | 0.2.0-rc.0 |
+| @xeko-git-1/paykit-stripe | 0.1.5-alpha.1 (unchanged) |
+| @xeko-git-1/paykit-sepay | 0.1.5-alpha.1 (unchanged) |
+| @xeko-git-1/paykit-vnpay | 0.1.5-alpha.1 (unchanged) |
+| @xeko-git-1/paykit-momo | 0.1.5-alpha.1 (unchanged) |
+| @xeko-git-1/paykit-zalopay | 0.1.5-alpha.1 (unchanged) |
+| @xeko-git-1/paykit-stripe-subscription | 0.2.0-rc.0 |
+| @xeko-git-1/paykit-workers | 0.2.0-rc.0 |
+| @xeko-git-1/paykit-react | 0.2.0-rc.0 |
+| @xeko-git-1/paykit-cli | 0.1.5-alpha.1 (unchanged) |
 
 After 7 consecutive days of green sandbox CI, tag `v0.2.0` for GA.
 

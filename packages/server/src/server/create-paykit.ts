@@ -5,8 +5,8 @@
  *   - V1.5 array shape: providers: PaymentProviderAdapter[]
  *   - V1 legacy shape:  providers: { stripe?: StripeConfig, sepay?: SePayConfig }
  *
- * Legacy shape is converted via lazy-import of @vibecc/paykit-stripe and
- * @vibecc/paykit-sepay packages. Consumer must `pnpm add` them; missing
+ * Legacy shape is converted via lazy-import of @xeko-git-1/paykit-stripe and
+ * @xeko-git-1/paykit-sepay packages. Consumer must `pnpm add` them; missing
  * package surfaces clear migration error.
  *
  * Webhook URLs become `/webhooks/{adapterId}` (V1: /webhooks/stripe stays
@@ -21,9 +21,9 @@ import {
   ProviderRegistry,
   type ScreeningService,
   type TenantResolver,
-} from "@vibecc/paykit";
+} from "@xeko-git-1/paykit";
+import type { DbClient } from "@xeko-git-1/paykit-auth-core/db/client.js";
 import { Hono } from "hono";
-import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
 import type { PaykitEventHandlers } from "../events/emitter.js";
 import type { SePayConfig } from "../providers/sepay/client.js";
 import type { StripeConfig } from "../providers/stripe/client.js";
@@ -91,11 +91,7 @@ export interface PaykitConfig {
    */
   readonly screeningService?: ScreeningService;
   /** Optional metrics emitter — see paykit_credit_blocked_total etc. */
-  readonly emitMetric?: (
-    name: string,
-    labels: Record<string, string>,
-    value?: number,
-  ) => void;
+  readonly emitMetric?: (name: string, labels: Record<string, string>, value?: number) => void;
 }
 
 export interface Paykit {
@@ -131,23 +127,27 @@ export async function createPaykit(config: PaykitConfig): Promise<Paykit> {
         buildCheckoutRouter({
           db: config.db,
           registry,
-          ...(config.tenantResolver !== undefined
-            ? { tenantResolver: config.tenantResolver }
-            : {}),
+          ...(config.tenantResolver !== undefined ? { tenantResolver: config.tenantResolver } : {}),
           ...(config.discountResolver !== undefined
             ? { discountResolver: config.discountResolver }
             : {}),
           ...(logger !== undefined ? { logger } : {}),
         }),
       );
-      app.route("/", buildBalanceRoute({
-        db: config.db,
-        ...(config.tenantResolver !== undefined ? { tenantResolver: config.tenantResolver } : {}),
-      }));
-      app.route("/", buildLedgerRoute({
-        db: config.db,
-        ...(config.tenantResolver !== undefined ? { tenantResolver: config.tenantResolver } : {}),
-      }));
+      app.route(
+        "/",
+        buildBalanceRoute({
+          db: config.db,
+          ...(config.tenantResolver !== undefined ? { tenantResolver: config.tenantResolver } : {}),
+        }),
+      );
+      app.route(
+        "/",
+        buildLedgerRoute({
+          db: config.db,
+          ...(config.tenantResolver !== undefined ? { tenantResolver: config.tenantResolver } : {}),
+        }),
+      );
       app.route(
         "/",
         buildPaymentHistoryRoute({
@@ -188,9 +188,7 @@ export async function createPaykit(config: PaykitConfig): Promise<Paykit> {
         registry,
         events,
         ...(logger !== undefined ? { logger } : {}),
-        ...(config.onBeforeCredit !== undefined
-          ? { onBeforeCredit: config.onBeforeCredit }
-          : {}),
+        ...(config.onBeforeCredit !== undefined ? { onBeforeCredit: config.onBeforeCredit } : {}),
         ...(config.screeningService !== undefined
           ? { screeningService: config.screeningService }
           : {}),

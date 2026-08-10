@@ -1,6 +1,6 @@
-import { TenantResolutionError } from "@vibecc/paykit";
+import { TenantResolutionError } from "@xeko-git-1/paykit";
+import type { DbClient } from "@xeko-git-1/paykit-auth-core/db/client.js";
 import { describe, expect, it, vi } from "vitest";
-import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
 import { buildBalanceRoute } from "../src/routes/billing/balance-route.js";
 import { buildLedgerRoute } from "../src/routes/billing/ledger-route.js";
 import { buildPaymentHistoryRoute } from "../src/routes/billing/payment-history-route.js";

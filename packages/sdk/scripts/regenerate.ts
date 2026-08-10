@@ -9,13 +9,13 @@
  *   3. Write packages/sdk/openapi.json (the committed snapshot).
  *   4. Run openapi-typescript on the snapshot → src/generated/types.ts.
  *
- * Run: pnpm --filter @vibecc/paykit-sdk sdk:generate
+ * Run: pnpm --filter @xeko-git-1/paykit-sdk sdk:generate
  */
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { getOpenAPIDocument } from "@vibecc/paykit-service";
+import { getOpenAPIDocument } from "@xeko-git-1/paykit-service";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = resolve(HERE, "..");

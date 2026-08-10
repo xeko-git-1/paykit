@@ -16,15 +16,15 @@
  * No external call may appear in either function. That is the invariant this
  * module exists to hold.
  */
-import { parseMicros } from "@vibecc/paykit";
-import type { DbClient, DbOrTx } from "@vibecc/paykit-auth-core/db/client.js";
-import type { LedgerEntry } from "@vibecc/paykit-auth-core/db/schema/ledger-entries.js";
-import { paymentTransactions } from "@vibecc/paykit-auth-core/db/schema/payment-transactions.js";
+import { parseMicros } from "@xeko-git-1/paykit";
+import type { DbClient, DbOrTx } from "@xeko-git-1/paykit-auth-core/db/client.js";
+import type { LedgerEntry } from "@xeko-git-1/paykit-auth-core/db/schema/ledger-entries.js";
+import { paymentTransactions } from "@xeko-git-1/paykit-auth-core/db/schema/payment-transactions.js";
 import type {
   ScreeningDecidedState,
   ScreeningJob,
   ScreeningJobState,
-} from "@vibecc/paykit-auth-core/db/schema/screening-jobs.js";
+} from "@xeko-git-1/paykit-auth-core/db/schema/screening-jobs.js";
 import { and, eq } from "drizzle-orm";
 
 /**

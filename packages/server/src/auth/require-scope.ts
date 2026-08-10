@@ -1,3 +1,4 @@
+import { hasScope } from "@xeko-git-1/paykit-auth-core/auth/scope.js";
 /**
  * Scope enforcement middleware — returns 403 if the authenticated context
  * lacks the required scope(s). Must run AFTER apiKeyAuthMiddleware or
@@ -6,9 +7,8 @@
  * Optionally enforces plane restriction (e.g. KEY_MANAGE = jwt-only).
  */
 import type { MiddlewareHandler } from "hono";
-import { hasScope } from "@vibecc/paykit-auth-core/auth/scope.js";
-import type { AuthPlane } from "./auth-context.js";
 import { errorJson } from "../routes/shared/response.js";
+import type { AuthPlane } from "./auth-context.js";
 
 // ---------------------------------------------------------------------------
 // requireScope — middleware factory
@@ -26,8 +26,7 @@ export interface RequireScopeOpts {
  * 401 if no auth context; 403 if scopes insufficient or wrong plane.
  */
 export function requireScope(opts: RequireScopeOpts | string): MiddlewareHandler {
-  const normalized: RequireScopeOpts =
-    typeof opts === "string" ? { scopes: [opts] } : opts;
+  const normalized: RequireScopeOpts = typeof opts === "string" ? { scopes: [opts] } : opts;
 
   return async (c, next) => {
     const auth = c.get("paykitAuth");

@@ -39,7 +39,7 @@ V1 ships **one-off top-ups only** via SePay (VietQR) + Stripe Checkout `mode: "p
 - React `<SubscriptionPanel>` admin component
 - React `<SubscriptionStatus>` tenant-facing widget
 - CLI `paykit subscriptions sync` command
-- `paykit.workers.reconcileSubscriptions({since})` in `@vibecc/paykit-workers`
+- `paykit.workers.reconcileSubscriptions({since})` in `@xeko-git-1/paykit-workers`
 
 ## V1→V2 Boundary Guards (enforced in V1 CI)
 

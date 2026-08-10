@@ -23,24 +23,24 @@
  *   - PSP is never called for an amount that exceeds remaining
  *   - Retries (same idempotency key) return existing result without re-evaluating gate
  */
-import type { ProviderRegistry, RefundResult } from "@vibecc/paykit";
-import { isRefundableStatus, parseMicros, refundedPaymentStatus } from "@vibecc/paykit";
-import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
-import { applyDelta } from "@vibecc/paykit-auth-core/db/repos/balance.repo.js";
+import type { ProviderRegistry, RefundResult } from "@xeko-git-1/paykit";
+import { isRefundableStatus, parseMicros, refundedPaymentStatus } from "@xeko-git-1/paykit";
+import type { DbClient } from "@xeko-git-1/paykit-auth-core/db/client.js";
+import { applyDelta } from "@xeko-git-1/paykit-auth-core/db/repos/balance.repo.js";
 import {
   appendLedgerEntryIdempotent,
   findLedgerEntryBySourceId,
   sumRefundsByOriginalTransaction,
-} from "@vibecc/paykit-auth-core/db/repos/ledger.repo.js";
+} from "@xeko-git-1/paykit-auth-core/db/repos/ledger.repo.js";
 import {
   createPendingRefund,
   findByProviderAndKey,
   markCompleted,
   markFailed,
   sumActiveReservationsByTransaction,
-} from "@vibecc/paykit-auth-core/db/repos/pending-refund.repo.js";
-import { paymentTransactions } from "@vibecc/paykit-auth-core/db/schema/payment-transactions.js";
-import type { PaymentTransaction } from "@vibecc/paykit-auth-core/db/schema/payment-transactions.js";
+} from "@xeko-git-1/paykit-auth-core/db/repos/pending-refund.repo.js";
+import { paymentTransactions } from "@xeko-git-1/paykit-auth-core/db/schema/payment-transactions.js";
+import type { PaymentTransaction } from "@xeko-git-1/paykit-auth-core/db/schema/payment-transactions.js";
 import { eq } from "drizzle-orm";
 
 // ---------------------------------------------------------------------------

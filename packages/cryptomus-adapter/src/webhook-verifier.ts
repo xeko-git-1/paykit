@@ -43,7 +43,9 @@ function constantTimeStringEqual(a: string, b: string): boolean {
 /** MD5( base64(phpJsonEncode(body)) + apiKey ) — the Cryptomus sign scheme. */
 export function computeCryptomusSignature(body: unknown, apiKey: string): string {
   const encoded = Buffer.from(phpJsonEncode(body), "utf-8").toString("base64");
-  return createHash("md5").update(encoded + apiKey, "utf-8").digest("hex");
+  return createHash("md5")
+    .update(encoded + apiKey, "utf-8")
+    .digest("hex");
 }
 
 /**
@@ -58,7 +60,9 @@ export function computeCryptomusSign(
 ): { sign: string; serialized: string } {
   const serialized = phpJsonEncode(body);
   const encoded = Buffer.from(serialized, "utf-8").toString("base64");
-  const sign = createHash("md5").update(encoded + apiKey, "utf-8").digest("hex");
+  const sign = createHash("md5")
+    .update(encoded + apiKey, "utf-8")
+    .digest("hex");
   return { sign, serialized };
 }
 
@@ -67,10 +71,7 @@ export function computeCryptomusSign(
  * the `sign` key (not a header), so it is stripped before hashing. Returns
  * false on unparseable body, missing sign, or no matching secret.
  */
-export function verifyCryptomusSignature(
-  rawBody: string,
-  secrets: readonly string[],
-): boolean {
+export function verifyCryptomusSignature(rawBody: string, secrets: readonly string[]): boolean {
   let parsed: Record<string, unknown>;
   try {
     parsed = JSON.parse(rawBody) as Record<string, unknown>;

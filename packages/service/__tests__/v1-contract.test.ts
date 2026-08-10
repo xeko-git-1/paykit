@@ -1,10 +1,10 @@
+import type { PaykitAuthContext } from "@xeko-git-1/paykit-server";
 /**
  * V1 contract tests — verifies scope enforcement, DTO validation, and
  * error envelope shape across all /v1 endpoints.
  */
-import { describe, expect, it, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { buildV1TestApp, createMockDbState } from "./helpers/build-v1-test-app.js";
-import type { PaykitAuthContext } from "@vibecc/paykit-server";
 
 const validApiKeyAuth: PaykitAuthContext = {
   merchantId: "merchant-1",

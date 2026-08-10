@@ -13,22 +13,22 @@
  * compliance screening is enqueued, never awaited, because a third-party latency
  * spike must not be held across a row lock and a pooled connection.
  */
-import type { NormalizedWebhookEvent } from "@vibecc/paykit";
-import { microsStringToBigInt } from "@vibecc/paykit";
-import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
-import { applyDelta } from "@vibecc/paykit-auth-core/db/repos/balance.repo.js";
+import type { NormalizedWebhookEvent } from "@xeko-git-1/paykit";
+import { microsStringToBigInt } from "@xeko-git-1/paykit";
+import type { DbClient } from "@xeko-git-1/paykit-auth-core/db/client.js";
+import { applyDelta } from "@xeko-git-1/paykit-auth-core/db/repos/balance.repo.js";
 import {
   commitReservation,
   releaseReservation,
-} from "@vibecc/paykit-auth-core/db/repos/discount.repo.js";
-import { appendLedgerEntryIdempotent } from "@vibecc/paykit-auth-core/db/repos/ledger.repo.js";
-import { updateTransactionStatus } from "@vibecc/paykit-auth-core/db/repos/payment.repo.js";
-import { enqueueScreeningJob } from "@vibecc/paykit-auth-core/db/repos/screening-job.repo.js";
-import type { PaymentTransaction } from "@vibecc/paykit-auth-core/db/schema/payment-transactions.js";
+} from "@xeko-git-1/paykit-auth-core/db/repos/discount.repo.js";
+import { appendLedgerEntryIdempotent } from "@xeko-git-1/paykit-auth-core/db/repos/ledger.repo.js";
+import { updateTransactionStatus } from "@xeko-git-1/paykit-auth-core/db/repos/payment.repo.js";
+import { enqueueScreeningJob } from "@xeko-git-1/paykit-auth-core/db/repos/screening-job.repo.js";
+import type { PaymentTransaction } from "@xeko-git-1/paykit-auth-core/db/schema/payment-transactions.js";
 import {
   AWAITING_PAYMENT_STATUSES,
   paymentTransactions,
-} from "@vibecc/paykit-auth-core/db/schema/payment-transactions.js";
+} from "@xeko-git-1/paykit-auth-core/db/schema/payment-transactions.js";
 import { and, eq, inArray } from "drizzle-orm";
 import { applyRefundEvent } from "./refund-event-handler.js";
 import { evaluateSettlementAmount } from "./settlement-amount-guard.js";

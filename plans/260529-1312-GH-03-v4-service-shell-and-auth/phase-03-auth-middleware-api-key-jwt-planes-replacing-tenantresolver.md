@@ -86,7 +86,7 @@ không bao giờ resolve tenant từ request do caller kiểm soát.
    - `requireScope`: thiếu scope → 403.
    Chạy → FAIL.
 3. **GREEN:** làm `tenantResolver` optional (F2); implement 4 file auth/* (jwt-middleware đọc secret từ `runtime_config` — D6); augment route handlers checkout/balance/ledger/history (KHÔNG subscriptions — F11 scope OUT). Chạy LẠI `tenant-scoping-regression.test.ts` → vẫn PASS (không hồi quy embedded), VÀ assert tenantId truyền đúng.
-4. **VERIFY:** `pnpm --filter @vibecc/paykit-server build && pnpm vitest run packages/server` → tất cả PASS gồm full suite.
+4. **VERIFY:** `pnpm --filter @xeko-git-1/paykit-server build && pnpm vitest run packages/server` → tất cả PASS gồm full suite.
 
 ## Success Criteria
 

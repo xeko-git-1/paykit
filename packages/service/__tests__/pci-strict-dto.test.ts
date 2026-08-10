@@ -1,10 +1,10 @@
+import type { PaykitAuthContext } from "@xeko-git-1/paykit-server";
 /**
  * PCI strict DTO tests (F13) — verifies that .strict() zod schemas reject
  * unknown keys at the boundary, preventing accidental PAN/CVV leakage.
  */
 import { describe, expect, it } from "vitest";
 import { buildV1TestApp } from "./helpers/build-v1-test-app.js";
-import type { PaykitAuthContext } from "@vibecc/paykit-server";
 
 const validAuth: PaykitAuthContext = {
   merchantId: "merchant-1",

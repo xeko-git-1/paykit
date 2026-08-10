@@ -6,10 +6,8 @@
  * source without depending on the Hono layer. Caches with a short TTL and uses
  * an atomic claim so concurrent cold-boot replicas converge on one secret.
  */
-export interface JwtSecretLoader {
-  /** Returns the current JWT signing secret. Throws if unavailable or invalid. */
-  (): Promise<string>;
-}
+/** Returns the current JWT signing secret. Throws if unavailable or invalid. */
+export type JwtSecretLoader = () => Promise<string>;
 
 export interface SecretLoaderDeps {
   readonly getKey: (db: unknown, key: string) => Promise<{ value: string } | undefined>;
@@ -48,8 +46,7 @@ export function createJwtSecretLoader(deps: SecretLoaderDeps): JwtSecretLoader {
     if (row) {
       if (Buffer.byteLength(row.value, "utf8") < MIN_SECRET_BYTES) {
         throw new Error(
-          `JWT secret in runtime_config is too short (< ${MIN_SECRET_BYTES} bytes). ` +
-            "Rotate to a longer secret before starting the service.",
+          `JWT secret in runtime_config is too short (< ${MIN_SECRET_BYTES} bytes). Rotate to a longer secret before starting the service.`,
         );
       }
       cached = { secret: row.value, expiresAt: Date.now() + CACHE_TTL_MS };

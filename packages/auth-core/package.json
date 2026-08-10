@@ -1,5 +1,5 @@
 {
-  "name": "@vibecc/paykit-auth-core",
+  "name": "@xeko-git-1/paykit-auth-core",
   "version": "0.4.0-rc.0",
   "description": "Paykit auth-core: DB schema, Drizzle client types, repos, and HTTP-free auth primitives (key mint/verify, scopes, JWT signing). Shared by paykit-server and paykit-cli with no HTTP-layer dependency.",
   "type": "module",

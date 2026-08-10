@@ -7,7 +7,7 @@
  * own payloads. The verifier tries each configured secret in order and
  * throws WebhookSignatureError if none match.
  */
-import { WebhookSignatureError } from "@vibecc/paykit";
+import { WebhookSignatureError } from "@xeko-git-1/paykit";
 import type Stripe from "stripe";
 
 export function verifyAndParse(

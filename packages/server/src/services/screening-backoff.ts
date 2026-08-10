@@ -6,7 +6,7 @@
  * be with a compliance provider, and how many attempts pass before a payment
  * stops waiting for a machine and goes to a human.
  */
-import { backoffDelayMs } from "@vibecc/paykit";
+import { backoffDelayMs } from "@xeko-git-1/paykit";
 
 /** Cap on attempts before a job stops retrying and goes to human review. */
 export const MAX_SCREENING_ATTEMPTS = 6;

@@ -26,7 +26,7 @@
  * transactionId), NOT Cryptomus' `uuid`. The order_id round-trips in every
  * webhook, so the router's (provider, provider_ref) lookup matches the row.
  */
-import type { NormalizedWebhookEvent, WebhookEventType } from "@vibecc/paykit";
+import type { NormalizedWebhookEvent, WebhookEventType } from "@xeko-git-1/paykit";
 
 export interface CryptomusWebhookPayload {
   readonly type?: string;

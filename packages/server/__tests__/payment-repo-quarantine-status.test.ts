@@ -1,12 +1,12 @@
+import type { DbOrTx } from "@xeko-git-1/paykit-auth-core/db/client.js";
+import { updateTransactionStatus } from "@xeko-git-1/paykit-auth-core/db/repos/payment.repo.js";
 import { describe, expect, expectTypeOf, it } from "vitest";
-import type { DbOrTx } from "@vibecc/paykit-auth-core/db/client.js";
-import { updateTransactionStatus } from "@vibecc/paykit-auth-core/db/repos/payment.repo.js";
 
 describe("payment.repo updateTransactionStatus signature (Phase 0a — Val D3)", () => {
   it("accepts 'quarantine' in the status union (migration 010 enum extension)", () => {
-    expectTypeOf(updateTransactionStatus).parameter(2).toEqualTypeOf<
-      "pending" | "completed" | "failed" | "refunded" | "expired" | "quarantine"
-    >();
+    expectTypeOf(updateTransactionStatus)
+      .parameter(2)
+      .toEqualTypeOf<"pending" | "completed" | "failed" | "refunded" | "expired" | "quarantine">();
   });
 
   it("first parameter is DbOrTx (works inside webhook-router transaction)", () => {

@@ -21,7 +21,7 @@
  * reclaim must mint a NEW token — a reclaim that reused the old one would leave
  * the stale claimant able to write to it.
  */
-import * as idempotencyRepo from "@vibecc/paykit-auth-core/db/repos/idempotency.repo.js";
+import * as idempotencyRepo from "@xeko-git-1/paykit-auth-core/db/repos/idempotency.repo.js";
 import { describe, expect, it } from "vitest";
 
 const TENANT = "a0000000-0000-4000-8000-000000000001";

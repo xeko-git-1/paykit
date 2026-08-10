@@ -23,7 +23,7 @@
  * go through that connection — the run's own queries keep using the pool, so a
  * long reconciliation does not tie up a connection doing nothing.
  */
-import type { DbClient } from "@vibecc/paykit-server";
+import type { DbClient } from "@xeko-git-1/paykit-server";
 import type { Pool } from "pg";
 
 export const RECONCILE_LOCK_NAME = "paykit.reconcile";

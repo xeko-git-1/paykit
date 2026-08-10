@@ -52,7 +52,7 @@ Phụ (sepay): `sepay-route.ts:76-88` còn 2 lỗi đi kèm — thiếu guard `p
 - [x] Migration 013 lên chạy sạch; down có guard/comment forward-only (finding H)
 - [x] sepay-route replay dùng amount đã lưu, convert đúng micros→VND (finding G)
 - [x] `v4-migrations-shape.test.ts` cập nhật 13 migration, xanh (finding C)
-- [x] `pnpm --filter @vibecc/paykit-server build` pass; test regression IDOR xanh
+- [x] `pnpm --filter @xeko-git-1/paykit-server build` pass; test regression IDOR xanh
 
 ## Risk Assessment
 - **Finding I:** `DROP CONSTRAINT IF EXISTS <ten_doan>` có thể silent no-op nếu tên lệch → constraint global-unique sót lại → tenant B INSERT key trùng → 500. Mitigation: bước 1 (lấy tên thật) BẮT BUỘC + test A/B cùng key INSERT thành công.

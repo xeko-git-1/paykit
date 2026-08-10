@@ -8,12 +8,12 @@
  * Atomic: ledger insert + balance applyDelta in single DB transaction.
  * Emits via `onAdminAction` (fire-and-forget, errors swallowed).
  */
-import type { AdminGuard, AdminGuardResult } from "@vibecc/paykit";
+import type { AdminGuard, AdminGuardResult } from "@xeko-git-1/paykit";
+import type { DbClient } from "@xeko-git-1/paykit-auth-core/db/client.js";
+import { applyDelta } from "@xeko-git-1/paykit-auth-core/db/repos/balance.repo.js";
+import { appendLedgerEntry } from "@xeko-git-1/paykit-auth-core/db/repos/ledger.repo.js";
 import { Hono } from "hono";
 import { z } from "zod";
-import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
-import { applyDelta } from "@vibecc/paykit-auth-core/db/repos/balance.repo.js";
-import { appendLedgerEntry } from "@vibecc/paykit-auth-core/db/repos/ledger.repo.js";
 import { dataJson, errorJson } from "../shared/response.js";
 import { adminGuardMiddleware } from "./admin-guard.js";
 

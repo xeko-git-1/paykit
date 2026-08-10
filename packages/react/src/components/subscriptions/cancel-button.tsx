@@ -23,7 +23,11 @@ export function CancelButton(props: CancelButtonProps): React.ReactElement {
   }
 
   return (
-    <span className="paykit-subs-cancel-confirm" role="dialog" aria-label="confirm cancel">
+    // Inline confirmation inside a table row, not a modal: it does not trap
+    // focus or block the rest of the table, so a grouping element describes it
+    // honestly where `dialog` would promise semantics this markup never gives.
+    // `fieldset` is that grouping element natively, so no ARIA role is needed.
+    <fieldset className="paykit-subs-cancel-confirm" aria-label="confirm cancel">
       <label>
         <input
           type="checkbox"
@@ -50,6 +54,6 @@ export function CancelButton(props: CancelButtonProps): React.ReactElement {
       <button type="button" onClick={() => setConfirming(false)}>
         ×
       </button>
-    </span>
+    </fieldset>
   );
 }

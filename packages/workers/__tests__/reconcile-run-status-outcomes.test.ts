@@ -15,7 +15,7 @@
  * These tests pin all four outcomes, both in the returned result and in what
  * reaches `completeRun`, because the two disagreed before.
  */
-import type { PaymentProviderAdapter, ProviderRegistry } from "@vibecc/paykit";
+import type { PaymentProviderAdapter, ProviderRegistry } from "@xeko-git-1/paykit";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockStartRun = vi.fn();
@@ -26,7 +26,7 @@ const mockPageOfPayments = vi.fn();
 const mockAdvanceCursor = vi.fn();
 const mockMarkWindowExhausted = vi.fn();
 
-vi.mock("@vibecc/paykit-server", () => ({
+vi.mock("@xeko-git-1/paykit-server", () => ({
   paymentTransactions: {
     transactionId: "transaction_id",
     createdAt: "created_at",

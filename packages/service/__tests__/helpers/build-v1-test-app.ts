@@ -2,12 +2,12 @@
  * Shared test helper — builds a service app with configurable mock deps
  * for testing /v1 endpoints with auth context injection.
  */
-import type { PaymentProviderAdapter, ProviderRegistry } from "@vibecc/paykit";
-import type { PaykitAuthContext } from "@vibecc/paykit-server";
+import type { PaymentProviderAdapter, ProviderRegistry } from "@xeko-git-1/paykit";
+import type { PaykitAuthContext } from "@xeko-git-1/paykit-server";
 import { Hono } from "hono";
-import { buildV1Router, type V1RouterDeps } from "../../src/v1/router.js";
-import { resetAllBuckets } from "../../src/v1/rate-limit.js";
 import { getOpenAPIDocument } from "../../src/v1/openapi.js";
+import { resetAllBuckets } from "../../src/v1/rate-limit.js";
+import { type V1RouterDeps, buildV1Router } from "../../src/v1/router.js";
 
 // ---------------------------------------------------------------------------
 // Mock adapter

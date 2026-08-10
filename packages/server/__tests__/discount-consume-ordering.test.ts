@@ -10,7 +10,7 @@
  * The savepoint semantics themselves are exercised against real Postgres in
  * `discount-consume-savepoint-pg.test.ts`; this file pins the call contract.
  */
-import type { AppliedDiscount, DbTransaction } from "@vibecc/paykit";
+import type { AppliedDiscount, DbTransaction } from "@xeko-git-1/paykit";
 import { describe, expect, it, vi } from "vitest";
 import { applyDiscountInTx } from "../src/routes/checkout/apply-discount.js";
 

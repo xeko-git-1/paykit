@@ -30,12 +30,18 @@ describe("Migration 016_discounts — up", () => {
   });
 
   it("constrains percent to [0,100]", () => {
-    expect(up).toMatch(/percent\s+NUMERIC\(5, 2\) NOT NULL CHECK \(percent >= 0 AND percent <= 100\)/i);
+    expect(up).toMatch(
+      /percent\s+NUMERIC\(5, 2\) NOT NULL CHECK \(percent >= 0 AND percent <= 100\)/i,
+    );
   });
 
   it("tracks redemption count and cap with non-negative guards", () => {
-    expect(up).toMatch(/times_redeemed\s+INTEGER NOT NULL DEFAULT 0 CHECK \(times_redeemed >= 0\)/i);
-    expect(up).toMatch(/max_redemptions\s+INTEGER CHECK \(max_redemptions IS NULL OR max_redemptions >= 0\)/i);
+    expect(up).toMatch(
+      /times_redeemed\s+INTEGER NOT NULL DEFAULT 0 CHECK \(times_redeemed >= 0\)/i,
+    );
+    expect(up).toMatch(
+      /max_redemptions\s+INTEGER CHECK \(max_redemptions IS NULL OR max_redemptions >= 0\)/i,
+    );
   });
 });
 

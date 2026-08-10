@@ -5,7 +5,7 @@
  * can coexist in the same ProviderRegistry. Webhook URLs route to the right
  * adapter based on path segment.
  */
-import { ProviderRegistry } from "@vibecc/paykit";
+import { ProviderRegistry } from "@xeko-git-1/paykit";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("stripe", () => {

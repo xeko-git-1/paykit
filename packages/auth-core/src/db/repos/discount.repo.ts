@@ -55,10 +55,7 @@ export async function reserve(
         or(isNull(discounts.expiresAt), sql`${discounts.expiresAt} > ${now}`),
         or(
           isNull(discounts.maxRedemptions),
-          lt(
-            sql`${discounts.reserved} + ${discounts.timesRedeemed}`,
-            discounts.maxRedemptions,
-          ),
+          lt(sql`${discounts.reserved} + ${discounts.timesRedeemed}`, discounts.maxRedemptions),
         ),
       ),
     )

@@ -3,7 +3,7 @@
 **Date:** 2026-05-29 | **Branch:** feat/v3-phase-03-nowpayments-adapter | **Scope:** Phase 02
 
 ## What shipped
-New package `@vibecc/paykit-bitpay` + an additive async-webhook hook on the core adapter contract.
+New package `@xeko-git-1/paykit-bitpay` + an additive async-webhook hook on the core adapter contract.
 
 ### Core contract (additive, non-breaking)
 - `PaymentProviderAdapter.resolveWebhook?(rawBody, headers): Promise<NormalizedWebhookEvent|null>` — optional. Existing 7 adapters untouched (undefined → keep sync path). `packages/core/src/adapters/adapter.ts`.

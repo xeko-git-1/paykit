@@ -21,22 +21,22 @@
  * holding everything in one transaction — is only "safe" while the process
  * lives.
  */
-import type { ScreeningDecision, ScreeningService } from "@vibecc/paykit";
-import { ScreeningUnavailableError } from "@vibecc/paykit";
-import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
-import { applyDelta } from "@vibecc/paykit-auth-core/db/repos/balance.repo.js";
+import type { ScreeningDecision, ScreeningService } from "@xeko-git-1/paykit";
+import { ScreeningUnavailableError } from "@xeko-git-1/paykit";
+import type { DbClient } from "@xeko-git-1/paykit-auth-core/db/client.js";
+import { applyDelta } from "@xeko-git-1/paykit-auth-core/db/repos/balance.repo.js";
 import {
   commitReservation,
   releaseReservation,
-} from "@vibecc/paykit-auth-core/db/repos/discount.repo.js";
-import { appendLedgerEntryIdempotent } from "@vibecc/paykit-auth-core/db/repos/ledger.repo.js";
-import { findByProviderRef } from "@vibecc/paykit-auth-core/db/repos/payment.repo.js";
+} from "@xeko-git-1/paykit-auth-core/db/repos/discount.repo.js";
+import { appendLedgerEntryIdempotent } from "@xeko-git-1/paykit-auth-core/db/repos/ledger.repo.js";
+import { findByProviderRef } from "@xeko-git-1/paykit-auth-core/db/repos/payment.repo.js";
 import {
   claimNextScreeningJob,
   markScreeningDecided,
   markScreeningRetryable,
-} from "@vibecc/paykit-auth-core/db/repos/screening-job.repo.js";
-import type { ScreeningJob } from "@vibecc/paykit-auth-core/db/schema/screening-jobs.js";
+} from "@xeko-git-1/paykit-auth-core/db/repos/screening-job.repo.js";
+import type { ScreeningJob } from "@xeko-git-1/paykit-auth-core/db/schema/screening-jobs.js";
 import type { PaykitEventHandlers } from "../events/emitter.js";
 import { emitEvent } from "../events/emitter.js";
 import {

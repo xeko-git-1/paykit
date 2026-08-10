@@ -3,7 +3,7 @@
  * Fired AFTER DB transactions commit (never inside) — emitter throws are
  * isolated and do NOT roll back ledger writes.
  */
-import type { PaymentTransaction } from "@vibecc/paykit-auth-core/db/schema/payment-transactions.js";
+import type { PaymentTransaction } from "@xeko-git-1/paykit-auth-core/db/schema/payment-transactions.js";
 
 export type PaykitEvent =
   | { readonly type: "payment.completed"; readonly transaction: PaymentTransaction }

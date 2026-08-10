@@ -7,21 +7,24 @@
  * Discount flow: paykit calls discountResolver, then invokes consume(tx) inside
  * the DB transaction. Race-loser pays full price.
  */
-import { TenantResolutionError, microsStringToBigInt, vndToMicros } from "@vibecc/paykit";
+import { TenantResolutionError, microsStringToBigInt, vndToMicros } from "@xeko-git-1/paykit";
 import type {
   AppliedDiscount,
   CurrencyCode,
   DiscountResolver,
   TenantResolver,
-} from "@vibecc/paykit";
+} from "@xeko-git-1/paykit";
+import type { DbClient } from "@xeko-git-1/paykit-auth-core/db/client.js";
+import {
+  createTransaction,
+  findByIdempotencyKey,
+} from "@xeko-git-1/paykit-auth-core/db/repos/payment.repo.js";
+import { paymentTransactions } from "@xeko-git-1/paykit-auth-core/db/schema/payment-transactions.js";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
-import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
-import { createTransaction, findByIdempotencyKey } from "@vibecc/paykit-auth-core/db/repos/payment.repo.js";
-import { paymentTransactions } from "@vibecc/paykit-auth-core/db/schema/payment-transactions.js";
-import type { SePayClient } from "../../providers/sepay/client.js";
 import { getAuthTenant } from "../../auth/auth-context.js";
+import type { SePayClient } from "../../providers/sepay/client.js";
 import { dataJson, errorJson } from "../shared/response.js";
 import { applyDiscountInTx, resolveDiscount } from "./apply-discount.js";
 

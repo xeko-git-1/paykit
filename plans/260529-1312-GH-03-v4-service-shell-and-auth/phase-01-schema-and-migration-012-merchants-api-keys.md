@@ -68,7 +68,7 @@ giữ nguyên 2 cột `tenant_id`/`owner_id` đang có.
 1. **RED:** viết `v4-migrations-shape.test.ts` — assert: (a) file 012 up/down tồn tại; (b) up chứa `CREATE TABLE paykit.merchants` + `paykit.api_keys`, UNIQUE trên `key_hash`, FK `merchant_id`; (c) down **rename-not-drop** (chứa `ALTER TABLE ... RENAME TO ..._quarantine`, KHÔNG `DROP TABLE merchants`); (d) **F6 gap/order:** `manifest.json` có entry id `012` ở cuối, ids ascending + contiguous (001..012, không nhảy cóc); (e) `manifest.json` entry trỏ tới đúng tên file up/down. Mirror `v2-migrations-shape.test.ts`. Chạy → FAIL.
 2. **GREEN:** viết 012 up/down SQL + 2 Drizzle schema files; export qua index barrels.
 3. **Append entry `012` vào `packages/cli/migrations/manifest.json`** (id/slug/up/down/description — KHÔNG checksum, runner không có cơ chế đó). KHÔNG đụng `release-manifest.json`.
-4. **VERIFY:** `pnpm --filter @vibecc/paykit-server build && pnpm vitest run packages/server/__tests__/v4-migrations-shape.test.ts` → PASS.
+4. **VERIFY:** `pnpm --filter @xeko-git-1/paykit-server build && pnpm vitest run packages/server/__tests__/v4-migrations-shape.test.ts` → PASS.
 5. (Tùy chọn) chạy migration thật trên Postgres test DB qua `paykit migrate` → bảng tạo, re-run no-op (idempotent); `listStatus` trả `012` pending→applied.
 
 ## Success Criteria

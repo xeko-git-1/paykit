@@ -47,7 +47,7 @@ adapter), **thin TS SDK** từ OpenAPI, **CLI bootstrap** (`merchant create` + `
 | 3 | [Docker cold-start (migrate then serve) + doctor table-count fix](./phase-03-docker-cold-start-migrate-then-serve-doctor-table-count-fix.md) | ✅ Completed |
 | 4 | [Thin TS SDK generated from OpenAPI](./phase-04-thin-ts-sdk-generated-from-openapi.md) | ✅ Completed |
 | 5 | [Service-mode docs + end-to-end acceptance](./phase-05-service-mode-docs-end-to-end-acceptance.md) | ✅ Completed |
-| 6 | [Extract @vibecc/paykit-auth-core (deferred boundary fix)](./phase-06-extract-auth-core.md) | ✅ Completed |
+| 6 | [Extract @xeko-git-1/paykit-auth-core (deferred boundary fix)](./phase-06-extract-auth-core.md) | ✅ Completed |
 
 ## Implementation outcome (2026-06-01)
 
@@ -57,7 +57,7 @@ phase 6). Repo-wide typecheck clean. Docker cold-start verified for real
 (migrate→serve, `/healthz`+`/readyz` 200, bootstrap→mint→checkout through the
 container); e2e verified against a real throwaway Postgres.
 
-**Phase 6 completed (2026-06-11):** `@vibecc/paykit-auth-core` extracted (HTTP-free
+**Phase 6 completed (2026-06-11):** `@xeko-git-1/paykit-auth-core` extracted (HTTP-free
 tier: db client, repos, schema, auth primitives). CLI now imports auth-core, not
 server. Boundary tests (cli→server, auth-core→server) re-enabled and green. Done in
 an isolated worktree, rebased onto the branch tip, fast-forwarded in. Full suite:
@@ -84,7 +84,7 @@ an isolated worktree, rebased onto the branch tip, fast-forwarded in. Full suite
      field (pointed at the bin, not the library barrel).
 4. **CLI↔server boundary deferred to phase 6.** Phase 1 (F5) has the CLI import
    server auth primitives + repos, which violates the checked-in `no-cross-imports`
-   rule. User chose to extract `@vibecc/paykit-auth-core` as a separate phase; the
+   rule. User chose to extract `@xeko-git-1/paykit-auth-core` as a separate phase; the
    boundary test is `it.skip`-ped with a pointer to phase 6.
 
 ## Sequencing rationale

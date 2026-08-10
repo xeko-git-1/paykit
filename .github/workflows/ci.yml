@@ -15,15 +15,21 @@ jobs:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         with:
-          version: 10
+          # Version comes from `packageManager` in package.json (pnpm@10.0.0).
+          # Passing `version` here as well triggers ERR_PNPM_BAD_PM_VERSION.
+          run_install: false
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Build first. Packages in this workspace resolve each other through their
+      # `dist` output, which does not exist in a fresh checkout — running
+      # typecheck before build fails with TS2307 on sibling packages that are
+      # perfectly fine once compiled.
+      - run: pnpm build
       - run: pnpm typecheck
       - run: pnpm lint
-      - run: pnpm build
       - run: pnpm test
 
   # Gates the standalone-service cold-start path (migrate → bootstrap → serve →
@@ -51,7 +57,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         with:
-          version: 10
+          # Version comes from `packageManager` in package.json (pnpm@10.0.0).
+          # Passing `version` here as well triggers ERR_PNPM_BAD_PM_VERSION.
+          run_install: false
       - uses: actions/setup-node@v4
         with:
           node-version: 20

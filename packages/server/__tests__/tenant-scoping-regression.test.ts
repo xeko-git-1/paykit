@@ -1,3 +1,4 @@
+import { Hono } from "hono";
 /**
  * Tenant-scoping regression test — locks the invariant that route handlers
  * pass the correct authenticated tenantId to repo functions.
@@ -11,11 +12,10 @@
  * 2. Service mode: paykitAuth context provides tenant → repo called with that tenantId
  */
 import { describe, expect, it, vi } from "vitest";
-import { Hono } from "hono";
 import { buildBalanceRoute } from "../src/routes/billing/balance-route.js";
 
 // Mock the balance repo at module level
-vi.mock("@vibecc/paykit-auth-core/db/repos/balance.repo.js", () => ({
+vi.mock("@xeko-git-1/paykit-auth-core/db/repos/balance.repo.js", () => ({
   listBalancesByTenant: vi.fn().mockResolvedValue([
     {
       currencyCode: "USD",
@@ -25,14 +25,14 @@ vi.mock("@vibecc/paykit-auth-core/db/repos/balance.repo.js", () => ({
   ]),
 }));
 
-vi.mock("@vibecc/paykit-auth-core/db/repos/ledger.repo.js", () => ({
-  computeBalancesByTenant: vi.fn().mockResolvedValue([
-    { currencyCode: "USD", totalMicros: "50000000" },
-  ]),
+vi.mock("@xeko-git-1/paykit-auth-core/db/repos/ledger.repo.js", () => ({
+  computeBalancesByTenant: vi
+    .fn()
+    .mockResolvedValue([{ currencyCode: "USD", totalMicros: "50000000" }]),
 }));
 
-import { listBalancesByTenant } from "@vibecc/paykit-auth-core/db/repos/balance.repo.js";
-import { computeBalancesByTenant } from "@vibecc/paykit-auth-core/db/repos/ledger.repo.js";
+import { listBalancesByTenant } from "@xeko-git-1/paykit-auth-core/db/repos/balance.repo.js";
+import { computeBalancesByTenant } from "@xeko-git-1/paykit-auth-core/db/repos/ledger.repo.js";
 
 const TENANT_A = { tenantId: "tenant-aaa-111", ownerId: "owner-aaa-111" };
 const TENANT_B = { tenantId: "tenant-bbb-222", ownerId: "owner-bbb-222" };

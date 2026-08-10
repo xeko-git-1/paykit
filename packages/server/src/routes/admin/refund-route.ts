@@ -12,17 +12,17 @@
  *   5. Map core result to HTTP response
  *   6. Audit emit (post-tx, fire-and-forget)
  */
-import type { AdminGuard, AdminGuardResult, ProviderRegistry } from "@vibecc/paykit";
+import type { AdminGuard, AdminGuardResult, ProviderRegistry } from "@xeko-git-1/paykit";
+import type { DbClient } from "@xeko-git-1/paykit-auth-core/db/client.js";
+import { paymentTransactions } from "@xeko-git-1/paykit-auth-core/db/schema/payment-transactions.js";
 import { eq } from "drizzle-orm";
 import type { Context } from "hono";
 import { Hono } from "hono";
 import { z } from "zod";
-import type { DbClient } from "@vibecc/paykit-auth-core/db/client.js";
-import { paymentTransactions } from "@vibecc/paykit-auth-core/db/schema/payment-transactions.js";
+import { executeRefund } from "../../services/refund-core.js";
 import { dataJson, errorJson } from "../shared/response.js";
 import { adminGuardMiddleware } from "./admin-guard.js";
 import type { AdminAuditAction } from "./ledger-adjust-route.js";
-import { executeRefund } from "../../services/refund-core.js";
 
 const refundBodySchema = z.object({
   transactionId: z.string().uuid(),
@@ -81,11 +81,12 @@ export function buildAdminRefundRoute(deps: AdminRefundRouteDeps): Hono {
       adminUserId: adminCtx.adminUserId ?? "unknown",
       role: adminCtx.role ?? "unknown",
     };
-    const result = await executeRefund(
-      { db, registry, logger },
-      actor,
-      { txRow, amountMicros: refundAmountMicros, idempotencyKey, reason: parsed.reason },
-    );
+    const result = await executeRefund({ db, registry, logger }, actor, {
+      txRow,
+      amountMicros: refundAmountMicros,
+      idempotencyKey,
+      reason: parsed.reason,
+    });
 
     // Map core result to HTTP response
     if (result.state === "exceeds_remaining") {

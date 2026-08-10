@@ -72,7 +72,7 @@ khóa sai field, OpenAPI thiếu header/security scheme. Thêm CLI để tạo m
    - (nếu per-key) rate-limit test: 2 key CÙNG merchant → bucket độc lập.
    Chạy → FAIL.
 2. **GREEN:** thực thi theo Requirements; gỡ dead loader; mount openapi trước glob; CLI commands.
-3. **VERIFY:** `pnpm --filter @vibecc/paykit-service build && pnpm --filter @vibecc/paykit-cli build && pnpm vitest run packages/service packages/cli` → PASS.
+3. **VERIFY:** `pnpm --filter @xeko-git-1/paykit-service build && pnpm --filter @xeko-git-1/paykit-cli build && pnpm vitest run packages/service packages/cli` → PASS.
 
 ## Success Criteria
 

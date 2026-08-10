@@ -24,7 +24,7 @@
  * payment.amount_mismatch: the server quarantines it for admin reconcile
  * instead of crediting a wrong number.
  */
-import type { NormalizedWebhookEvent, WebhookEventType } from "@vibecc/paykit";
+import type { NormalizedWebhookEvent, WebhookEventType } from "@xeko-git-1/paykit";
 import { fromMerchantTradeNo } from "./merchant-trade-no.js";
 
 export interface BinanceRefundInfo {

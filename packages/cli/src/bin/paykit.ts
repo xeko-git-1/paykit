@@ -15,8 +15,8 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { DbClient } from "@vibecc/paykit-auth-core";
-import { SCOPES } from "@vibecc/paykit-auth-core";
+import type { DbClient } from "@xeko-git-1/paykit-auth-core";
+import { SCOPES } from "@xeko-git-1/paykit-auth-core";
 import cac from "cac";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Client } from "pg";
@@ -148,8 +148,8 @@ cli.command("reconcile-now", "Print reconciler invocation guide (V1.5)").action(
   console.log("");
   console.log("Wire it in your app:");
   console.log("");
-  console.log("  import { reconcileV15 } from '@vibecc/paykit-workers';");
-  console.log("  import { createPaykit } from '@vibecc/paykit-server';");
+  console.log("  import { reconcileV15 } from '@xeko-git-1/paykit-workers';");
+  console.log("  import { createPaykit } from '@xeko-git-1/paykit-server';");
   console.log("");
   console.log("  const paykit = await createPaykit({ ... });");
   console.log("  const result = await reconcileV15(");
@@ -174,11 +174,12 @@ cli
       console.error(`Unknown merchant action: ${action}. Use: create`);
       process.exit(1);
     }
-    if (!opts.name) {
+    const name = opts.name;
+    if (!name) {
       console.error("paykit merchant create: --name is required");
       process.exit(1);
     }
-    const { merchantId } = await withDb(opts.dbUrl, (db) => createMerchant(db, opts.name!));
+    const { merchantId } = await withDb(opts.dbUrl, (db) => createMerchant(db, name));
     console.log(merchantId);
   });
 
@@ -197,7 +198,8 @@ cli
         console.error(`Unknown apikey action: ${action}. Use: mint`);
         process.exit(1);
       }
-      if (!opts.merchant) {
+      const merchantId = opts.merchant;
+      if (!merchantId) {
         console.error("paykit apikey mint: --merchant is required");
         process.exit(1);
       }
@@ -205,7 +207,8 @@ cli
         console.error("paykit apikey mint: --scopes is required (comma-separated)");
         process.exit(1);
       }
-      if (opts.mode !== "live" && opts.mode !== "test") {
+      const mode = opts.mode;
+      if (mode !== "live" && mode !== "test") {
         console.error("paykit apikey mint: --mode must be 'live' or 'test'");
         process.exit(1);
       }
@@ -213,9 +216,7 @@ cli
         .split(",")
         .map((s) => s.trim())
         .filter((s) => s.length > 0);
-      const result = await withDb(opts.dbUrl, (db) =>
-        mintKey(db, { merchantId: opts.merchant!, scopes, mode: opts.mode as "live" | "test" }),
-      );
+      const result = await withDb(opts.dbUrl, (db) => mintKey(db, { merchantId, scopes, mode }));
       console.error(
         "⚠ This plaintext key is shown ONCE and is not recoverable. Store it now.\n" +
           "  Do not run this via `docker compose exec` where stdout is captured to centralized logs;\n" +
@@ -240,7 +241,8 @@ cli
         console.error(`Unknown jwt action: ${action}. Use: mint`);
         process.exit(1);
       }
-      if (!opts.merchant) {
+      const merchantId = opts.merchant;
+      if (!merchantId) {
         console.error("paykit jwt mint: --merchant is required");
         process.exit(1);
       }
@@ -274,11 +276,10 @@ cli
       }
 
       const { token } = await withDb(opts.dbUrl, (db) =>
-        mintJwt(db, { merchantId: opts.merchant!, ttlSeconds, ...(scopes ? { scopes } : {}) }),
+        mintJwt(db, { merchantId, ttlSeconds, ...(scopes ? { scopes } : {}) }),
       );
       console.error(
-        `⚠ Admin JWT (valid ${ttlSeconds}s) shown ONCE. Use as: Authorization: Bearer <token>\n` +
-          "  Treat as a secret; do not capture stdout to centralized logs.",
+        `⚠ Admin JWT (valid ${ttlSeconds}s) shown ONCE. Use as: Authorization: Bearer <token>\n  Treat as a secret; do not capture stdout to centralized logs.`,
       );
       console.log(token);
     },

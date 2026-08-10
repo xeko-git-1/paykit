@@ -26,7 +26,7 @@ const repo = vi.hoisted(() => ({
   findByIdempotencyKey: vi.fn(),
 }));
 
-vi.mock("@vibecc/paykit-auth-core/db/repos/payment.repo.js", () => repo);
+vi.mock("@xeko-git-1/paykit-auth-core/db/repos/payment.repo.js", () => repo);
 
 const discountCalls = vi.hoisted(() => ({ consumed: 0, rolledBack: 0 }));
 

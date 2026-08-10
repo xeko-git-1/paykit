@@ -12,7 +12,7 @@ dependencies: [3]
 ## Overview
 
 "Dễ thêm vào app khác" — hiện consumer phải tự viết HTTP client tay. `/v1/openapi.json` đã serve
-(phase 5 cũ). Thêm package `@vibecc/paykit-sdk`: thin TS client generate từ OpenAPI spec, type-safe,
+(phase 5 cũ). Thêm package `@xeko-git-1/paykit-sdk`: thin TS client generate từ OpenAPI spec, type-safe,
 gắn `Authorization: Bearer pk_...` tự động. Một ngôn ngữ (TS) làm chuẩn; Python/Go/PHP defer.
 
 > **Red-team applied (2026-06-01):** F4 (High) checkout DTO contract SAI — thật là
@@ -21,7 +21,7 @@ gắn `Authorization: Bearer pk_...` tự động. Một ngôn ngữ (TS) làm c
 > served no-auth + gồm `mintApiKeyRoute` (`openapi.ts:81-93`) → `openapi-fetch` sinh client cho
 > MỌI path → SDK sẽ expose mint trừ khi filter (trái D1: SDK là api_key plane, mint là jwt plane).
 > F15 (Med) `openapi-fetch` thành runtime dep ship cho mọi integrator — phải pin-exact + vet;
-> snapshot test cần devDep `@vibecc/paykit-service`.
+> snapshot test cần devDep `@xeko-git-1/paykit-service`.
 
 ## Real /v1 contract (verified — SDK phải khớp)
 
@@ -36,7 +36,7 @@ gắn `Authorization: Bearer pk_...` tự động. Một ngôn ngữ (TS) làm c
 ## Requirements
 
 **Functional**
-- Package mới `packages/sdk` (`@vibecc/paykit-sdk`).
+- Package mới `packages/sdk` (`@xeko-git-1/paykit-sdk`).
 - Generate types + client từ `/v1/openapi.json` (committed snapshot, không fetch lúc build).
 - Client API: `createPaykitClient({ baseUrl, apiKey })` → method-per-endpoint:
   `checkouts.create()`, `balances.get()`, `payments.list()`, `refunds.create()`.
@@ -60,7 +60,7 @@ gắn `Authorization: Bearer pk_...` tự động. Một ngôn ngữ (TS) làm c
   `openapi-typescript` pin-exact; KHÔNG runtime dep.
 - Spec snapshot commit vào repo (`packages/sdk/openapi.json`) + script regenerate; SDK không drift
   vì test so spec snapshot vs `/v1/openapi.json` runtime. **F15:** snapshot test ưu tiên so qua
-  `buildServiceApp().request("/v1/openapi.json")` (bytes thật); devDep `@vibecc/paykit-service`.
+  `buildServiceApp().request("/v1/openapi.json")` (bytes thật); devDep `@xeko-git-1/paykit-service`.
 - KHÔNG tự build multi-lang; chỉ TS.
 
 ## Architecture
@@ -75,7 +75,7 @@ packages/sdk/
   package.json
 
 consumer:
-  import { createPaykitClient } from "@vibecc/paykit-sdk";
+  import { createPaykitClient } from "@xeko-git-1/paykit-sdk";
   const pk = createPaykitClient({ baseUrl, apiKey: "pk_live_..." });
   // F4: SePay = VND → amountVnd, KHÔNG amountMicros/currency
   const { url } = await pk.checkouts.create({ provider: "sepay", amountVnd: 50_000 });
@@ -88,7 +88,7 @@ consumer:
 - **Create:** `packages/sdk/src/generated/*` (generated — types từ spec)
 - **Create:** `packages/sdk/scripts/regenerate.ts` (dump `/v1/openapi.json` → openapi-typescript)
 - **Create:** `packages/sdk/openapi.json` (committed snapshot — **F11:** mint path filtered out)
-- **F15:** `packages/sdk/package.json` devDep `@vibecc/paykit-service` (snapshot test) + regenerate lockfile
+- **F15:** `packages/sdk/package.json` devDep `@xeko-git-1/paykit-service` (snapshot test) + regenerate lockfile
 - **Create (TEST FIRST):** `packages/sdk/__tests__/client.test.ts` (mock fetch, assert auth header + typed call + error map + **không có `apiKeys.create` — F11**)
 - **Create (TEST):** `packages/sdk/__tests__/spec-snapshot.test.ts` (so qua `buildServiceApp().request("/v1/openapi.json")` — F15)
 
@@ -106,7 +106,7 @@ consumer:
    - Scaffold package; generate types (openapi-typescript devDep); viết `client.ts` (fetch wrapper
      tay gắn auth header, dùng generated types); map error; export. KHÔNG runtime dep.
    - `regenerate.ts` script + npm script `sdk:generate`.
-4. **VERIFY:** `pnpm --filter @vibecc/paykit-sdk build && pnpm vitest run packages/sdk` → PASS.
+4. **VERIFY:** `pnpm --filter @xeko-git-1/paykit-sdk build && pnpm vitest run packages/sdk` → PASS.
 
 ## Success Criteria
 

@@ -6,7 +6,7 @@
  * BigInt to JSON.
  */
 
-import type { ReconciliationRunStatus } from "@vibecc/paykit-server";
+import type { ReconciliationRunStatus } from "@xeko-git-1/paykit-server";
 
 export type DiscrepancyType =
   | "matched"

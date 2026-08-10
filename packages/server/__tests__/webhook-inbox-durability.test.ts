@@ -31,7 +31,7 @@ const inbox = vi.hoisted(() => ({
   countDeliveriesByState: vi.fn(),
 }));
 
-vi.mock("@vibecc/paykit-auth-core/db/repos/webhook-inbox.repo.js", () => inbox);
+vi.mock("@xeko-git-1/paykit-auth-core/db/repos/webhook-inbox.repo.js", () => inbox);
 
 const payments = vi.hoisted(() => ({
   applyPaymentEvent: vi.fn(),

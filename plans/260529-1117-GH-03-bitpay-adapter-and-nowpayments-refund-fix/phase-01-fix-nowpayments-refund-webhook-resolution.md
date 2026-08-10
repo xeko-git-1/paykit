@@ -80,7 +80,7 @@ router guard to fall back to `amountMicros` — that would mask future adapter o
 3. Scout `packages/server/__tests__/` for an existing webhook-router integration harness
    (the router already has completed/refunded coverage somewhere — find it). Add the
    stuck-row → refunded regression there using the SAME harness.
-4. `pnpm --filter @vibecc/paykit-nowpayments build` + run nowpayments + server test files.
+4. `pnpm --filter @xeko-git-1/paykit-nowpayments build` + run nowpayments + server test files.
 
 ## Todo
 - [x] `parseNpIpn` sets `refundAmountMicros` on `payment.refunded`

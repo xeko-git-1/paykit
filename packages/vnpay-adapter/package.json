@@ -1,5 +1,5 @@
 {
-  "name": "@vibecc/paykit-vnpay",
+  "name": "@xeko-git-1/paykit-vnpay",
   "version": "0.1.5",
   "description": "Paykit adapter for VNPay — redirect-based bank/QR payments, HMAC-SHA512 IPN, full+partial refund",
   "type": "module",
@@ -27,10 +27,10 @@
   },
   "dependencies": {},
   "peerDependencies": {
-    "@vibecc/paykit": ">=0.1.5 <0.4.0"
+    "@xeko-git-1/paykit": ">=0.1.5 <0.4.0"
   },
   "devDependencies": {
-    "@vibecc/paykit": "workspace:*"
+    "@xeko-git-1/paykit": "workspace:*"
   },
   "engines": { "node": ">=20" }
 }
