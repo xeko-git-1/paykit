@@ -65,9 +65,7 @@ export async function buildAdaptersFromConfig(
         ...(config.cryptomus.toCurrency !== undefined
           ? { toCurrency: config.cryptomus.toCurrency }
           : {}),
-        ...(config.cryptomus.network !== undefined
-          ? { network: config.cryptomus.network }
-          : {}),
+        ...(config.cryptomus.network !== undefined ? { network: config.cryptomus.network } : {}),
         ...(config.cryptomus.returnUrl !== undefined
           ? { returnUrl: config.cryptomus.returnUrl }
           : {}),
@@ -85,12 +83,8 @@ export async function buildAdaptersFromConfig(
         apiKey: config.binance.apiKey,
         apiSecret: config.binance.apiSecret,
         webhookPublicKey: config.binance.webhookPublicKey,
-        ...(config.binance.returnUrl !== undefined
-          ? { returnUrl: config.binance.returnUrl }
-          : {}),
-        ...(config.binance.cancelUrl !== undefined
-          ? { cancelUrl: config.binance.cancelUrl }
-          : {}),
+        ...(config.binance.returnUrl !== undefined ? { returnUrl: config.binance.returnUrl } : {}),
+        ...(config.binance.cancelUrl !== undefined ? { cancelUrl: config.binance.cancelUrl } : {}),
         ...(config.binance.webhookUrl !== undefined
           ? { webhookUrl: config.binance.webhookUrl }
           : {}),
@@ -135,6 +129,22 @@ export async function buildAdaptersFromConfig(
         returnUrl: config.zalopay.returnUrl,
         callbackUrl: config.zalopay.callbackUrl,
         environment: config.zalopay.environment,
+      }),
+    );
+  }
+
+  if (config.coinbaseCommerce) {
+    const { createCoinbaseCommerceAdapter } = await import("@xeko-git-1/paykit-coinbase-commerce");
+    adapters.push(
+      createCoinbaseCommerceAdapter({
+        apiKey: config.coinbaseCommerce.apiKey,
+        webhookSecret: config.coinbaseCommerce.webhookSecret,
+        ...(config.coinbaseCommerce.redirectUrl !== undefined
+          ? { redirectUrl: config.coinbaseCommerce.redirectUrl }
+          : {}),
+        ...(config.coinbaseCommerce.cancelUrl !== undefined
+          ? { cancelUrl: config.coinbaseCommerce.cancelUrl }
+          : {}),
       }),
     );
   }

@@ -96,6 +96,12 @@ import {
 } from "@xeko-git-1/paykit-auth-core/db/repos/pending-refund.repo.js";
 import { buildWebhookRouter } from "../src/routes/webhooks/webhook-router.js";
 
+import {
+  COINBASE_COMMERCE_SIGNATURE_HEADER,
+  PAYKIT_REFERENCE_METADATA_KEY,
+  computeCoinbaseCommerceSignature,
+  createCoinbaseCommerceAdapter,
+} from "@xeko-git-1/paykit-coinbase-commerce";
 import { createBitpayAdapter } from "../../bitpay-adapter/src/adapter.js";
 import { createCryptomusAdapter } from "../../cryptomus-adapter/src/adapter.js";
 import { computeCryptomusSign } from "../../cryptomus-adapter/src/webhook-verifier.js";
@@ -135,6 +141,7 @@ const MOMO_SECRET = "momo_secret_rt";
 const ZALOPAY_KEY2 = "zalopay_key2_rt";
 const NP_SECRET = "np_ipn_secret_rt";
 const CRYPTOMUS_KEY = "cryptomus_key_rt";
+const COINBASE_COMMERCE_SECRET = "cc-whsec-roundtrip";
 const STRIPE_WEBHOOK_SECRET = "whsec_rt";
 
 // --- fake provider HTTP -----------------------------------------------------
@@ -495,6 +502,60 @@ const ADAPTER_CASES: readonly AdapterCase[] = [
     },
   },
   {
+    label: "coinbase-commerce",
+    currencyCode: "USD",
+    amountMicros: USD_50_MICROS,
+    async run(txId) {
+      let sentReference = "";
+      const fetcher = fakeFetch(({ url, body }) => {
+        if (!url.includes("/charges")) return null;
+        const parsed = JSON.parse(body) as { metadata: Record<string, string> };
+        sentReference = parsed.metadata[PAYKIT_REFERENCE_METADATA_KEY] ?? "";
+        return {
+          body: {
+            data: {
+              id: "cb-charge-rt",
+              code: "RTCODE",
+              hosted_url: "https://commerce.coinbase.com/charges/RTCODE",
+            },
+          },
+        };
+      });
+      const adapter = createCoinbaseCommerceAdapter({
+        apiKey: "cc-api-key-rt",
+        webhookSecret: COINBASE_COMMERCE_SECRET,
+        fetcher,
+      });
+      const checkout = await adapter.createCheckout(checkoutInput(txId, USD_50_MICROS, "USD"));
+      const rawBody = JSON.stringify({
+        event: {
+          id: "cb-evt-rt",
+          type: "charge:confirmed",
+          data: {
+            id: "cb-charge-rt",
+            code: "RTCODE",
+            pricing: { local: { amount: "50.00", currency: "USD" } },
+            metadata: { [PAYKIT_REFERENCE_METADATA_KEY]: sentReference },
+            payments: [{ status: "CONFIRMED", value: { local: { amount: "50.00" } } }],
+          },
+        },
+      });
+      return {
+        adapter,
+        storedProviderRef: checkout.providerSessionId ?? txId,
+        webhook: {
+          rawBody,
+          headers: {
+            [COINBASE_COMMERCE_SIGNATURE_HEADER]: computeCoinbaseCommerceSignature(
+              rawBody,
+              COINBASE_COMMERCE_SECRET,
+            ),
+          },
+        },
+      };
+    },
+  },
+  {
     label: "cryptomus",
     currencyCode: "USD",
     amountMicros: USD_50_MICROS,
@@ -575,6 +636,7 @@ describe("checkout → webhook provider_ref round-trip (every shipped adapter)",
   it("covers every adapter the registry can ship", () => {
     expect(ADAPTER_CASES.map((c) => c.label).sort()).toEqual([
       "bitpay",
+      "coinbase-commerce",
       "cryptomus",
       "momo",
       "nowpayments",

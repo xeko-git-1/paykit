@@ -48,6 +48,7 @@
   },
   "devDependencies": {
     "@types/pg": "^8.20.0",
+    "@xeko-git-1/paykit-coinbase-commerce": "workspace:*",
     "drizzle-kit": "^0.31.10"
   }
 }
