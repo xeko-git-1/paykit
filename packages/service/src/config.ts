@@ -85,6 +85,15 @@ const envSchema = z.object({
   BINANCE_CANCEL_URL: z.string().optional(),
   BINANCE_WEBHOOK_URL: z.string().optional(),
 
+  // Coinbase Commerce (USD-priced crypto charges) — enabled when the API key and
+  // the webhook shared secret are both present. The secret is separate from the
+  // API key and is what every inbound event is verified against, so a deploy with
+  // only the API key could create charges it could never credit.
+  COINBASE_COMMERCE_API_KEY: z.string().optional(),
+  COINBASE_COMMERCE_WEBHOOK_SECRET: z.string().optional(),
+  COINBASE_COMMERCE_REDIRECT_URL: z.string().optional(),
+  COINBASE_COMMERCE_CANCEL_URL: z.string().optional(),
+
   // Accept a coin/chain code paykit does not recognise. The crypto gateways add
   // combinations faster than paykit can enumerate them, so this is the escape
   // hatch for a genuinely newer code — the value is then passed through to the
@@ -173,6 +182,14 @@ export interface ServiceConfig {
         returnUrl?: string;
         cancelUrl?: string;
         webhookUrl?: string;
+      }
+    | undefined;
+  readonly coinbaseCommerce:
+    | {
+        apiKey: string;
+        webhookSecret: string;
+        redirectUrl?: string;
+        cancelUrl?: string;
       }
     | undefined;
   readonly adminSecret: string | undefined;
@@ -403,6 +420,28 @@ export function parseServiceConfig(env: Record<string, string | undefined>): Ser
     }),
   );
 
+  const coinbaseCommerce = resolveProviderCreds(
+    "Coinbase Commerce",
+    {
+      COINBASE_COMMERCE_API_KEY: parsed.COINBASE_COMMERCE_API_KEY,
+      // Required, not optional: every inbound event is authenticated against this
+      // secret, so without it a paid charge could never be credited.
+      COINBASE_COMMERCE_WEBHOOK_SECRET: parsed.COINBASE_COMMERCE_WEBHOOK_SECRET,
+    },
+    () => ({
+      apiKey: parsed.COINBASE_COMMERCE_API_KEY!,
+      webhookSecret: parsed.COINBASE_COMMERCE_WEBHOOK_SECRET!,
+      ...(parsed.COINBASE_COMMERCE_REDIRECT_URL !== undefined &&
+      parsed.COINBASE_COMMERCE_REDIRECT_URL !== ""
+        ? { redirectUrl: parsed.COINBASE_COMMERCE_REDIRECT_URL }
+        : {}),
+      ...(parsed.COINBASE_COMMERCE_CANCEL_URL !== undefined &&
+      parsed.COINBASE_COMMERCE_CANCEL_URL !== ""
+        ? { cancelUrl: parsed.COINBASE_COMMERCE_CANCEL_URL }
+        : {}),
+    }),
+  );
+
   return {
     databaseUrl: parsed.DATABASE_URL,
     port: parsed.PORT,
@@ -414,6 +453,7 @@ export function parseServiceConfig(env: Record<string, string | undefined>): Ser
     zalopay,
     cryptomus,
     binance,
+    coinbaseCommerce,
     adminSecret: parsed.ADMIN_SECRET,
   };
 }

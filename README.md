@@ -6,7 +6,7 @@
 
 ## What it does
 
-- One-off top-ups via SePay (VietQR), Stripe Checkout, the VN providers (VNPay / Momo / ZaloPay), and crypto via NowPayments / BitPay
+- One-off top-ups via SePay (VietQR), Stripe Checkout, the VN providers (VNPay / Momo / ZaloPay), and crypto via NowPayments / Cryptomus / BitPay / Binance Pay / Coinbase Commerce
 - Recurring billing via Stripe Subscriptions (V2): customer lifecycle, plan sync, invoice + subscription webhooks
 - Multi-wallet ledger: each tenant can hold USD + VND balances side-by-side
 - Webhook handlers with signature verify (or fetch-back verification for unsigned-webhook providers like BitPay), transaction-wrapped writes, DB-unique-key dedup, refund support, and graceful expiry handling
@@ -31,6 +31,7 @@
 | Cryptomus | `@xeko-git-1/paykit-cryptomus` | USD | async (`pending_webhook`) — multi-chain USDT, signed webhook (MD5) |
 | BitPay | `@xeko-git-1/paykit-bitpay` | USD | async (`pending_webhook`) — refund needs an injected merchant ECDSA signer; not yet sandbox-verified end-to-end |
 | Binance Pay | `@xeko-git-1/paykit-binance` | USD | async (`pending_webhook`) — off-chain merchant account; no public sandbox, not yet verified end-to-end |
+| Coinbase Commerce | `@xeko-git-1/paykit-coinbase-commerce` | USD | none — the provider exposes no refund API; refund from the Coinbase account and record a ledger adjustment. Built from published SDKs, not yet verified end-to-end |
 
 ## What it doesn't do (yet)
 
@@ -50,7 +51,7 @@
 ### Two ways to run
 
 - **Embedded (V1–V3):** `import { createPaykit }` into your own Hono app, supply a `TenantResolver`. Quickstart below.
-- **Standalone service (V4):** run `@xeko-git-1/paykit-service` as a container — config + API-key auth via env, no app code. Migrate-then-serve cold start, 8 wired adapters (Stripe / SePay / NowPayments / VNPay / Momo / ZaloPay / Cryptomus / Binance Pay; BitPay is embedded-only), `/v1` HTTP API, CLI bootstrap, and a thin TypeScript SDK. See [service-mode-setup.md](docs/service-mode-setup.md).
+- **Standalone service (V4):** run `@xeko-git-1/paykit-service` as a container — config + API-key auth via env, no app code. Migrate-then-serve cold start, 9 wired adapters (Stripe / SePay / NowPayments / VNPay / Momo / ZaloPay / Cryptomus / Binance Pay / Coinbase Commerce; BitPay is embedded-only), `/v1` HTTP API, CLI bootstrap, and a thin TypeScript SDK. See [service-mode-setup.md](docs/service-mode-setup.md).
 
 ## Quickstart (preview — V1 not yet published)
 

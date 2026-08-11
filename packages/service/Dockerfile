@@ -24,6 +24,9 @@ COPY packages/nowpayments-adapter/package.json packages/nowpayments-adapter/pack
 COPY packages/vnpay-adapter/package.json packages/vnpay-adapter/package.json
 COPY packages/momo-adapter/package.json packages/momo-adapter/package.json
 COPY packages/zalopay-adapter/package.json packages/zalopay-adapter/package.json
+COPY packages/cryptomus-adapter/package.json packages/cryptomus-adapter/package.json
+COPY packages/binance-adapter/package.json packages/binance-adapter/package.json
+COPY packages/coinbase-commerce-adapter/package.json packages/coinbase-commerce-adapter/package.json
 
 # Install all workspace deps (frozen lockfile for reproducibility)
 RUN pnpm install --frozen-lockfile
@@ -40,6 +43,9 @@ COPY packages/nowpayments-adapter/ packages/nowpayments-adapter/
 COPY packages/vnpay-adapter/ packages/vnpay-adapter/
 COPY packages/momo-adapter/ packages/momo-adapter/
 COPY packages/zalopay-adapter/ packages/zalopay-adapter/
+COPY packages/cryptomus-adapter/ packages/cryptomus-adapter/
+COPY packages/binance-adapter/ packages/binance-adapter/
+COPY packages/coinbase-commerce-adapter/ packages/coinbase-commerce-adapter/
 COPY migrations/ migrations/
 
 # Build all packages (service depends on server, core, adapters)
@@ -86,6 +92,15 @@ COPY --from=builder /app/packages/momo-adapter/package.json packages/momo-adapte
 
 COPY --from=builder /app/packages/zalopay-adapter/dist packages/zalopay-adapter/dist
 COPY --from=builder /app/packages/zalopay-adapter/package.json packages/zalopay-adapter/package.json
+
+COPY --from=builder /app/packages/cryptomus-adapter/dist packages/cryptomus-adapter/dist
+COPY --from=builder /app/packages/cryptomus-adapter/package.json packages/cryptomus-adapter/package.json
+
+COPY --from=builder /app/packages/binance-adapter/dist packages/binance-adapter/dist
+COPY --from=builder /app/packages/binance-adapter/package.json packages/binance-adapter/package.json
+
+COPY --from=builder /app/packages/coinbase-commerce-adapter/dist packages/coinbase-commerce-adapter/dist
+COPY --from=builder /app/packages/coinbase-commerce-adapter/package.json packages/coinbase-commerce-adapter/package.json
 
 COPY --from=builder /app/packages/service/dist packages/service/dist
 COPY --from=builder /app/packages/service/package.json packages/service/package.json

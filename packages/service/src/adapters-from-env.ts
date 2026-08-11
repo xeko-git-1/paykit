@@ -133,6 +133,22 @@ export async function buildAdaptersFromConfig(
     );
   }
 
+  if (config.coinbaseCommerce) {
+    const { createCoinbaseCommerceAdapter } = await import("@xeko-git-1/paykit-coinbase-commerce");
+    adapters.push(
+      createCoinbaseCommerceAdapter({
+        apiKey: config.coinbaseCommerce.apiKey,
+        webhookSecret: config.coinbaseCommerce.webhookSecret,
+        ...(config.coinbaseCommerce.redirectUrl !== undefined
+          ? { redirectUrl: config.coinbaseCommerce.redirectUrl }
+          : {}),
+        ...(config.coinbaseCommerce.cancelUrl !== undefined
+          ? { cancelUrl: config.coinbaseCommerce.cancelUrl }
+          : {}),
+      }),
+    );
+  }
+
   if (adapters.length === 0) {
     // Not fatal — the service can still serve health probes and the OpenAPI
     // spec — but a deploy with no providers almost certainly forgot its creds.

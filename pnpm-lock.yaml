@@ -96,6 +96,12 @@ importers:
         specifier: ^4.6.0
         version: 4.12.22
 
+  packages/coinbase-commerce-adapter:
+    devDependencies:
+      '@xeko-git-1/paykit':
+        specifier: workspace:*
+        version: link:../core
+
   packages/core: {}
 
   packages/cryptomus-adapter:
@@ -192,6 +198,9 @@ importers:
       '@types/pg':
         specifier: ^8.20.0
         version: 8.20.0
+      '@xeko-git-1/paykit-coinbase-commerce':
+        specifier: workspace:*
+        version: link:../coinbase-commerce-adapter
       drizzle-kit:
         specifier: ^0.31.10
         version: 0.31.10
@@ -213,6 +222,9 @@ importers:
       '@xeko-git-1/paykit-cli':
         specifier: workspace:*
         version: link:../cli
+      '@xeko-git-1/paykit-coinbase-commerce':
+        specifier: workspace:*
+        version: link:../coinbase-commerce-adapter
       '@xeko-git-1/paykit-cryptomus':
         specifier: workspace:*
         version: link:../cryptomus-adapter

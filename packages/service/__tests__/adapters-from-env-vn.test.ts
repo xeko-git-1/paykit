@@ -10,12 +10,19 @@ import { describe, expect, it } from "vitest";
 import { buildAdaptersFromConfig } from "../src/adapters-from-env.js";
 import type { ServiceConfig } from "../src/config.js";
 
+// Every provider field is listed explicitly, including the ones this file does
+// not exercise. The type allows `undefined` per field, so an omission compiles
+// here (tests are outside tsc's include) and silently drops whichever provider
+// was forgotten from the "no creds present" baseline below.
 const base: ServiceConfig = {
   databaseUrl: "postgres://localhost/paykit",
   port: 3000,
   stripe: undefined,
   sepay: undefined,
   nowpayments: undefined,
+  cryptomus: undefined,
+  binance: undefined,
+  coinbaseCommerce: undefined,
   vnpay: undefined,
   momo: undefined,
   zalopay: undefined,
@@ -102,5 +109,38 @@ describe("buildAdaptersFromConfig — VN providers", () => {
     const ids = adapters.map((a) => a.id);
     expect(ids).toEqual(expect.arrayContaining(["vnpay", "momo", "zalopay"]));
     expect(ids).toHaveLength(3);
+  });
+});
+
+describe("buildAdaptersFromConfig — Coinbase Commerce", () => {
+  it("wires the adapter when the api key and webhook secret are present", async () => {
+    const adapters = await buildAdaptersFromConfig({
+      ...base,
+      coinbaseCommerce: { apiKey: "cc-key", webhookSecret: "whsec" },
+    });
+    // Asserted by id because a provider can be resolved in config and still never
+    // reach the registry if the wiring block is missing.
+    expect(adapters.map((a) => a.id)).toContain("coinbase-commerce");
+  });
+
+  it("prices in USD and reports refunds as unsupported by the provider", async () => {
+    const [adapter] = await buildAdaptersFromConfig({
+      ...base,
+      coinbaseCommerce: { apiKey: "cc-key", webhookSecret: "whsec" },
+    });
+    expect(adapter?.supportedCurrencies).toEqual(["USD"]);
+    const refund = await adapter?.refund({
+      transactionId: "tx-1",
+      amountMicros: 1_000_000n,
+      idempotencyKey: "idem-1",
+      reason: "test",
+      providerRef: "tx-1",
+    });
+    expect(refund?.state).toBe("unsupported");
+  });
+
+  it("skips the adapter when no coinbase creds are present", async () => {
+    const adapters = await buildAdaptersFromConfig(base);
+    expect(adapters.map((a) => a.id)).not.toContain("coinbase-commerce");
   });
 });

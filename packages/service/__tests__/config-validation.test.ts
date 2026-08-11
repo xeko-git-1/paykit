@@ -353,3 +353,34 @@ describe("createJwtSecretLoader (race-safe seed)", () => {
     expect(secret).toBe(winnerSecret);
   });
 });
+
+describe("Coinbase Commerce config", () => {
+  it("enables the provider when the api key and webhook secret are both present", async () => {
+    const { parseServiceConfig } = await import("../src/config.js");
+    const config = parseServiceConfig({
+      DATABASE_URL: "postgres://localhost/paykit",
+      COINBASE_COMMERCE_API_KEY: "cc-key",
+      COINBASE_COMMERCE_WEBHOOK_SECRET: "whsec",
+    });
+    expect(config.coinbaseCommerce?.apiKey).toBe("cc-key");
+    expect(config.coinbaseCommerce?.webhookSecret).toBe("whsec");
+  });
+
+  it("fails fast when the webhook secret is missing", async () => {
+    // Charges would be created that no inbound event could ever authenticate, so
+    // a paid charge would never be credited. Better to refuse at boot.
+    const { parseServiceConfig } = await import("../src/config.js");
+    expect(() =>
+      parseServiceConfig({
+        DATABASE_URL: "postgres://localhost/paykit",
+        COINBASE_COMMERCE_API_KEY: "cc-key",
+      }),
+    ).toThrow(/Incomplete Coinbase Commerce/i);
+  });
+
+  it("leaves the provider disabled when no creds are set", async () => {
+    const { parseServiceConfig } = await import("../src/config.js");
+    const config = parseServiceConfig({ DATABASE_URL: "postgres://localhost/paykit" });
+    expect(config.coinbaseCommerce).toBeUndefined();
+  });
+});

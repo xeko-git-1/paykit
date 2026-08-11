@@ -33,6 +33,7 @@
     "@xeko-git-1/paykit": "workspace:*",
     "@xeko-git-1/paykit-binance": "workspace:*",
     "@xeko-git-1/paykit-cli": "workspace:*",
+    "@xeko-git-1/paykit-coinbase-commerce": "workspace:*",
     "@xeko-git-1/paykit-cryptomus": "workspace:*",
     "@xeko-git-1/paykit-momo": "workspace:*",
     "@xeko-git-1/paykit-nowpayments": "workspace:*",

@@ -11,8 +11,9 @@ the embedded mode in [installation.md](./installation.md).
 
 - **Cold-start Docker**: `docker compose up` on a fresh volume migrates the
   schema, then serves — in that order, automatically.
-- **6 wired adapters**: Stripe, SePay, NowPayments, VNPay, Momo, ZaloPay — each
-  enabled only when its credentials are present.
+- **9 wired adapters**: Stripe, SePay, NowPayments, Cryptomus, Binance Pay,
+  Coinbase Commerce, VNPay, Momo, ZaloPay — each enabled only when its
+  credentials are present. (BitPay is embedded-only.)
 - **`/v1` HTTP API**: scope-gated, rate-limited, OpenAPI-described.
 - **CLI bootstrap**: create the first merchant + API key without the service running.
 - **Thin TypeScript SDK** (`@xeko-git-1/paykit-sdk`): type-safe client over `/v1`.
@@ -65,6 +66,10 @@ fields are set; partial credentials leave that provider disabled (no crash).
 | `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`, `VNPAY_RETURN_URL`, `VNPAY_IPN_URL`, `VNPAY_ENVIRONMENT?` | VNPay |
 | `MOMO_PARTNER_CODE`, `MOMO_ACCESS_KEY`, `MOMO_SECRET_KEY`, `MOMO_RETURN_URL`, `MOMO_IPN_URL`, `MOMO_ENVIRONMENT?` | Momo |
 | `ZALOPAY_APP_ID`, `ZALOPAY_KEY1`, `ZALOPAY_KEY2`, `ZALOPAY_RETURN_URL`, `ZALOPAY_CALLBACK_URL`, `ZALOPAY_ENVIRONMENT?` | ZaloPay |
+| `CRYPTOMUS_MERCHANT_ID`, `CRYPTOMUS_PAYMENT_API_KEY`, `CRYPTOMUS_TO_CURRENCY?`, `CRYPTOMUS_NETWORK?` | Cryptomus (crypto) |
+| `BINANCE_API_KEY`, `BINANCE_API_SECRET`, `BINANCE_WEBHOOK_PUBLIC_KEY` | Binance Pay (crypto) |
+| `COINBASE_COMMERCE_API_KEY`, `COINBASE_COMMERCE_WEBHOOK_SECRET`, `COINBASE_COMMERCE_REDIRECT_URL?` | Coinbase Commerce (crypto) |
+| `PAYKIT_ALLOW_UNKNOWN_CHAIN_CODES?` | Accept a coin/chain code paykit does not recognise |
 
 VN provider sandboxes: [Momo](./sandbox-setup-momo.md) ·
 [VNPay](./sandbox-setup-vnpay.md) · [ZaloPay](./sandbox-setup-zalopay.md).

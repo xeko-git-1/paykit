@@ -34,6 +34,7 @@
 | Cryptomus | USD (crypto) | `CRYPTOMUS_MERCHANT_ID`, `CRYPTOMUS_PAYMENT_API_KEY` | `CRYPTOMUS_TO_CURRENCY`, `CRYPTOMUS_NETWORK`, `CRYPTOMUS_RETURN_URL`, `CRYPTOMUS_CALLBACK_URL` |
 | BitPay | USD (crypto) | **Embedded mode only** — not wired into the standalone service. Construct `createBitpayAdapter({ apiToken, merchantSigner? })` in code. / **Chỉ embedded mode** — chưa wire vào service; khởi tạo `createBitpayAdapter({ apiToken, merchantSigner? })` trong code. | merchant ECDSA signer (refund/reconcile) |
 | Binance Pay | USD (crypto) | `BINANCE_API_KEY`, `BINANCE_API_SECRET`, `BINANCE_WEBHOOK_PUBLIC_KEY` | `BINANCE_RETURN_URL`, `BINANCE_CANCEL_URL`, `BINANCE_WEBHOOK_URL` |
+| Coinbase Commerce | USD (crypto) | `COINBASE_COMMERCE_API_KEY`, `COINBASE_COMMERCE_WEBHOOK_SECRET` | `COINBASE_COMMERCE_REDIRECT_URL`, `COINBASE_COMMERCE_CANCEL_URL` |
 
 ---
 
@@ -102,6 +103,6 @@ const t = makeTranslator("vi"); // "en" | "vi"
 
 ## 6. Production caveat / Lưu ý production
 
-**EN —** The crypto adapters (NowPayments, Cryptomus, BitPay, Binance Pay) ship with full unit + e2e coverage against fake providers, but are **not yet sandbox-verified end-to-end** with live credentials. Provider-specific unknowns (refund status enums, webhook envelope shapes, Binance USD-pricing onboarding) are flagged inline in each adapter. Verify one live transaction per provider before treating it as production-ready.
+**EN —** The crypto adapters (NowPayments, Cryptomus, BitPay, Binance Pay, Coinbase Commerce) ship with full unit + e2e coverage against fake providers, but are **not yet sandbox-verified end-to-end** with live credentials. Provider-specific unknowns (refund status enums, webhook envelope shapes, Binance USD-pricing onboarding, Coinbase charge event names and timeline contexts) are flagged inline in each adapter. Verify one live transaction per provider before treating it as production-ready.
 
-**VI —** Các adapter crypto (NowPayments, Cryptomus, BitPay, Binance Pay) có đầy đủ test unit + e2e với provider giả, nhưng **chưa verify end-to-end trên sandbox** với credential thật. Các điểm chưa chắc theo từng provider (enum trạng thái refund, hình dạng webhook, việc onboarding định giá USD của Binance) đã được ghi chú ngay trong code adapter. Hãy verify một giao dịch thật cho mỗi provider trước khi coi là sẵn sàng production.
+**VI —** Các adapter crypto (NowPayments, Cryptomus, BitPay, Binance Pay, Coinbase Commerce) có đầy đủ test unit + e2e với provider giả, nhưng **chưa verify end-to-end trên sandbox** với credential thật. Các điểm chưa chắc theo từng provider (enum trạng thái refund, hình dạng webhook, việc onboarding định giá USD của Binance, tên event và timeline context của Coinbase) đã được ghi chú ngay trong code adapter. Hãy verify một giao dịch thật cho mỗi provider trước khi coi là sẵn sàng production.
