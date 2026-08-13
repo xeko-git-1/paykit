@@ -1,5 +1,9 @@
 /**
- * Phase 06 — subscription-webhook-handler tests with mocked repos.
+ * Subscription-webhook-handler tests with mocked repos.
+ *
+ * The handler is transport over the durable inbox (record → claim → process);
+ * these tests pin the BUSINESS rules the processor applies, with the inbox
+ * stood in by a stateful mock so dedup works across requests.
  *
  * Coverage:
  *   - Signature invalid → 401, no DB writes
@@ -19,7 +23,96 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const subscriptionRows: Array<Record<string, unknown>> = [];
 const ledgerRows: Array<Record<string, unknown>> = [];
 const eventRows: Array<Record<string, unknown>> = [];
-const webhookEventRows: Array<{ provider: string; eventId: string }> = [];
+const inboxRows: Array<Record<string, unknown>> = [];
+
+const CLAIMABLE = ["received", "unmatched", "failed"];
+
+vi.mock("@xeko-git-1/paykit-auth-core/db/repos/webhook-inbox.repo.js", () => ({
+  recordDelivery: vi.fn(async (_db: unknown, input: Record<string, unknown>) => {
+    const existing = inboxRows.find(
+      (r) => r.provider === input.provider && r.eventId === input.eventId,
+    );
+    if (existing) {
+      return {
+        row: existing,
+        created: false,
+        payloadMismatch: existing.payloadHash !== input.payloadHash,
+      };
+    }
+    const row: Record<string, unknown> = {
+      inboxId: crypto.randomUUID(),
+      provider: input.provider,
+      eventId: input.eventId,
+      inboxKind: input.inboxKind ?? "payment",
+      tenantId: null,
+      matchedTransactionId: null,
+      eventType: input.eventType,
+      providerRef: input.providerRef ?? null,
+      payloadHash: input.payloadHash,
+      rawPayload: input.rawPayload ?? null,
+      normalizedPayload: input.normalizedPayload ?? {},
+      state: "received",
+      processingAttempts: 0,
+      nextRetryAt: new Date(0),
+      leaseExpiresAt: null,
+      lastErrorCode: null,
+      lastErrorMessage: null,
+      receivedAt: new Date(),
+      processedAt: null,
+      updatedAt: new Date(),
+    };
+    inboxRows.push(row);
+    return { row, created: true, payloadMismatch: false };
+  }),
+  claimDeliveryById: vi.fn(async (_db: unknown, opts: { inboxId: string }) => {
+    const row = inboxRows.find((r) => r.inboxId === opts.inboxId);
+    if (!row || !CLAIMABLE.includes(row.state as string)) return undefined;
+    row.state = "processing";
+    row.processingAttempts = (row.processingAttempts as number) + 1;
+    return { ...row };
+  }),
+  claimNextDelivery: vi.fn(async () => undefined),
+  markSubscriptionDeliveryProcessed: vi.fn(
+    async (
+      _db: unknown,
+      opts: { inboxId: string; matchedSubscriptionId?: string; tenantId?: string },
+    ) => {
+      const row = inboxRows.find((r) => r.inboxId === opts.inboxId);
+      if (!row || row.state !== "processing") return undefined;
+      row.state = "processed";
+      row.matchedTransactionId = opts.matchedSubscriptionId ?? null;
+      row.tenantId = opts.tenantId ?? null;
+      row.processedAt = new Date();
+      return { ...row };
+    },
+  ),
+  markDeliveryProcessed: vi.fn(async () => undefined),
+  markDeliveryUnmatched: vi.fn(async (_db: unknown, opts: { inboxId: string }) => {
+    const row = inboxRows.find((r) => r.inboxId === opts.inboxId);
+    if (!row || row.state !== "processing") return undefined;
+    row.state = "unmatched";
+    return { ...row };
+  }),
+  markDeliveryFailed: vi.fn(async (_db: unknown, opts: { inboxId: string }) => {
+    const row = inboxRows.find((r) => r.inboxId === opts.inboxId);
+    if (!row || row.state !== "processing") return undefined;
+    row.state = "failed";
+    return { ...row };
+  }),
+  markDeliveryDeadLettered: vi.fn(async (_db: unknown, opts: { inboxId: string }) => {
+    const row = inboxRows.find((r) => r.inboxId === opts.inboxId);
+    if (!row || row.state !== "processing") return undefined;
+    row.state = "dead_letter";
+    row.processedAt = new Date();
+    return { ...row };
+  }),
+  requeueDeadLetteredDelivery: vi.fn(async () => undefined),
+  findDeliveryById: vi.fn(async () => undefined),
+  findDeliveryByEvent: vi.fn(async () => undefined),
+  listDeliveriesByState: vi.fn(async () => []),
+  sweepInboxPayloads: vi.fn(async () => 0),
+  countDeliveriesByState: vi.fn(async () => 0),
+}));
 
 vi.mock("@xeko-git-1/paykit-auth-core/db/repos/subscription.repo.js", () => ({
   upsertFromEvent: vi.fn(async (_db: unknown, input: Record<string, unknown>) => {
@@ -117,17 +210,6 @@ vi.mock("@xeko-git-1/paykit-auth-core/db/repos/subscription-event.repo.js", () =
   listEventsForSubscription: vi.fn(),
 }));
 
-vi.mock("@xeko-git-1/paykit-auth-core/db/repos/webhook-event.repo.js", () => ({
-  tryRecordWebhookEvent: vi.fn(async (_db: unknown, provider: string, eventId: string) => {
-    if (webhookEventRows.some((r) => r.provider === provider && r.eventId === eventId)) {
-      return { recorded: false };
-    }
-    webhookEventRows.push({ provider, eventId });
-    return { recorded: true };
-  }),
-  listEvents: vi.fn(),
-}));
-
 const { buildSubscriptionWebhookHandler } = await import(
   "../src/routes/webhooks/subscription-webhook-handler.js"
 );
@@ -187,7 +269,7 @@ beforeEach(() => {
   subscriptionRows.length = 0;
   ledgerRows.length = 0;
   eventRows.length = 0;
-  webhookEventRows.length = 0;
+  inboxRows.length = 0;
 });
 
 const baseSub = (overrides: Partial<Record<string, unknown>> = {}) => ({
@@ -219,7 +301,7 @@ describe("Signature + parsing", () => {
       body: "{}",
     });
     expect(r.status).toBe(401);
-    expect(webhookEventRows).toHaveLength(0);
+    expect(inboxRows).toHaveLength(0);
     expect(ledgerRows).toHaveLength(0);
   });
 
@@ -231,7 +313,7 @@ describe("Signature + parsing", () => {
       body: "{}",
     });
     expect(r.status).toBe(200);
-    expect(webhookEventRows).toHaveLength(0);
+    expect(inboxRows).toHaveLength(0);
   });
 
   it("dedup: same event_id arriving twice → second is silent skip", async () => {
@@ -249,7 +331,7 @@ describe("Signature + parsing", () => {
     const app = buildApp(adapter);
     await app.request("/webhooks/stripe-subscription", { method: "POST", body: "{}" });
     await app.request("/webhooks/stripe-subscription", { method: "POST", body: "{}" });
-    expect(webhookEventRows).toHaveLength(1);
+    expect(inboxRows).toHaveLength(1);
     expect(eventRows.length).toBeLessThanOrEqual(1);
   });
 });
@@ -509,6 +591,6 @@ describe("customer.deleted cascade (Val S4 Q1)", () => {
     const app = buildApp(adapter);
     await app.request("/webhooks/stripe-subscription", { method: "POST", body: "{}" });
     await app.request("/webhooks/stripe-subscription", { method: "POST", body: "{}" });
-    expect(webhookEventRows).toHaveLength(1);
+    expect(inboxRows).toHaveLength(1);
   });
 });

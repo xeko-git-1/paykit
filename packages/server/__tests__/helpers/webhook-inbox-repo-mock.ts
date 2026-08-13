@@ -28,6 +28,7 @@ export interface InboxRowOverrides {
   readonly state?: string;
   readonly processingAttempts?: number;
   readonly normalizedPayload?: Record<string, unknown>;
+  readonly inboxKind?: string;
 }
 
 /**
@@ -43,6 +44,7 @@ export function inboxRow(overrides: InboxRowOverrides = {}): Record<string, unkn
     inboxId: overrides.inboxId ?? TEST_INBOX_ID,
     provider: overrides.provider ?? "test-provider",
     eventId: overrides.eventId ?? "evt-1",
+    inboxKind: overrides.inboxKind ?? "payment",
     tenantId: null,
     matchedTransactionId: null,
     eventType: overrides.eventType ?? "payment.completed",
@@ -91,6 +93,7 @@ export function inboxRepoMock(): Record<string, unknown> {
         ...(typeof input?.eventId === "string" ? { eventId: input.eventId } : {}),
         ...(typeof input?.eventType === "string" ? { eventType: input.eventType } : {}),
         ...(typeof input?.providerRef === "string" ? { providerRef: input.providerRef } : {}),
+        ...(typeof input?.inboxKind === "string" ? { inboxKind: input.inboxKind } : {}),
       });
       return { row: recorded, created: true, payloadMismatch: false };
     }),
@@ -103,6 +106,9 @@ export function inboxRepoMock(): Record<string, unknown> {
     })),
     claimNextDelivery: vi.fn(async () => undefined),
     markDeliveryProcessed: vi.fn(async () => inboxRow({ state: "processed" })),
+    markSubscriptionDeliveryProcessed: vi.fn(async () =>
+      inboxRow({ state: "processed", inboxKind: "subscription" }),
+    ),
     markDeliveryUnmatched: vi.fn(async () => inboxRow({ state: "unmatched" })),
     markDeliveryFailed: vi.fn(async () => inboxRow({ state: "failed" })),
     markDeliveryDeadLettered: vi.fn(async () => inboxRow({ state: "dead_letter" })),

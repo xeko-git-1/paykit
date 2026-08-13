@@ -373,6 +373,18 @@ mất. Nó xoá ca mất-vĩnh-viễn, không xoá cả lớp lỗi. Muốn xoá
 
 Đã verify test thật sự bắt lỗi: revert bản sửa thì 3 trong 6 test mới fail.
 
+**Cập nhật (migration 028): nợ này đã trả.** Pipeline subscription giờ đi qua đúng
+inbox đó: cột `inbox_kind` phân biệt hai pipeline, CHECK
+`processed_has_match` giữ nguyên từng chữ cho row payment và chỉ miễn cho row
+subscription (một `customer.deleted` cascade qua 0 row là công việc hoàn tất mà
+không có entity nào để gọi tên). Handler subscription thành transport thuần
+(record → claim → process, y hệt router payment), `invoice.paid` đến trước
+`sub.created` được park `unmatched` và drain retry theo backoff của inbox thay vì
+trả 409 cầu may provider gửi lại. `subscription-delivery-processor.ts` là bản
+đối xứng của `webhook-delivery-processor.ts`; drain dispatch theo `inbox_kind`.
+`webhook_events` không còn writer nào — vẫn giữ bảng cho `/admin/webhook-events`
+và đường lùi của 026.
+
 ---
 
 ## Chạy được ngay sau deploy

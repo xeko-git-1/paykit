@@ -55,6 +55,43 @@ export async function markDeliveryProcessed(
 }
 
 /**
+ * Mark a SUBSCRIPTION delivery done.
+ *
+ * Differs from `markDeliveryProcessed` in exactly one way: the matched entity is
+ * optional. A subscription delivery that upserted a subscription names it, but a
+ * legitimate no-op — a customer.deleted cascading over zero rows, an invoice
+ * event with nothing to key a ledger entry on — finishes with no single entity to
+ * name. The database CHECK binds matched_transaction_id only for payment rows,
+ * so this looseness cannot leak into the payment pipeline's guarantee.
+ */
+export async function markSubscriptionDeliveryProcessed(
+  db: DbOrTx,
+  opts: {
+    inboxId: string;
+    matchedSubscriptionId?: string;
+    tenantId?: string;
+    now?: Date;
+  },
+): Promise<WebhookInboxRow | undefined> {
+  const now = opts.now ?? new Date();
+  const [row] = await db
+    .update(webhookInbox)
+    .set({
+      state: "processed",
+      matchedTransactionId: opts.matchedSubscriptionId ?? null,
+      tenantId: opts.tenantId ?? null,
+      leaseExpiresAt: null,
+      processedAt: now,
+      lastErrorCode: null,
+      lastErrorMessage: null,
+      updatedAt: now,
+    })
+    .where(ownedClaim(opts.inboxId))
+    .returning();
+  return row;
+}
+
+/**
  * Park a delivery whose payment cannot be found yet.
  *
  * This is what replaces the silent 200 that used to lose the payment. "No match" is

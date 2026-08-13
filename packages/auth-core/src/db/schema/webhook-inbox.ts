@@ -33,6 +33,16 @@ export const webhookInbox = paykitSchema.table(
     /** The provider's own event id — the dedup key, together with `provider`. */
     eventId: text("event_id").notNull(),
 
+    /**
+     * Which pipeline owns this delivery: 'payment' or 'subscription'.
+     *
+     * The processors are not interchangeable — a payment processor handed a
+     * subscription delivery would look up a payment that cannot exist, mark the
+     * row unmatched, and eventually dead-letter real work. The kind is what lets
+     * the drain dispatch each claimed row to the pipeline that recorded it.
+     */
+    inboxKind: text("inbox_kind").notNull().default("payment"),
+
     // Both null until the event matches a payment: an unmatched delivery carries
     // no way to know whose it is, since the provider reference is the only link
     // and that is precisely what has not resolved.
@@ -80,6 +90,9 @@ export const webhookInbox = paykitSchema.table(
 
 export type WebhookInboxRow = typeof webhookInbox.$inferSelect;
 export type NewWebhookInboxRow = typeof webhookInbox.$inferInsert;
+
+/** The pipelines a delivery can belong to. */
+export type WebhookInboxKind = "payment" | "subscription";
 
 /** Every state an inbox row can hold. */
 export type WebhookInboxState =

@@ -18,6 +18,10 @@ import {
   sweepInboxPayloads,
 } from "@xeko-git-1/paykit-auth-core/db/repos/webhook-inbox.repo.js";
 import {
+  type SubscriptionDeliveryResult,
+  processSubscriptionDelivery,
+} from "./subscription-delivery-processor.js";
+import {
   type DeliveryProcessorDeps,
   type DeliveryResult,
   processDelivery,
@@ -27,23 +31,45 @@ import { INBOX_LEASE_MS, INBOX_PAYLOAD_RETENTION_DAYS } from "./webhook-inbox-po
 export interface InboxRunnerDeps extends DeliveryProcessorDeps {
   /** Restrict the drain to one provider — useful for isolating a noisy one. */
   readonly provider?: string;
+  /** Forwarded to the subscription processor for deliberately-skipped credits. */
+  readonly onLedgerSkipped?: (reason: string, payload: Record<string, unknown>) => void;
 }
+
+/** The drain handles both pipelines, so its results are the union of theirs. */
+export type InboxDrainResult = DeliveryResult | SubscriptionDeliveryResult;
 
 /**
  * Claim and process one due delivery.
  *
  * `undefined` means nothing was due, which is the normal steady state and not a
  * condition worth logging.
+ *
+ * Dispatch is on the row's `inboxKind`: the processors are not interchangeable —
+ * the payment processor handed a subscription delivery would look up a payment
+ * that cannot exist, park it unmatched, and eventually dead-letter real work.
  */
 export async function processNextDelivery(
   deps: InboxRunnerDeps,
-): Promise<DeliveryResult | undefined> {
+): Promise<InboxDrainResult | undefined> {
   const claimed = await claimNextDelivery(deps.db, {
     leaseMs: INBOX_LEASE_MS,
     ...(deps.provider !== undefined ? { provider: deps.provider } : {}),
     ...(deps.now !== undefined ? { now: deps.now() } : {}),
   });
   if (claimed === undefined) return undefined;
+  if (claimed.inboxKind === "subscription") {
+    return processSubscriptionDelivery(
+      {
+        db: deps.db,
+        ...(deps.logger !== undefined ? { logger: deps.logger } : {}),
+        ...(deps.emitMetric !== undefined ? { emitMetric: deps.emitMetric } : {}),
+        ...(deps.onLedgerSkipped !== undefined ? { onLedgerSkipped: deps.onLedgerSkipped } : {}),
+        ...(deps.random !== undefined ? { random: deps.random } : {}),
+        ...(deps.now !== undefined ? { now: deps.now } : {}),
+      },
+      claimed,
+    );
+  }
   return processDelivery(deps, claimed);
 }
 
@@ -61,8 +87,8 @@ export async function processNextDelivery(
 export async function drainWebhookInbox(
   deps: InboxRunnerDeps,
   maxDeliveries = 50,
-): Promise<DeliveryResult[]> {
-  const results: DeliveryResult[] = [];
+): Promise<InboxDrainResult[]> {
+  const results: InboxDrainResult[] = [];
   for (let i = 0; i < maxDeliveries; i++) {
     const result = await processNextDelivery(deps);
     if (result === undefined) break;

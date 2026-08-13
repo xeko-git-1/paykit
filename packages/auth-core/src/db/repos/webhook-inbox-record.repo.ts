@@ -10,6 +10,7 @@ import { and, eq } from "drizzle-orm";
 import type { DbOrTx } from "../client.js";
 import {
   type NewWebhookInboxRow,
+  type WebhookInboxKind,
   type WebhookInboxRow,
   webhookInbox,
 } from "../schema/webhook-inbox.js";
@@ -23,6 +24,8 @@ export interface RecordDeliveryInput {
   readonly rawPayload?: string;
   readonly normalizedPayload?: Record<string, unknown>;
   readonly providerRef?: string;
+  /** Which pipeline owns the delivery. Defaults to 'payment'. */
+  readonly inboxKind?: WebhookInboxKind;
 }
 
 export interface RecordDeliveryResult {
@@ -60,6 +63,7 @@ export async function recordDelivery(
   };
   if (input.rawPayload !== undefined) insert.rawPayload = input.rawPayload;
   if (input.providerRef !== undefined) insert.providerRef = input.providerRef;
+  if (input.inboxKind !== undefined) insert.inboxKind = input.inboxKind;
 
   const [won] = await db
     .insert(webhookInbox)

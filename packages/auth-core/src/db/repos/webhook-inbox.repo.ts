@@ -24,6 +24,7 @@ export {
   markDeliveryFailed,
   markDeliveryProcessed,
   markDeliveryUnmatched,
+  markSubscriptionDeliveryProcessed,
   requeueDeadLetteredDelivery,
 } from "./webhook-inbox-outcome.repo.js";
 export {

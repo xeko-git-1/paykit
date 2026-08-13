@@ -191,6 +191,13 @@
       "up": "027_reconciliation_cursor.up.sql",
       "down": "027_reconciliation_cursor.down.sql",
       "description": "Per-provider keyset cursor for reconciliation — a run works through a large window in bounded batches and resumes where it stopped, instead of loading the whole window into one process and restarting from the beginning after every failure"
+    },
+    {
+      "id": "028",
+      "slug": "webhook_inbox_kind",
+      "up": "028_webhook_inbox_kind.up.sql",
+      "down": "028_webhook_inbox_kind.down.sql",
+      "description": "An inbox_kind column on webhook_inbox so subscription deliveries share the durable inbox — an invoice that arrives before its subscription becomes retryable work owned by paykit instead of depending on the provider's redelivery policy, while the processed-must-name-a-payment CHECK keeps binding payment rows exactly as before"
     }
   ]
 }

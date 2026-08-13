@@ -252,6 +252,7 @@ export {
 // prevent, only now visible in a table.
 export {
   drainWebhookInbox,
+  type InboxDrainResult,
   type InboxRunnerDeps,
   processNextDelivery,
   sweepWebhookInbox,
@@ -261,6 +262,11 @@ export {
   type DeliveryResult,
   processDelivery,
 } from "./services/webhook-delivery-processor.js";
+export {
+  processSubscriptionDelivery,
+  type SubscriptionDeliveryProcessorDeps,
+  type SubscriptionDeliveryResult,
+} from "./services/subscription-delivery-processor.js";
 export {
   INBOX_BASE_RETRY_MS,
   INBOX_LEASE_MS,
