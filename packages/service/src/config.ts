@@ -114,6 +114,15 @@ const envSchema = z.object({
     .optional()
     .transform((v) => v === "true"),
 
+  // How long a pending_webhook refund may wait for its confirmation before the
+  // background sweeper reports it overdue (metric + admin queue). Hours,
+  // because the runbook threshold is a day, not milliseconds.
+  PAYKIT_REFUND_WEBHOOK_TIMEOUT_HOURS: z
+    .string()
+    .optional()
+    .transform((v) => (v === undefined || v === "" ? undefined : Number.parseFloat(v)))
+    .pipe(z.number().positive().finite().optional()),
+
   // Admin guard secret (env-based for V4.0; dashboard JWT is V4.4)
   ADMIN_SECRET: z.string().optional(),
 });
@@ -213,6 +222,8 @@ export interface ServiceConfig {
       }
     | undefined;
   readonly adminSecret: string | undefined;
+  /** Hours before a pending_webhook refund is reported overdue. Default 24 (in the sweeper). */
+  readonly refundWebhookTimeoutHours: number | undefined;
 }
 
 /**
@@ -498,5 +509,6 @@ export function parseServiceConfig(env: Record<string, string | undefined>): Ser
     bitpay,
     coinbaseCommerce,
     adminSecret: parsed.ADMIN_SECRET,
+    refundWebhookTimeoutHours: parsed.PAYKIT_REFUND_WEBHOOK_TIMEOUT_HOURS,
   };
 }

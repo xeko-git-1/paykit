@@ -240,16 +240,21 @@ export async function main(): Promise<void> {
     // never credited and nothing raises an error. Several replicas ticking at once
     // is safe — the claims are guarded UPDATEs, so they divide the work.
     const { startBackgroundDrains } = await import("./background-drains.js");
-    const drains = startBackgroundDrains({
-      db,
-      settlesExactAmount: (provider: string) =>
-        providers.find((a) => a.id === provider)?.settlesExactAmount !== false,
-      logger: {
-        warn: (msg: string, details?: Record<string, unknown>) => {
-          console.warn(`paykit-service: ${msg}`, details ?? {});
+    const drains = startBackgroundDrains(
+      {
+        db,
+        settlesExactAmount: (provider: string) =>
+          providers.find((a) => a.id === provider)?.settlesExactAmount !== false,
+        logger: {
+          warn: (msg: string, details?: Record<string, unknown>) => {
+            console.warn(`paykit-service: ${msg}`, details ?? {});
+          },
         },
       },
-    });
+      config.refundWebhookTimeoutHours !== undefined
+        ? { refundWebhookTimeoutMs: config.refundWebhookTimeoutHours * 60 * 60 * 1000 }
+        : {},
+    );
 
     // Graceful shutdown: stop accepting connections, then close the pool so
     // in-flight queries finish and the DB sees a clean disconnect. A second

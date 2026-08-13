@@ -34,7 +34,7 @@ Some crypto providers process refunds asynchronously: the adapter POSTs a refund
 1. Admin calls `POST /admin/billing/refund` → adapter returns `{state: 'pending_webhook'}`
 2. Server writes `payment_transactions.status = 'refund_pending_webhook'` (migration 011 enum extension) — NOT `failed`
 3. Provider webhook fires `payment.refunded` (≤24h) → `appendLedgerEntryIdempotent` writes exactly one `refund` debit entry (UNIQUE on `provider` + `sourceId` + `entry_type`); status flips to `refunded`
-4. If webhook never arrives within 24h → manual reconcile via `/admin/billing/ledger/adjust` (auto-timeout deferred to V3.1)
+4. If webhook never arrives within 24h (configurable via `PAYKIT_REFUND_WEBHOOK_TIMEOUT_HOURS` in service mode) → the background sweeper reports it: raises `paykit_refund_webhook_overdue_total{provider}`, logs the transaction, and it appears in `GET /admin/refunds/overdue-webhooks` (the operator queue; `overdueAt` says whether the sweeper already fired). The sweeper never resolves the refund itself — whether the money moved is a question only the provider can answer, so the operator asks the provider and settles via `/admin/billing/ledger/adjust`.
 
 **Race protection (RT F10):** Both the admin sync-success path and the webhook `refunded` path use `appendLedgerEntryIdempotent`. Whichever fires second gets `{inserted: false}` and skips `applyDelta` — exactly one ledger entry regardless of timing.
 

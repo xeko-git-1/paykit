@@ -28,6 +28,7 @@ import {
   type PaykitEventHandlers,
   drainScreeningJobs,
   drainWebhookInbox,
+  sweepOverdueRefundWebhooks,
   sweepWebhookInbox,
 } from "@xeko-git-1/paykit-server";
 
@@ -48,6 +49,17 @@ export interface BackgroundDrainOptions {
   readonly maxPerTick?: number;
   /** Ticks between payload retention sweeps; the sweep is cheap but not free. */
   readonly sweepEveryTicks?: number;
+  /**
+   * How long a pending_webhook refund may wait on its confirmation before it is
+   * reported overdue. Default 24h, matching the runbook in docs/refund-flows.md.
+   */
+  readonly refundWebhookTimeoutMs?: number;
+  /**
+   * Ticks between overdue-refund sweeps. The timeout is measured in hours, so
+   * this does not need to run every 15 seconds; the default checks every ~10
+   * minutes, and the query scans a status that is rare by construction.
+   */
+  readonly refundSweepEveryTicks?: number;
 }
 
 /**
@@ -59,6 +71,8 @@ const DEFAULT_INTERVAL_MS = 15_000;
 const DEFAULT_MAX_PER_TICK = 50;
 /** ~1 hour at the default interval. */
 const DEFAULT_SWEEP_EVERY_TICKS = 240;
+/** ~10 minutes at the default interval — generous against a 24h timeout. */
+const DEFAULT_REFUND_SWEEP_EVERY_TICKS = 40;
 
 export interface BackgroundDrains {
   /** Run one tick immediately — the unit a external scheduler would call. */
@@ -73,6 +87,7 @@ export function startBackgroundDrains(
   const intervalMs = opts.intervalMs ?? DEFAULT_INTERVAL_MS;
   const maxPerTick = opts.maxPerTick ?? DEFAULT_MAX_PER_TICK;
   const sweepEvery = opts.sweepEveryTicks ?? DEFAULT_SWEEP_EVERY_TICKS;
+  const refundSweepEvery = opts.refundSweepEveryTicks ?? DEFAULT_REFUND_SWEEP_EVERY_TICKS;
 
   let ticks = 0;
   let running = false;
@@ -111,6 +126,22 @@ export function startBackgroundDrains(
       ticks += 1;
       if (sweepEvery > 0 && ticks % sweepEvery === 0) {
         await sweepWebhookInbox({ db: deps.db });
+      }
+
+      // A refund waiting on a webhook that never comes is invisible until
+      // something looks for it — this is the something. It only reports (metric
+      // + log + admin queue); resolving the refund is the operator's runbook.
+      if (refundSweepEvery > 0 && ticks % refundSweepEvery === 0) {
+        await sweepOverdueRefundWebhooks(
+          {
+            db: deps.db,
+            ...(deps.logger !== undefined ? { logger: deps.logger } : {}),
+            ...(deps.emitMetric !== undefined ? { emitMetric: deps.emitMetric } : {}),
+          },
+          opts.refundWebhookTimeoutMs !== undefined
+            ? { timeoutMs: opts.refundWebhookTimeoutMs }
+            : {},
+        );
       }
     } catch (err) {
       // A throw here must not kill the interval, or one transient database error

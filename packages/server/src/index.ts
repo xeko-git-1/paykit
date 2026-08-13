@@ -267,6 +267,20 @@ export {
   type SubscriptionDeliveryProcessorDeps,
   type SubscriptionDeliveryResult,
 } from "./services/subscription-delivery-processor.js";
+
+// A pending_webhook refund that never hears back must become someone's problem
+// on purpose. The sweeper reports each overdue refund once (metric + log); the
+// admin route is the live queue an operator works through.
+export {
+  REFUND_WEBHOOK_TIMEOUT_MS,
+  type RefundWebhookOverdueSweeperDeps,
+  type SweepOverdueRefundWebhooksOptions,
+  sweepOverdueRefundWebhooks,
+} from "./services/refund-webhook-overdue-sweeper.js";
+export {
+  type AdminRefundOverdueDeps,
+  buildAdminRefundOverdueRoute,
+} from "./routes/admin/refund-overdue-route.js";
 export {
   INBOX_BASE_RETRY_MS,
   INBOX_LEASE_MS,
