@@ -29,10 +29,7 @@
  * the business transaction, so "marked done" and "actually done" are one fact.
  */
 import { nextAttemptAt } from "@xeko-git-1/paykit";
-import type {
-  NormalizedSubscriptionEvent,
-  SubscriptionStatus,
-} from "@xeko-git-1/paykit";
+import type { NormalizedSubscriptionEvent, SubscriptionStatus } from "@xeko-git-1/paykit";
 import type { DbClient, DbOrTx } from "@xeko-git-1/paykit-auth-core/db/client.js";
 import * as customerRepo from "@xeko-git-1/paykit-auth-core/db/repos/customer.repo.js";
 import { appendLedgerEntryIdempotent } from "@xeko-git-1/paykit-auth-core/db/repos/ledger.repo.js";
@@ -436,11 +433,7 @@ async function recordFailure(
   return { kind: "failed", error: message };
 }
 
-function retryAt(
-  deps: SubscriptionDeliveryProcessorDeps,
-  attempts: number,
-  now: Date,
-): Date {
+function retryAt(deps: SubscriptionDeliveryProcessorDeps, attempts: number, now: Date): Date {
   return nextAttemptAt({
     attempts,
     baseDelayMs: INBOX_BASE_RETRY_MS,

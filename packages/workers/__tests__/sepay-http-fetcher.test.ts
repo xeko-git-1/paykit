@@ -147,9 +147,7 @@ describe("createSepayHttpFetcher", () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValue(
-        okResponse([
-          { id: "1", amount_in: "100000.00", transaction_content: "PAYKIT txn-abc" },
-        ]),
+        okResponse([{ id: "1", amount_in: "100000.00", transaction_content: "PAYKIT txn-abc" }]),
       );
     const fetcher = createSepayHttpFetcher({ apiToken: "tok-1", fetchImpl: fetchImpl as never });
     const records = await fetcher.list(window);

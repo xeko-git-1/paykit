@@ -21,7 +21,11 @@ import { dataJson, errorJson } from "../shared/response.js";
 import { adminGuardMiddleware } from "./admin-guard.js";
 
 const querySchema = z.object({
-  olderThanHours: z.coerce.number().min(0).max(24 * 365).default(24),
+  olderThanHours: z.coerce
+    .number()
+    .min(0)
+    .max(24 * 365)
+    .default(24),
   limit: z.coerce.number().int().min(1).max(200).default(50),
   offset: z.coerce.number().int().min(0).default(0),
 });

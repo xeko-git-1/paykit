@@ -20,9 +20,7 @@
  * marking UPDATE is guarded.
  */
 import type { DbClient } from "@xeko-git-1/paykit-auth-core/db/client.js";
-import {
-  markOverdueRefundWebhooks,
-} from "@xeko-git-1/paykit-auth-core/db/repos/refund-overdue.repo.js";
+import { markOverdueRefundWebhooks } from "@xeko-git-1/paykit-auth-core/db/repos/refund-overdue.repo.js";
 import type { PaymentTransaction } from "@xeko-git-1/paykit-auth-core/db/schema/payment-transactions.js";
 
 /**
