@@ -22,10 +22,11 @@
  *
  * Facade split: invoice create + fetch-back use the POS token (zero crypto).
  * Refunds and reconciliation listing require BitPay's MERCHANT facade, which
- * signs each request with ECDSA secp256k1. That signer is INJECTED via
- * `merchantSigner` (consumer wires BitPay's official SDK / a KMS-backed signer)
- * so this package keeps zero runtime deps and ships no unverified crypto. With
- * no signer, refund returns state='failed' and fetchTransactions returns [].
+ * signs each request with ECDSA secp256k1. The signer is INJECTED via
+ * `merchantSigner` — either the packaged node:crypto implementation
+ * (createNodeMerchantSigner in merchant-signer.ts, zero runtime deps) or a
+ * consumer-wired one (BitPay's official SDK / a KMS-backed signer). With no
+ * signer, refund returns state='failed' and fetchTransactions throws.
  */
 import {
   type CheckoutResult,

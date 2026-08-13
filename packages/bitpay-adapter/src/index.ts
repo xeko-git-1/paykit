@@ -47,5 +47,6 @@ export {
   type BitpayRefund,
   type BitpayRefundResolveContext,
 } from "./refund-webhook.js";
+export { createNodeMerchantSigner } from "./merchant-signer.js";
 
 export const PAYKIT_BITPAY_VERSION = "0.3.0-rc.0";
