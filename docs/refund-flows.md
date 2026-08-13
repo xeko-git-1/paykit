@@ -41,7 +41,7 @@ Some crypto providers process refunds asynchronously: the adapter POSTs a refund
 **Providers using this state:**
 
 - **NowPayments** (`@xeko-git-1/paykit-nowpayments`) — signed IPN (HMAC-SHA512); refund IPN resolves the ledger debit + flips status to `refunded`.
-- **BitPay** (`@xeko-git-1/paykit-bitpay`) — adapter shipped. BitPay does NOT sign webhooks, so authentication is **fetch-back** (`GET /invoices/:id`) via the adapter's async `resolveWebhook` hook rather than a signature check. Refund requires an injected merchant ECDSA signer (`BitpayMerchantSigner`); the refund returns `pending_webhook`, but the refund-confirmation webhook shape is not yet sandbox-verified, so refunds resolve via **manual reconcile** until that wiring lands.
+- **BitPay** (`@xeko-git-1/paykit-bitpay`) — adapter shipped. BitPay does NOT sign webhooks, so authentication is **fetch-back** (`GET /invoices/:id`) via the adapter's async `resolveWebhook` hook rather than a signature check. Refund requires a merchant ECDSA signer: inject your own `BitpayMerchantSigner`, or use the packaged `createNodeMerchantSigner(privateKey)` (node:crypto secp256k1, mirrors the official SDK's scheme — in service mode this is wired from `BITPAY_MERCHANT_PRIVATE_KEY`). The refund returns `pending_webhook`; the refund IPN is resolved by fetch-back (`GET /refunds/:id` then the owning invoice) and writes the ledger debit for **settled** refunds only. The refund `status` enum and IPN envelope are **not yet sandbox-verified** (see `docs/sandbox-setup-bitpay.md` checklist) — until a live run confirms them, watch the first refunds and fall back to manual reconcile via `/admin/billing/ledger/adjust` if the debit does not land.
 
 ## Cumulative refund logic
 
@@ -88,3 +88,39 @@ curl -X POST /admin/billing/ledger/adjust \
 ```
 
 The `entry_type='manual_adjustment'` distinguishes from automated `refund` entries.
+
+## Coinbase Commerce — no refund API (operator runbook)
+
+Coinbase Commerce exposes **create and read on charges and nothing else** — its
+own SDKs declare exactly those two operations. The adapter therefore returns
+`state: 'unsupported'` and `POST /admin/billing/refund` answers **501** for
+`coinbase-commerce` transactions. This is a property of the provider, not a
+paykit gap; there is no webhook to wait for.
+
+To refund a Coinbase Commerce payment:
+
+1. Send the crypto back to the customer **from your Coinbase account**
+   (out-of-band — commerce.coinbase.com dashboard or a normal Coinbase send).
+   Record the tx hash.
+2. Record the paykit ledger debit so the balance matches reality:
+
+```bash
+curl -X POST /admin/billing/ledger/adjust \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: <uuid — one per adjustment>" \
+  -d '{
+    "tenantId": "<uuid>",
+    "ownerId": "<uuid>",
+    "amountMicros": "-5000000",
+    "currencyCode": "USD",
+    "entryType": "manual_adjustment",
+    "reason": "Coinbase Commerce refund of tx <paykit transactionId>, sent <coin> <txhash>"
+  }'
+```
+
+3. Reference the paykit `transactionId` and the on-chain tx hash in `reason` —
+   reconciliation reads Coinbase's charge list, and an unexplained ledger delta
+   on a refunded charge is exactly what it flags.
+
+Do NOT mark the transaction `refunded` by hand-editing the row; the
+`manual_adjustment` ledger entry is the audit trail.

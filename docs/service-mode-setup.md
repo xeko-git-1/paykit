@@ -11,9 +11,9 @@ the embedded mode in [installation.md](./installation.md).
 
 - **Cold-start Docker**: `docker compose up` on a fresh volume migrates the
   schema, then serves — in that order, automatically.
-- **9 wired adapters**: Stripe, SePay, NowPayments, Cryptomus, Binance Pay,
-  Coinbase Commerce, VNPay, Momo, ZaloPay — each enabled only when its
-  credentials are present. (BitPay is embedded-only.)
+- **10 wired adapters**: Stripe, SePay, NowPayments, Cryptomus, Binance Pay,
+  BitPay, Coinbase Commerce, VNPay, Momo, ZaloPay — each enabled only when its
+  credentials are present.
 - **`/v1` HTTP API**: scope-gated, rate-limited, OpenAPI-described.
 - **CLI bootstrap**: create the first merchant + API key without the service running.
 - **Thin TypeScript SDK** (`@xeko-git-1/paykit-sdk`): type-safe client over `/v1`.
@@ -68,11 +68,15 @@ fields are set; partial credentials leave that provider disabled (no crash).
 | `ZALOPAY_APP_ID`, `ZALOPAY_KEY1`, `ZALOPAY_KEY2`, `ZALOPAY_RETURN_URL`, `ZALOPAY_CALLBACK_URL`, `ZALOPAY_ENVIRONMENT?` | ZaloPay |
 | `CRYPTOMUS_MERCHANT_ID`, `CRYPTOMUS_PAYMENT_API_KEY`, `CRYPTOMUS_TO_CURRENCY?`, `CRYPTOMUS_NETWORK?` | Cryptomus (crypto) |
 | `BINANCE_API_KEY`, `BINANCE_API_SECRET`, `BINANCE_WEBHOOK_PUBLIC_KEY` | Binance Pay (crypto) |
+| `BITPAY_API_TOKEN`, `BITPAY_ENVIRONMENT?`, `BITPAY_MERCHANT_PRIVATE_KEY?`, `BITPAY_NOTIFICATION_URL?`, `BITPAY_REDIRECT_URL?` | BitPay (crypto). Private key (64-hex or secp256k1 PEM) is optional: without it checkout + credit work but refunds/reconciliation are disabled. |
 | `COINBASE_COMMERCE_API_KEY`, `COINBASE_COMMERCE_WEBHOOK_SECRET`, `COINBASE_COMMERCE_REDIRECT_URL?` | Coinbase Commerce (crypto) |
 | `PAYKIT_ALLOW_UNKNOWN_CHAIN_CODES?` | Accept a coin/chain code paykit does not recognise |
 
 VN provider sandboxes: [Momo](./sandbox-setup-momo.md) ·
 [VNPay](./sandbox-setup-vnpay.md) · [ZaloPay](./sandbox-setup-zalopay.md).
+Crypto provider setup: [NowPayments](./sandbox-setup-nowpayments.md) ·
+[Cryptomus](./sandbox-setup-cryptomus.md) · [Binance Pay](./sandbox-setup-binance.md) ·
+[BitPay](./sandbox-setup-bitpay.md) · [Coinbase Commerce](./sandbox-setup-coinbase-commerce.md).
 The JWT signing secret is **not** an env var — it is generated and stored in the
 `runtime_config` table on first use.
 

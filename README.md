@@ -29,7 +29,7 @@
 | ZaloPay | `@xeko-git-1/paykit-zalopay` | VND | 2-step async (poll) |
 | NowPayments | `@xeko-git-1/paykit-nowpayments` | USD | async (`pending_webhook`) — multi-chain USDT (BEP20/TRC20/ERC20/Polygon) via `payCurrency` |
 | Cryptomus | `@xeko-git-1/paykit-cryptomus` | USD | async (`pending_webhook`) — multi-chain USDT, signed webhook (MD5) |
-| BitPay | `@xeko-git-1/paykit-bitpay` | USD | async (`pending_webhook`) — refund needs an injected merchant ECDSA signer; not yet sandbox-verified end-to-end |
+| BitPay | `@xeko-git-1/paykit-bitpay` | USD | async (`pending_webhook`) — refund needs a merchant ECDSA signer (packaged `createNodeMerchantSigner` or inject your own); not yet sandbox-verified end-to-end |
 | Binance Pay | `@xeko-git-1/paykit-binance` | USD | async (`pending_webhook`) — off-chain merchant account; no public sandbox, not yet verified end-to-end |
 | Coinbase Commerce | `@xeko-git-1/paykit-coinbase-commerce` | USD | none — the provider exposes no refund API; refund from the Coinbase account and record a ledger adjustment. Built from published SDKs, not yet verified end-to-end |
 
@@ -51,7 +51,7 @@
 ### Two ways to run
 
 - **Embedded (V1–V3):** `import { createPaykit }` into your own Hono app, supply a `TenantResolver`. Quickstart below.
-- **Standalone service (V4):** run `@xeko-git-1/paykit-service` as a container — config + API-key auth via env, no app code. Migrate-then-serve cold start, 9 wired adapters (Stripe / SePay / NowPayments / VNPay / Momo / ZaloPay / Cryptomus / Binance Pay / Coinbase Commerce; BitPay is embedded-only), `/v1` HTTP API, CLI bootstrap, and a thin TypeScript SDK. See [service-mode-setup.md](docs/service-mode-setup.md).
+- **Standalone service (V4):** run `@xeko-git-1/paykit-service` as a container — config + API-key auth via env, no app code. Migrate-then-serve cold start, 10 wired adapters (Stripe / SePay / NowPayments / VNPay / Momo / ZaloPay / Cryptomus / Binance Pay / BitPay / Coinbase Commerce), `/v1` HTTP API, CLI bootstrap, and a thin TypeScript SDK. See [service-mode-setup.md](docs/service-mode-setup.md).
 
 ## Quickstart (preview — V1 not yet published)
 
@@ -90,8 +90,9 @@ See `docs/`:
 - [Stripe subscription setup](docs/stripe-subscription-setup.md) · [V2 setup checklist](docs/v2-setup-checklist.md)
 - [Mobile integration](docs/mobile-integration.md) · [Deeplink formats](docs/deeplink-formats.md)
 - VN provider sandboxes: [Momo](docs/sandbox-setup-momo.md) · [VNPay](docs/sandbox-setup-vnpay.md) · [ZaloPay](docs/sandbox-setup-zalopay.md)
+- Crypto provider setup: [Binance Pay](docs/sandbox-setup-binance.md) · [NowPayments](docs/sandbox-setup-nowpayments.md) · [Cryptomus](docs/sandbox-setup-cryptomus.md) · [BitPay](docs/sandbox-setup-bitpay.md) · [Coinbase Commerce](docs/sandbox-setup-coinbase-commerce.md) — live verification harness: [`e2e/live-verify/`](e2e/live-verify/README.md)
 - Upgrading: [V1 → V1.5](docs/upgrading-v1-to-v1.5.md) · [V1.5 → V2](docs/upgrading-v1.5-to-v2.md)
-- Acceptance tests: [V1.5](docs/v1.5-acceptance-tests.md) · [V2](docs/v2-acceptance-tests.md)
+- Acceptance tests: [V1.5](docs/v1.5-acceptance-tests.md) · [V2](docs/v2-acceptance-tests.md) · [Crypto](docs/crypto-acceptance-tests.md)
 
 ## License
 

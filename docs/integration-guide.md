@@ -32,7 +32,7 @@
 | ZaloPay | VND | `ZALOPAY_APP_ID`, `ZALOPAY_KEY1`, `ZALOPAY_KEY2`, `ZALOPAY_RETURN_URL`, `ZALOPAY_CALLBACK_URL` | `ZALOPAY_ENVIRONMENT` |
 | NowPayments | USD (crypto) | `NOWPAYMENTS_API_KEY`, `NOWPAYMENTS_IPN_SECRET` | `NOWPAYMENTS_ENVIRONMENT`, `NOWPAYMENTS_PAY_CURRENCY` |
 | Cryptomus | USD (crypto) | `CRYPTOMUS_MERCHANT_ID`, `CRYPTOMUS_PAYMENT_API_KEY` | `CRYPTOMUS_TO_CURRENCY`, `CRYPTOMUS_NETWORK`, `CRYPTOMUS_RETURN_URL`, `CRYPTOMUS_CALLBACK_URL` |
-| BitPay | USD (crypto) | **Embedded mode only** — not wired into the standalone service. Construct `createBitpayAdapter({ apiToken, merchantSigner? })` in code. / **Chỉ embedded mode** — chưa wire vào service; khởi tạo `createBitpayAdapter({ apiToken, merchantSigner? })` trong code. | merchant ECDSA signer (refund/reconcile) |
+| BitPay | USD (crypto) | `BITPAY_API_TOKEN` | `BITPAY_ENVIRONMENT`, `BITPAY_MERCHANT_PRIVATE_KEY` (64-hex or secp256k1 PEM — enables refund/reconcile; without it checkout + credit still work / bật refund/reconcile; thiếu nó thì checkout + credit vẫn chạy), `BITPAY_NOTIFICATION_URL`, `BITPAY_REDIRECT_URL` |
 | Binance Pay | USD (crypto) | `BINANCE_API_KEY`, `BINANCE_API_SECRET`, `BINANCE_WEBHOOK_PUBLIC_KEY` | `BINANCE_RETURN_URL`, `BINANCE_CANCEL_URL`, `BINANCE_WEBHOOK_URL` |
 | Coinbase Commerce | USD (crypto) | `COINBASE_COMMERCE_API_KEY`, `COINBASE_COMMERCE_WEBHOOK_SECRET` | `COINBASE_COMMERCE_REDIRECT_URL`, `COINBASE_COMMERCE_CANCEL_URL` |
 
