@@ -123,6 +123,16 @@ const envSchema = z.object({
     .transform((v) => (v === undefined || v === "" ? undefined : Number.parseFloat(v)))
     .pipe(z.number().positive().finite().optional()),
 
+  // How long an unpaid checkout may exist before the background sweeper expires
+  // it and releases its discount reservation. Money-relevant: must exceed the
+  // longest provider checkout validity, because a payment landing after the
+  // expiry does not credit. Default 48h.
+  PAYKIT_CHECKOUT_STALE_TTL_HOURS: z
+    .string()
+    .optional()
+    .transform((v) => (v === undefined || v === "" ? undefined : Number.parseFloat(v)))
+    .pipe(z.number().positive().finite().optional()),
+
   // Admin guard secret (env-based for V4.0; dashboard JWT is V4.4)
   ADMIN_SECRET: z.string().optional(),
 });
@@ -224,6 +234,8 @@ export interface ServiceConfig {
   readonly adminSecret: string | undefined;
   /** Hours before a pending_webhook refund is reported overdue. Default 24 (in the sweeper). */
   readonly refundWebhookTimeoutHours: number | undefined;
+  /** Hours before an unpaid checkout is expired and its discount reservation freed. Default 48 (in the sweeper). */
+  readonly checkoutStaleTtlHours: number | undefined;
 }
 
 /**
@@ -510,5 +522,6 @@ export function parseServiceConfig(env: Record<string, string | undefined>): Ser
     coinbaseCommerce,
     adminSecret: parsed.ADMIN_SECRET,
     refundWebhookTimeoutHours: parsed.PAYKIT_REFUND_WEBHOOK_TIMEOUT_HOURS,
+    checkoutStaleTtlHours: parsed.PAYKIT_CHECKOUT_STALE_TTL_HOURS,
   };
 }

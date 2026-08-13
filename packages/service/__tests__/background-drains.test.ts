@@ -17,6 +17,8 @@ const server = vi.hoisted(() => ({
   drainWebhookInbox: vi.fn(),
   drainScreeningJobs: vi.fn(),
   sweepWebhookInbox: vi.fn(),
+  sweepOverdueRefundWebhooks: vi.fn(),
+  sweepStaleCheckouts: vi.fn(),
 }));
 
 vi.mock("@xeko-git-1/paykit-server", () => server);
@@ -30,6 +32,8 @@ beforeEach(() => {
   server.drainWebhookInbox.mockResolvedValue([]);
   server.drainScreeningJobs.mockResolvedValue([]);
   server.sweepWebhookInbox.mockResolvedValue(0);
+  server.sweepOverdueRefundWebhooks.mockResolvedValue([]);
+  server.sweepStaleCheckouts.mockResolvedValue([]);
 });
 
 describe("one tick", () => {
@@ -146,6 +150,53 @@ describe("the retention sweep", () => {
     await drains.tick();
 
     expect(server.sweepWebhookInbox).not.toHaveBeenCalled();
+  });
+});
+
+describe("the stale-checkout sweep", () => {
+  it("runs on its own cadence, not every tick", async () => {
+    const drains = startBackgroundDrains({ db }, { intervalMs: 0, checkoutSweepEveryTicks: 3 });
+    await drains.tick();
+    await drains.tick();
+    expect(server.sweepStaleCheckouts).not.toHaveBeenCalled();
+
+    await drains.tick();
+    expect(server.sweepStaleCheckouts).toHaveBeenCalledTimes(1);
+  });
+
+  it("passes the configured TTL through", async () => {
+    const drains = startBackgroundDrains(
+      { db },
+      { intervalMs: 0, checkoutSweepEveryTicks: 1, checkoutStaleTtlMs: 6 * 60 * 60 * 1000 },
+    );
+    await drains.tick();
+
+    expect(server.sweepStaleCheckouts).toHaveBeenCalledWith(expect.anything(), {
+      ttlMs: 6 * 60 * 60 * 1000,
+    });
+  });
+
+  it("can be disabled", async () => {
+    const drains = startBackgroundDrains({ db }, { intervalMs: 0, checkoutSweepEveryTicks: 0 });
+    await drains.tick();
+
+    expect(server.sweepStaleCheckouts).not.toHaveBeenCalled();
+  });
+});
+
+describe("the overdue-refund sweep", () => {
+  it("runs once its tick count comes round, with the configured timeout", async () => {
+    const drains = startBackgroundDrains(
+      { db },
+      { intervalMs: 0, refundSweepEveryTicks: 2, refundWebhookTimeoutMs: 60 * 60 * 1000 },
+    );
+    await drains.tick();
+    expect(server.sweepOverdueRefundWebhooks).not.toHaveBeenCalled();
+
+    await drains.tick();
+    expect(server.sweepOverdueRefundWebhooks).toHaveBeenCalledWith(expect.anything(), {
+      timeoutMs: 60 * 60 * 1000,
+    });
   });
 });
 

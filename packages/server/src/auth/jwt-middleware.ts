@@ -37,6 +37,15 @@ export interface JwtAuthDeps {
   readonly expectedIssuer: string;
   /** Expected audience claim value. */
   readonly expectedAudience: string;
+  /**
+   * Load the merchant's lifecycle status (`merchants.status`), or null when no
+   * merchant row exists for the token's subject. Optional — embedded consumers
+   * may not manage merchants at all. A `suspended` merchant is rejected with
+   * 403: the token is cryptographically valid (still 200-class identity), but
+   * the account is not allowed to transact, and JWTs cannot be revoked
+   * individually so the status check is the only enforcement point.
+   */
+  readonly loadMerchantStatus?: (merchantId: string) => Promise<string | null>;
 }
 
 // ---------------------------------------------------------------------------
@@ -44,7 +53,7 @@ export interface JwtAuthDeps {
 // ---------------------------------------------------------------------------
 
 export function jwtAuthMiddleware(deps: JwtAuthDeps): MiddlewareHandler {
-  const { loadSecret, expectedIssuer, expectedAudience } = deps;
+  const { loadSecret, expectedIssuer, expectedAudience, loadMerchantStatus } = deps;
 
   return async (c, next) => {
     const authHeader = c.req.header("Authorization");
@@ -108,6 +117,17 @@ export function jwtAuthMiddleware(deps: JwtAuthDeps): MiddlewareHandler {
 
     if (!merchantId || !tenantId || !ownerId) {
       return errorJson(c, 401, "AUTH_INVALID", "token missing required claims");
+    }
+
+    // Enforce merchant suspension AFTER signature verification: the token is
+    // valid, the account is not. 403 rather than 401 so the caller does not
+    // burn retries re-authenticating. A null status (no merchant row) passes —
+    // absence of lifecycle management is not suspension.
+    if (loadMerchantStatus !== undefined) {
+      const status = await loadMerchantStatus(merchantId);
+      if (status === "suspended") {
+        return errorJson(c, 403, "MERCHANT_SUSPENDED", "merchant account is suspended");
+      }
     }
 
     const scopes = Array.isArray(payload.scopes) ? (payload.scopes as string[]) : [];

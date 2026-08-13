@@ -32,6 +32,11 @@ export {
   pendingRefundState,
 } from "./pending-refunds.js";
 export {
+  type NewRateLimitWindow,
+  type RateLimitWindow,
+  rateLimitWindows,
+} from "./rate-limit-windows.js";
+export {
   type NewReconciliationCursor,
   type ReconciliationCursor,
   reconciliationCursors,

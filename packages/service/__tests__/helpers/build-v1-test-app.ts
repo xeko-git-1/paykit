@@ -80,10 +80,18 @@ export interface MockDbState {
     metadataJson: Record<string, unknown>;
     createdAt: Date;
   }>;
+  /** Fixed-window counters, mirroring paykit.rate_limit_windows semantics. */
+  rateLimits: Map<string, { windowStartMs: number; count: number }>;
 }
 
 export function createMockDbState(): MockDbState {
-  return { transactions: [], balances: [], apiKeys: [], ledgerEntries: [] };
+  return {
+    transactions: [],
+    balances: [],
+    apiKeys: [],
+    ledgerEntries: [],
+    rateLimits: new Map(),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -145,6 +153,26 @@ export function createMockDb(state: MockDbState): unknown {
       insert: (table: unknown) => ({
         values: (data: unknown) => {
           const record = data as Record<string, unknown>;
+          // rate_limit_windows UPSERT — replicate the fixed-window semantics of
+          // rate-limit.repo so the middleware's durable path is testable: same
+          // window increments, a new window resets to 1.
+          if ("bucketKey" in record && "windowStart" in record) {
+            return {
+              onConflictDoUpdate: (_opts: unknown) => ({
+                returning: () => {
+                  const key = record.bucketKey as string;
+                  const windowStartMs = (record.windowStart as Date).getTime();
+                  const existing = s.rateLimits.get(key);
+                  const count =
+                    existing !== undefined && existing.windowStartMs === windowStartMs
+                      ? existing.count + 1
+                      : 1;
+                  s.rateLimits.set(key, { windowStartMs, count });
+                  return thenableArray([{ requestCount: count }]);
+                },
+              }),
+            };
+          }
           const newRow = {
             keyId: crypto.randomUUID(),
             entryId: crypto.randomUUID(),

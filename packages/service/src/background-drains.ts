@@ -29,6 +29,7 @@ import {
   drainScreeningJobs,
   drainWebhookInbox,
   sweepOverdueRefundWebhooks,
+  sweepStaleCheckouts,
   sweepWebhookInbox,
 } from "@xeko-git-1/paykit-server";
 
@@ -60,6 +61,18 @@ export interface BackgroundDrainOptions {
    * minutes, and the query scans a status that is rare by construction.
    */
   readonly refundSweepEveryTicks?: number;
+  /**
+   * How long an unpaid checkout may exist before the sweeper expires it and
+   * releases its discount reservation. Must exceed the longest provider
+   * checkout validity — a payment landing after the expiry does not credit.
+   * Default 48h (see checkout-stale-sweeper).
+   */
+  readonly checkoutStaleTtlMs?: number;
+  /**
+   * Ticks between stale-checkout sweeps. Same reasoning as the refund sweep:
+   * the TTL is measured in hours, ~10 minutes of drift is invisible.
+   */
+  readonly checkoutSweepEveryTicks?: number;
 }
 
 /**
@@ -73,6 +86,8 @@ const DEFAULT_MAX_PER_TICK = 50;
 const DEFAULT_SWEEP_EVERY_TICKS = 240;
 /** ~10 minutes at the default interval — generous against a 24h timeout. */
 const DEFAULT_REFUND_SWEEP_EVERY_TICKS = 40;
+/** ~10 minutes at the default interval — generous against a 48h TTL. */
+const DEFAULT_CHECKOUT_SWEEP_EVERY_TICKS = 40;
 
 export interface BackgroundDrains {
   /** Run one tick immediately — the unit a external scheduler would call. */
@@ -88,6 +103,7 @@ export function startBackgroundDrains(
   const maxPerTick = opts.maxPerTick ?? DEFAULT_MAX_PER_TICK;
   const sweepEvery = opts.sweepEveryTicks ?? DEFAULT_SWEEP_EVERY_TICKS;
   const refundSweepEvery = opts.refundSweepEveryTicks ?? DEFAULT_REFUND_SWEEP_EVERY_TICKS;
+  const checkoutSweepEvery = opts.checkoutSweepEveryTicks ?? DEFAULT_CHECKOUT_SWEEP_EVERY_TICKS;
 
   let ticks = 0;
   let running = false;
@@ -141,6 +157,20 @@ export function startBackgroundDrains(
           opts.refundWebhookTimeoutMs !== undefined
             ? { timeoutMs: opts.refundWebhookTimeoutMs }
             : {},
+        );
+      }
+
+      // An abandoned checkout holds its discount reservation until something
+      // expires it — some rails never send an expiry webhook, so this sweep is
+      // the only path that frees those reservations.
+      if (checkoutSweepEvery > 0 && ticks % checkoutSweepEvery === 0) {
+        await sweepStaleCheckouts(
+          {
+            db: deps.db,
+            ...(deps.logger !== undefined ? { logger: deps.logger } : {}),
+            ...(deps.emitMetric !== undefined ? { emitMetric: deps.emitMetric } : {}),
+          },
+          opts.checkoutStaleTtlMs !== undefined ? { ttlMs: opts.checkoutStaleTtlMs } : {},
         );
       }
     } catch (err) {

@@ -130,6 +130,7 @@ export * as idempotencyRepo from "@xeko-git-1/paykit-auth-core/db/repos/idempote
 export * as ledgerRepo from "@xeko-git-1/paykit-auth-core/db/repos/ledger.repo.js";
 export * as merchantRepo from "@xeko-git-1/paykit-auth-core/db/repos/merchant.repo.js";
 export * as paymentRepo from "@xeko-git-1/paykit-auth-core/db/repos/payment.repo.js";
+export * as rateLimitRepo from "@xeko-git-1/paykit-auth-core/db/repos/rate-limit.repo.js";
 export * as pendingRefundRepo from "@xeko-git-1/paykit-auth-core/db/repos/pending-refund.repo.js";
 export * as reconciliationRepo from "@xeko-git-1/paykit-auth-core/db/repos/reconciliation.repo.js";
 export * as reconciliationCursorRepo from "@xeko-git-1/paykit-auth-core/db/repos/reconciliation-cursor.repo.js";
@@ -281,6 +282,15 @@ export {
   type AdminRefundOverdueDeps,
   buildAdminRefundOverdueRoute,
 } from "./routes/admin/refund-overdue-route.js";
+
+// Abandoned checkouts hold discount reservations nothing else releases; the
+// sweeper expires them past a TTL and frees the reservation atomically.
+export {
+  CHECKOUT_STALE_TTL_MS,
+  type CheckoutStaleSweeperDeps,
+  type SweepStaleCheckoutsOptions,
+  sweepStaleCheckouts,
+} from "./services/checkout-stale-sweeper.js";
 export {
   INBOX_BASE_RETRY_MS,
   INBOX_LEASE_MS,

@@ -42,6 +42,15 @@ export interface ApiKeyAuthDeps {
   readonly resolveMerchantTenant: (
     merchantId: string,
   ) => Promise<{ tenantId: string; ownerId: string } | null>;
+  /**
+   * Load the merchant's lifecycle status (`merchants.status`), or null when the
+   * merchant row does not exist. Optional because embedded consumers may not
+   * use the merchants table at all; when omitted, no status check runs. A
+   * `suspended` merchant is rejected with 403 — the key itself is valid, but
+   * the account behind it is not allowed to transact, and revoking every key
+   * would destroy state the operator wants back on reactivation.
+   */
+  readonly loadMerchantStatus?: (db: DbClient, merchantId: string) => Promise<string | null>;
 }
 
 // ---------------------------------------------------------------------------
@@ -49,7 +58,7 @@ export interface ApiKeyAuthDeps {
 // ---------------------------------------------------------------------------
 
 export function apiKeyAuthMiddleware(deps: ApiKeyAuthDeps): MiddlewareHandler {
-  const { db, findByHash, touchLastUsed, resolveMerchantTenant } = deps;
+  const { db, findByHash, touchLastUsed, resolveMerchantTenant, loadMerchantStatus } = deps;
 
   return async (c, next) => {
     const authHeader = c.req.header("Authorization");
@@ -78,6 +87,17 @@ export function apiKeyAuthMiddleware(deps: ApiKeyAuthDeps): MiddlewareHandler {
     const tenant = await resolveMerchantTenant(record.merchantId);
     if (!tenant) {
       return errorJson(c, 401, "AUTH_INVALID", "merchant not found");
+    }
+
+    // Enforce merchant suspension AFTER the key verified: 403 (identity known,
+    // access denied), not 401, so a suspended merchant's tooling shows the real
+    // reason instead of retrying credentials. A missing status (null) passes —
+    // that is "no lifecycle managed here", not "suspended".
+    if (loadMerchantStatus !== undefined) {
+      const status = await loadMerchantStatus(db, record.merchantId);
+      if (status === "suspended") {
+        return errorJson(c, 403, "MERCHANT_SUSPENDED", "merchant account is suspended");
+      }
     }
 
     // Set auth context on Hono context

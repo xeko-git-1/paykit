@@ -71,6 +71,8 @@ fields are set; partial credentials leave that provider disabled (no crash).
 | `BITPAY_API_TOKEN`, `BITPAY_ENVIRONMENT?`, `BITPAY_MERCHANT_PRIVATE_KEY?`, `BITPAY_NOTIFICATION_URL?`, `BITPAY_REDIRECT_URL?` | BitPay (crypto). Private key (64-hex or secp256k1 PEM) is optional: without it checkout + credit work but refunds/reconciliation are disabled. |
 | `COINBASE_COMMERCE_API_KEY`, `COINBASE_COMMERCE_WEBHOOK_SECRET`, `COINBASE_COMMERCE_REDIRECT_URL?` | Coinbase Commerce (crypto) |
 | `PAYKIT_ALLOW_UNKNOWN_CHAIN_CODES?` | Accept a coin/chain code paykit does not recognise |
+| `PAYKIT_REFUND_WEBHOOK_TIMEOUT_HOURS?` | Hours before a `pending_webhook` refund is reported overdue (default 24) |
+| `PAYKIT_CHECKOUT_STALE_TTL_HOURS?` | Hours before an unpaid checkout is expired and its discount reservation freed (default 48). Must exceed the longest provider checkout validity. |
 
 VN provider sandboxes: [Momo](./sandbox-setup-momo.md) ·
 [VNPay](./sandbox-setup-vnpay.md) · [ZaloPay](./sandbox-setup-zalopay.md).
@@ -183,24 +185,32 @@ call fails. An unknown, inactive, expired, or fully-redeemed code silently falls
 back to full price (never an error). A fractional percent (e.g. `12.5`) is applied
 exactly via basis points.
 
-> **Known limitation:** if a provider goes silent — a checkout that never completes
-> and never fires a failed/expired webhook — its reservation is held indefinitely
-> (the slot is not freed). This drains the cap slowly but never over-grants. A
-> reservation sweeper for stale-pending checkouts is deferred to a future version.
+> **Stale checkouts are swept automatically.** If a provider goes silent — a
+> checkout that never completes and never fires a failed/expired webhook — the
+> background sweeper expires it after a TTL (default 48h, configurable via
+> `PAYKIT_CHECKOUT_STALE_TTL_HOURS`) and releases its reservation in the same
+> transaction, raising `paykit_checkout_stale_expired_total{provider}`. The TTL
+> must exceed the longest provider checkout validity: a payment landing on an
+> already-expired row deliberately does not credit (same as a provider-side
+> expiry), so shortening it below a rail's session lifetime can refuse real money.
 
 ## Operational notes & current limitations
 
-- **Merchant suspension is not enforced (deferred to V4.x).** `merchants.status`
-  can be set to `suspended`, but the auth path does not yet check it, so a
-  suspended merchant's API keys still authenticate. Revoke the keys to cut access
-  in V4.0.
+- **Merchant suspension is enforced at auth time, on both planes.** Setting
+  `merchants.status = 'suspended'` makes every request by that merchant answer
+  `403 MERCHANT_SUSPENDED` — api keys and JWTs alike. The credentials stay
+  valid on purpose: reactivating is `status = 'active'`, no re-minting. Revoke
+  keys only when you want them gone permanently.
 - **`mode` (`live`/`test`) is not isolation.** A key's mode is recorded and
   surfaced, but live and test traffic share one database and one set of tables.
   Use separate deployments/databases if you need hard isolation.
-- **Rate limiting is soft and per-process.** The `/v1` limiter is an in-memory
-  token bucket per API key; it resets on restart and is not shared across
-  instances behind a load balancer. It throttles accidental bursts, not a
-  determined attacker. Durable, multi-instance rate limiting (Redis) is deferred.
+- **Rate limiting is durable and shared across instances.** The `/v1` limiter
+  counts each credential's requests in a fixed window on Postgres
+  (`paykit.rate_limit_windows`, migration 029), so the configured budget holds
+  no matter how many replicas serve traffic, and survives restarts. If the
+  database errors, the middleware degrades to the old per-process in-memory
+  bucket for that request instead of failing the API — degraded, never an
+  outage. No Redis dependency.
 - **Admin plane is env-secret gated.** `/v1/admin/*` is guarded by `ADMIN_SECRET`
   (constant-time compared). The JWT dashboard plane is V4.4.
 
@@ -217,4 +227,4 @@ schema is left at the last fully-applied migration (never half-applied). To reco
 4. `service` will not start until `migrate` exits 0, so requests are never served
    against an incomplete schema.
 
-Confirm schema health any time with `paykit doctor` (expects 14 business tables).
+Confirm schema health any time with `paykit doctor` (expects 19 business tables).

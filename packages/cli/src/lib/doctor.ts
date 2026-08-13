@@ -72,11 +72,16 @@ export async function runDoctor(
       "merchants",
       "payment_transactions",
       "pending_refunds",
+      "rate_limit_windows",
+      "reconciliation_cursors",
       "reconciliation_runs",
+      "refunds",
       "runtime_config",
+      "screening_jobs",
       "subscription_events",
       "subscriptions",
       "webhook_events",
+      "webhook_inbox",
     ];
     const missing = expected.filter((t) => !present.has(t));
     if (missing.length > 0) {

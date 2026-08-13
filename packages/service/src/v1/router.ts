@@ -63,8 +63,10 @@ export function buildV1Router(deps: V1RouterDeps): Hono {
   const { db, registry, logger } = deps;
   const app = new Hono();
 
-  // Rate-limit applies to all /v1 routes (soft, per-process)
-  app.use("*", rateLimitMiddleware());
+  // Rate-limit applies to all /v1 routes. With the db it is a durable fixed
+  // window shared by every instance (029); the in-memory bucket remains the
+  // per-request fallback if the database errors.
+  app.use("*", rateLimitMiddleware({ db, ...(logger !== undefined ? { logger } : {}) }));
 
   // -------------------------------------------------------------------------
   // POST /checkouts — create a payment checkout session

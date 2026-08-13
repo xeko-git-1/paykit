@@ -1,8 +1,8 @@
 /**
  * doctor table-count test (F6) — the schema check must expect the full set of
- * business tables (14) and flag any missing one (e.g. reconciliation_runs),
- * not the stale hardcoded 5. Uses a minimal mock pg.Client that returns scripted
- * query results by SQL shape.
+ * business tables (19 as of migration 029) and flag any missing one (e.g.
+ * reconciliation_runs), not a stale shorter list. Uses a minimal mock
+ * pg.Client that returns scripted query results by SQL shape.
  */
 import type { Client } from "pg";
 import { describe, expect, it } from "vitest";
@@ -25,11 +25,16 @@ const ALL_TABLES = [
   "merchants",
   "payment_transactions",
   "pending_refunds",
+  "rate_limit_windows",
+  "reconciliation_cursors",
   "reconciliation_runs",
+  "refunds",
   "runtime_config",
+  "screening_jobs",
   "subscription_events",
   "subscriptions",
   "webhook_events",
+  "webhook_inbox",
 ];
 
 function mockClient(tables: string[]): Client {
@@ -55,11 +60,11 @@ function mockClient(tables: string[]): Client {
 }
 
 describe("runDoctor — table coverage (F6)", () => {
-  it("reports all 14 tables present when the schema is complete", async () => {
+  it("reports all 19 tables present when the schema is complete", async () => {
     const result = await runDoctor(mockClient(ALL_TABLES), manifest);
     const tablesCheck = result.checks.find((c) => c.name === "paykit_tables");
     expect(tablesCheck?.level).toBe("ok");
-    expect(tablesCheck?.message).toMatch(/all 14 paykit tables present/);
+    expect(tablesCheck?.message).toMatch(/all 19 paykit tables present/);
   });
 
   it("flags reconciliation_runs as missing when absent (was hidden by the old 5-table list)", async () => {
@@ -68,6 +73,17 @@ describe("runDoctor — table coverage (F6)", () => {
     const tablesCheck = result.checks.find((c) => c.name === "paykit_tables");
     expect(tablesCheck?.level).toBe("warn");
     expect(tablesCheck?.message).toMatch(/reconciliation_runs/);
+  });
+
+  it("flags the durable rate-limit table when absent (029)", async () => {
+    // The middleware degrades to in-memory when the table is missing, which is
+    // exactly why the doctor must say so out loud: the deploy looks healthy
+    // while the configured limit quietly multiplies by the replica count.
+    const without = ALL_TABLES.filter((t) => t !== "rate_limit_windows");
+    const result = await runDoctor(mockClient(without), manifest);
+    const tablesCheck = result.checks.find((c) => c.name === "paykit_tables");
+    expect(tablesCheck?.level).toBe("warn");
+    expect(tablesCheck?.message).toMatch(/rate_limit_windows/);
   });
 
   it("flags merchants/api_keys as missing on a partially-migrated DB", async () => {

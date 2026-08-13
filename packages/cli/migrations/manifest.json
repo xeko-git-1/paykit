@@ -198,6 +198,13 @@
       "up": "028_webhook_inbox_kind.up.sql",
       "down": "028_webhook_inbox_kind.down.sql",
       "description": "An inbox_kind column on webhook_inbox so subscription deliveries share the durable inbox — an invoice that arrives before its subscription becomes retryable work owned by paykit instead of depending on the provider's redelivery policy, while the processed-must-name-a-payment CHECK keeps binding payment rows exactly as before"
+    },
+    {
+      "id": "029",
+      "slug": "rate_limit_windows",
+      "up": "029_rate_limit_windows.up.sql",
+      "down": "029_rate_limit_windows.down.sql",
+      "description": "One durable fixed-window counter per credential so the v1 rate limit holds across every instance and every restart — the in-memory bucket multiplied the configured budget by the replica count and forgot it on deploy, which makes it a suggestion rather than a limit; the table stays one row per credential because each new window overwrites the last in place"
     }
   ]
 }

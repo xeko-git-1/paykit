@@ -24,6 +24,7 @@ import {
   createJwtSecretLoader,
   createPaykit,
   jwtAuthMiddleware,
+  merchantRepo,
   paykitDbSchema,
   runtimeConfigRepo,
 } from "@xeko-git-1/paykit-server";
@@ -98,6 +99,14 @@ export async function buildServiceApp(deps: BuildServiceAppDeps): Promise<Hono> 
   //    admin/dashboard (e.g. POST /v1/api-keys mint). A dispatcher routes by
   //    token shape so the two mutually-exclusive middlewares coexist: exactly
   //    one plane runs per request.
+  // Suspension is enforced at auth time on BOTH planes: a suspended merchant's
+  // api keys stay valid (revoking them would destroy state the operator wants
+  // back on reactivation) and JWTs cannot be revoked at all, so the status
+  // check here is the only enforcement point.
+  const loadMerchantStatus = async (merchantId: string): Promise<string | null> => {
+    const merchant = await merchantRepo.findById(db, merchantId);
+    return merchant?.status ?? null;
+  };
   const apiKeyDeps: ApiKeyAuthDeps = {
     db,
     findByHash: apiKeyRepo.findByHash,
@@ -106,12 +115,14 @@ export async function buildServiceApp(deps: BuildServiceAppDeps): Promise<Hono> 
       // V4.0: merchantId IS the tenantId (single-tenant-per-merchant)
       return { tenantId: merchantId, ownerId: merchantId };
     },
+    loadMerchantStatus: (_dbClient, merchantId) => loadMerchantStatus(merchantId),
   };
   const apiKeyPlane = apiKeyAuthMiddleware(apiKeyDeps);
   const jwtPlane = jwtAuthMiddleware({
     loadSecret: jwtSecretLoader,
     expectedIssuer: JWT_ISSUER,
     expectedAudience: JWT_AUDIENCE,
+    loadMerchantStatus,
   });
   app.use("/v1/*", authPlaneDispatcher({ apiKey: apiKeyPlane, jwt: jwtPlane }));
 
@@ -251,9 +262,14 @@ export async function main(): Promise<void> {
           },
         },
       },
-      config.refundWebhookTimeoutHours !== undefined
-        ? { refundWebhookTimeoutMs: config.refundWebhookTimeoutHours * 60 * 60 * 1000 }
-        : {},
+      {
+        ...(config.refundWebhookTimeoutHours !== undefined
+          ? { refundWebhookTimeoutMs: config.refundWebhookTimeoutHours * 60 * 60 * 1000 }
+          : {}),
+        ...(config.checkoutStaleTtlHours !== undefined
+          ? { checkoutStaleTtlMs: config.checkoutStaleTtlHours * 60 * 60 * 1000 }
+          : {}),
+      },
     );
 
     // Graceful shutdown: stop accepting connections, then close the pool so
