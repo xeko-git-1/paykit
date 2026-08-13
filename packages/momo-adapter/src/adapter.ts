@@ -8,18 +8,22 @@
  *
  * Refund: idempotent via `requestId`. Same requestId → Momo returns same response.
  */
+import { randomBytes } from "node:crypto";
 import type {
   CheckoutResult,
   CreateCheckoutInput,
   NormalizedWebhookEvent,
   PaymentProviderAdapter,
+  ProviderTxnQueryResult,
   ProviderTxnRecord,
+  QueryTransactionInput,
   RefundInput,
   RefundResult,
   WebhookEventType,
 } from "@xeko-git-1/paykit";
 import {
   buildCreateOrderCanonical,
+  buildQueryCanonical,
   buildRefundCanonical,
   sign,
   verifyIpnSignature,
@@ -278,8 +282,71 @@ export function createMomoAdapter(config: MomoAdapterConfig): PaymentProviderAda
       }
     },
 
+    // Momo's query API answers one orderId at a time; there is no
+    // merchant-wide date-range listing. The reconciler verifies per row via
+    // queryTransaction below.
+    canListTransactions: false,
+
     async fetchTransactions(_window): Promise<readonly ProviderTxnRecord[]> {
       return [];
+    },
+
+    async queryTransaction(input: QueryTransactionInput): Promise<ProviderTxnQueryResult> {
+      const requestId = randomBytes(16).toString("hex");
+      const canonical = buildQueryCanonical({
+        accessKey: config.accessKey,
+        orderId: input.providerRef,
+        partnerCode: config.partnerCode,
+        requestId,
+      });
+      const body = {
+        partnerCode: config.partnerCode,
+        requestId,
+        orderId: input.providerRef,
+        signature: sign(canonical, primarySecret),
+        lang: "vi",
+      };
+
+      const res = await fetch(`${baseUrl}/v2/gateway/api/query`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        throw new Error(`Momo query returned HTTP ${res.status}`);
+      }
+      const json = (await res.json()) as {
+        resultCode: number;
+        message?: string;
+        amount?: number | string;
+        transId?: number | string;
+      };
+
+      if (json.resultCode === 0) {
+        const amountVnd = BigInt(String(json.amount ?? "0").split(".")[0] ?? "0");
+        return {
+          status: "settled",
+          record: {
+            providerRef: input.providerRef,
+            amountMicros: (amountVnd * 1_000_000n).toString(),
+            currencyCode: "VND",
+          },
+        };
+      }
+      // In-flight states: initiated (1000), authorized (9000), being processed
+      // by Momo or its provider (7000/7002).
+      if ([1000, 7000, 7002, 9000].includes(json.resultCode)) {
+        return { status: "pending" };
+      }
+      // 42 = orderId invalid or not found; the 1xxx family are payment
+      // failures (declined/cancelled/expired) — the provider's factual "no
+      // settled money on this reference".
+      if (json.resultCode === 42 || (json.resultCode >= 1000 && json.resultCode < 7000)) {
+        return { status: "not_found" };
+      }
+      // Everything else (auth/format/system errors) means the question was not
+      // answered — throw so the reconciler records a fault, not an absence.
+      throw new Error(`Momo query failed: ${json.resultCode} ${json.message ?? ""}`);
     },
   };
 }

@@ -17,7 +17,7 @@
  *
  * Pending refunds (ZaloPay PROCESSING) polled in same run via `pollPendingRefunds`.
  */
-import type { ProviderRegistry } from "@xeko-git-1/paykit";
+import type { PaymentProviderAdapter, ProviderRegistry } from "@xeko-git-1/paykit";
 import {
   type DbClient,
   type PaymentTransaction,
@@ -33,6 +33,7 @@ import { and, eq, gte, lt } from "drizzle-orm";
 import { releaseReconcileLock, tryAcquireReconcileLock } from "./advisory-lock.js";
 import { type PaykitTxnSnapshot, diffPaykitVsProvider } from "./differ.js";
 import {
+  type Discrepancy,
   EMPTY_PER_PROVIDER,
   type PerProviderStats,
   type ReconciliationSummary,
@@ -130,20 +131,56 @@ export async function reconcileV15(
     const adapterErrors: Record<string, string> = {};
     const incomplete: string[] = [];
     const notReconcilable: string[] = [];
+    const perRow: string[] = [];
 
     for (const adapter of adapters) {
       // A rail with no merchant-wide date-range listing cannot answer the question
-      // this loop asks, so it is skipped rather than diffed. Running it would diff
-      // every stored payment against an empty list and report each one as missing
-      // at the provider — thousands of fabricated discrepancies that also bury the
-      // genuine ones. Skipping is recorded, not silent: the window is not covered
-      // for this provider, and the run status below says so.
+      // this loop asks, so it is never diffed against its (empty) list. Two cases:
+      //
+      // - The adapter offers a per-reference lookup (`queryTransaction`) — VNPay
+      //   querydr, Momo query, ZaloPay /v2/query. Then paykit's own rows in the
+      //   window ARE walkable, and each reference is verified one call at a time.
+      //   The opposite direction — a settled provider transaction paykit never
+      //   recorded — stays invisible on such rails, which the summary names.
+      //
+      // - No lookup either (Binance Pay). Skipped, and recorded as such: running
+      //   the list diff would report every stored payment as missing at the
+      //   provider — thousands of fabricated discrepancies that also bury the
+      //   genuine ones.
       if (adapter.canListTransactions === false) {
-        notReconcilable.push(adapter.id);
-        perProvider[adapter.id] = EMPTY_PER_PROVIDER;
-        logger?.warn("Reconciler: adapter cannot list by window, provider not reconciled", {
-          provider: adapter.id,
-        });
+        if (typeof adapter.queryTransaction !== "function") {
+          notReconcilable.push(adapter.id);
+          perProvider[adapter.id] = EMPTY_PER_PROVIDER;
+          logger?.warn("Reconciler: adapter cannot list by window, provider not reconciled", {
+            provider: adapter.id,
+          });
+          continue;
+        }
+        try {
+          const outcome = await reconcilePerRow(deps, adapter, {
+            window,
+            batchSize,
+            maxBatches,
+          });
+          perProvider[adapter.id] = mergeStats(perProvider[adapter.id], outcome.stats);
+          allDiscrepancies.push(...outcome.discrepancies);
+          perRow.push(adapter.id);
+          if (!outcome.covered) {
+            incomplete.push(adapter.id);
+            logger?.warn("Reconciler: per-row verification did not cover the window", {
+              provider: adapter.id,
+              batches: outcome.batches,
+              queryFailures: outcome.queryFailures,
+            });
+          }
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          adapterErrors[adapter.id] = msg;
+          perProvider[adapter.id] = mergeStats(perProvider[adapter.id], EMPTY_PER_PROVIDER);
+          logger?.warn(`Reconciler: adapter '${adapter.id}' per-row verification failed`, {
+            error: msg,
+          });
+        }
         continue;
       }
       // Each provider is paged independently from its own stored position. The
@@ -293,9 +330,12 @@ export async function reconcileV15(
     // Counted against the adapters that could even be attempted. A deployment whose
     // only crypto rail cannot list would otherwise report `failed` forever, which
     // is indistinguishable from a real outage; it is `partial`, and the summary
-    // names which provider went unchecked.
-    const listableAdapters = adapters.filter((a) => a.canListTransactions !== false).length;
-    const allAdaptersFailed = listableAdapters > 0 && failedAdapters === listableAdapters;
+    // names which provider went unchecked. Per-row rails count as attemptable:
+    // they do real verification work and can genuinely fail.
+    const attemptableAdapters = adapters.filter(
+      (a) => a.canListTransactions !== false || typeof a.queryTransaction === "function",
+    ).length;
+    const allAdaptersFailed = attemptableAdapters > 0 && failedAdapters === attemptableAdapters;
     // A provider that stopped at the batch ceiling has rows left in the window, so
     // the window is not covered — even though nothing failed. Reporting that as
     // `completed` would tell an operator the window was reconciled when part of it
@@ -343,6 +383,11 @@ export async function reconcileV15(
       // reading a `partial` run needs to know that this part will never clear on
       // its own and has to be checked another way.
       notReconcilableProviders: notReconcilable,
+      // Providers verified one reference at a time (no date-range listing, but a
+      // per-reference status API). Named because this mode is half-blind: it
+      // proves every paykit row against the provider, but a settled provider
+      // transaction that paykit never recorded cannot be discovered this way.
+      perRowProviders: perRow,
     };
 
     // Stored as-is. Mapping `partial` onto `failed` here is what made a run that
@@ -402,6 +447,173 @@ function mergeStats(
     refundDrift: current.refundDrift + batch.refundDrift,
   };
 }
+
+/**
+ * Rows verified per page on a per-row rail. Each row costs one provider HTTP
+ * call, so the listing default (500) would fire 500 requests per batch —
+ * enough to trip provider rate limits and hold the reconcile lock for minutes.
+ */
+const PER_ROW_BATCH_CAP = 100;
+
+interface PerRowOutcome {
+  readonly stats: PerProviderStats;
+  readonly discrepancies: Discrepancy[];
+  /** True when every row in the window was asked about and answered. */
+  readonly covered: boolean;
+  readonly batches: number;
+  readonly queryFailures: number;
+}
+
+/**
+ * Reconcile a rail that cannot list by window but can answer about one
+ * reference at a time: walk paykit's own payments in the window and verify
+ * each against `adapter.queryTransaction`.
+ *
+ * The verification is one-directional. A paykit row the provider does not
+ * confirm is flagged (provider_missing / amount_mismatch); a settled provider
+ * transaction paykit never recorded is undiscoverable through a per-reference
+ * API, and the run summary names the provider so the operator knows this
+ * direction is blind.
+ *
+ * A row whose query THROWS was never answered, so it is excluded from the
+ * diff (a fabricated provider_missing would bury real ones) and the cursor is
+ * NOT advanced past its page — the next run re-asks from the same position.
+ */
+async function reconcilePerRow(
+  deps: ReconcileV15Deps,
+  adapter: PaymentProviderAdapter,
+  opts: { window: { since: Date; until: Date }; batchSize: number; maxBatches: number },
+): Promise<PerRowOutcome> {
+  const { db, logger } = deps;
+  const query = adapter.queryTransaction;
+  if (query === undefined) {
+    throw new Error(`reconcilePerRow: adapter '${adapter.id}' has no queryTransaction`);
+  }
+  const { window, maxBatches } = opts;
+  const batchSize = Math.min(opts.batchSize, PER_ROW_BATCH_CAP);
+
+  // Same durable-cursor discipline as the listing branch: resume from the
+  // stored position, and short-circuit a window that already finished.
+  const cursor = await reconciliationCursorRepo.findCursor(db, adapter.id);
+  let after = reconciliationCursorRepo.resumePosition(cursor, window);
+  if (cursor !== undefined && after === undefined && cursor.exhausted) {
+    const sameWindow =
+      cursor.windowSince?.getTime() === window.since.getTime() &&
+      cursor.windowUntil?.getTime() === window.until.getTime();
+    if (sameWindow) {
+      return {
+        stats: EMPTY_PER_PROVIDER,
+        discrepancies: [],
+        covered: true,
+        batches: 0,
+        queryFailures: 0,
+      };
+    }
+  }
+
+  let stats: PerProviderStats | undefined;
+  const discrepancies: Discrepancy[] = [];
+  let batches = 0;
+  let exhausted = false;
+  let queryFailures = 0;
+
+  while (batches < maxBatches) {
+    const page = await reconciliationCursorRepo.pageOfPayments(db, {
+      provider: adapter.id,
+      window,
+      ...(after !== undefined ? { after } : {}),
+      limit: batchSize,
+    });
+    if (page.length === 0) {
+      exhausted = true;
+      break;
+    }
+
+    const snapshot: PaykitTxnSnapshot[] = [];
+    const records: ProviderTxnRecordForDiff[] = [];
+    let pageFailures = 0;
+    for (const r of page) {
+      const snap: PaykitTxnSnapshot = {
+        transactionId: r.transactionId,
+        providerRef: r.providerRef,
+        amountMicros: r.amountMicros,
+        currencyCode: r.currencyCode,
+        status: r.status,
+      };
+      // Only settled money is worth a provider round trip — the differ ignores
+      // every other status for the provider_missing check anyway.
+      const verifiable =
+        snap.providerRef !== null && (snap.status === "completed" || snap.status === "refunded");
+      if (!verifiable) {
+        snapshot.push(snap);
+        continue;
+      }
+      try {
+        const answer = await query({
+          providerRef: snap.providerRef as string,
+          createdAt: r.createdAt,
+        });
+        snapshot.push(snap);
+        if (answer.status === "settled") records.push(answer.record);
+        // `pending` and `not_found` add no record: the provider does not
+        // confirm settled money on this reference, and the differ flags the
+        // row as provider_missing — which is exactly the claim being made.
+      } catch (err) {
+        // Unanswered, not absent. Excluded from the diff so no discrepancy is
+        // fabricated, counted so the window is reported as not covered.
+        pageFailures += 1;
+        logger?.warn("Reconciler: per-row query failed, row left for next run", {
+          provider: adapter.id,
+          transactionId: snap.transactionId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+
+    const result = diffPaykitVsProvider(adapter.id, snapshot, records);
+    stats = mergeStats(stats, result.stats);
+    discrepancies.push(...result.discrepancies);
+    queryFailures += pageFailures;
+    batches += 1;
+
+    if (pageFailures > 0) {
+      // Do not advance past rows that were never answered: a moved cursor
+      // would mark them reconciled without anyone having asked the provider.
+      break;
+    }
+
+    const last = page[page.length - 1] as PaymentTransaction;
+    after = { createdAt: last.createdAt, transactionId: last.transactionId };
+    const done = page.length < batchSize;
+    await reconciliationCursorRepo.advanceCursor(db, {
+      provider: adapter.id,
+      window,
+      position: after,
+      exhausted: done,
+    });
+    if (done) {
+      exhausted = true;
+      break;
+    }
+  }
+
+  if (exhausted && stats === undefined) {
+    // An empty window still has to be recorded as finished, or every later
+    // invocation re-walks it forever.
+    await reconciliationCursorRepo.markWindowExhausted(db, { provider: adapter.id, window });
+  }
+
+  return {
+    stats: stats ?? EMPTY_PER_PROVIDER,
+    discrepancies,
+    covered: exhausted && queryFailures === 0,
+    batches,
+    queryFailures,
+  };
+}
+
+/** Structural shape the differ accepts — identical to core's ProviderTxnRecord. */
+type ProviderTxnRecordForDiff = Parameters<typeof diffPaykitVsProvider>[2][number];
 
 async function pollPendingRefunds(
   deps: ReconcileV15Deps,

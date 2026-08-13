@@ -20,7 +20,11 @@
  */
 import type { CurrencyCode } from "../types/money.js";
 import type { CheckoutMode, CheckoutResult, CreateCheckoutInput } from "./checkout-types.js";
-import type { ProviderTxnRecord } from "./provider-txn-record.js";
+import type {
+  ProviderTxnQueryResult,
+  ProviderTxnRecord,
+  QueryTransactionInput,
+} from "./provider-txn-record.js";
 import type { RefundInput, RefundResult } from "./refund-types.js";
 import type { NormalizedWebhookEvent } from "./webhook-types.js";
 
@@ -121,6 +125,24 @@ export interface PaymentProviderAdapter {
    * rather than returning a misleading `[]`.
    */
   fetchTransactions(window: { since: Date; until?: Date }): Promise<readonly ProviderTxnRecord[]>;
+
+  /**
+   * Optional single-reference status lookup, for rails whose API can only be
+   * asked about one transaction at a time (VNPay querydr, Momo query,
+   * ZaloPay /v2/query).
+   *
+   * An adapter that declares `canListTransactions: false` but implements this
+   * still gets reconciled: the reconciler walks paykit's own rows in the
+   * window and verifies each reference against the provider, instead of
+   * skipping the provider entirely. What this direction cannot see — a
+   * settled provider transaction that paykit never recorded — stays
+   * invisible, which is inherent to a per-reference API and is documented in
+   * the run summary rather than papered over.
+   *
+   * On transport/API failure, THROW. `not_found` is a factual claim by the
+   * provider, not an error fallback.
+   */
+  queryTransaction?(input: QueryTransactionInput): Promise<ProviderTxnQueryResult>;
 
   verifyReturnUrl?(query: Record<string, string>): {
     ok: boolean;

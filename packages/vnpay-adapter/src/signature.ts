@@ -17,6 +17,44 @@ export function signParams(params: Record<string, string>, hashSecret: string): 
   return createHmac("sha512", hashSecret).update(canonical, "utf-8").digest("hex");
 }
 
+/**
+ * Checksum for the merchant_webapi querydr request.
+ *
+ * Unlike the payment URL, the transaction API does NOT use the sorted
+ * query-string canonical: the spec pins an explicit pipe-joined field order —
+ * vnp_RequestId|vnp_Version|vnp_Command|vnp_TmnCode|vnp_TxnRef|
+ * vnp_TransactionDate|vnp_CreateDate|vnp_IpAddr|vnp_OrderInfo — hashed with
+ * HMAC-SHA512. Signing with the URL canonical yields code 97 (invalid
+ * checksum) on every call.
+ */
+export function signQuerydr(
+  fields: {
+    requestId: string;
+    version: string;
+    command: string;
+    tmnCode: string;
+    txnRef: string;
+    transactionDate: string;
+    createDate: string;
+    ipAddr: string;
+    orderInfo: string;
+  },
+  hashSecret: string,
+): string {
+  const data = [
+    fields.requestId,
+    fields.version,
+    fields.command,
+    fields.tmnCode,
+    fields.txnRef,
+    fields.transactionDate,
+    fields.createDate,
+    fields.ipAddr,
+    fields.orderInfo,
+  ].join("|");
+  return createHmac("sha512", hashSecret).update(data, "utf-8").digest("hex");
+}
+
 /** Verify with rotation grace — first match wins. */
 export function verifySignature(
   params: Record<string, string>,

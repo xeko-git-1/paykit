@@ -78,6 +78,18 @@ export function verifyCallbackMac(
 }
 
 /**
+ * Order-query canonical: `app_id|app_trans_id|key1` — key1 is part of the
+ * hashed data itself, per the /v2/query spec. Signed with key1.
+ */
+export function buildQueryCanonical(opts: {
+  appId: string;
+  appTransId: string;
+  key1: string;
+}): string {
+  return `${opts.appId}|${opts.appTransId}|${opts.key1}`;
+}
+
+/**
  * Refund canonical: `app_id|zp_trans_id|amount|description|timestamp`
  * Signed with key1.
  */

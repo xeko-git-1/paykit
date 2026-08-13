@@ -17,7 +17,9 @@ import type {
   CreateCheckoutInput,
   NormalizedWebhookEvent,
   PaymentProviderAdapter,
+  ProviderTxnQueryResult,
   ProviderTxnRecord,
+  QueryTransactionInput,
   RefundInput,
   RefundResult,
   WebhookEventType,
@@ -25,6 +27,7 @@ import type {
 import {
   buildAppTransId,
   buildCreateCanonical,
+  buildQueryCanonical,
   buildRefundCanonical,
   signWithKey1,
   verifyCallbackMac,
@@ -299,9 +302,64 @@ export function createZaloPayAdapter(config: ZaloPayAdapterConfig): PaymentProvi
       }
     },
 
+    // ZaloPay /v2/query answers one app_trans_id at a time; there is no
+    // merchant-wide date-range listing. The reconciler verifies per row via
+    // queryTransaction below.
+    canListTransactions: false,
+
     async fetchTransactions(_window): Promise<readonly ProviderTxnRecord[]> {
-      // ZaloPay /v2/query is per-app_trans_id only; reconciler iterates paykit DB rows.
       return [];
+    },
+
+    async queryTransaction(input: QueryTransactionInput): Promise<ProviderTxnQueryResult> {
+      const mac = signWithKey1(
+        buildQueryCanonical({
+          appId: config.appId,
+          appTransId: input.providerRef,
+          key1: config.key1,
+        }),
+        config.key1,
+      );
+      const body = {
+        app_id: Number(config.appId),
+        app_trans_id: input.providerRef,
+        mac,
+      };
+
+      const res = await fetch(`${baseUrl}/v2/query`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        throw new Error(`ZaloPay query returned HTTP ${res.status}`);
+      }
+      const json = (await res.json()) as {
+        return_code: number;
+        return_message?: string;
+        sub_return_code?: number;
+        amount?: number;
+        zp_trans_id?: number | string;
+      };
+
+      // return_code: 1 = SUCCESS (money received), 2 = FAIL, 3 = PROCESSING.
+      if (json.return_code === 1) {
+        return {
+          status: "settled",
+          record: {
+            providerRef: input.providerRef,
+            amountMicros: (BigInt(json.amount ?? 0) * 1_000_000n).toString(),
+            currencyCode: "VND",
+          },
+        };
+      }
+      if (json.return_code === 3) return { status: "pending" };
+      if (json.return_code === 2) return { status: "not_found" };
+      // Anything else (auth errors, malformed mac) is an unanswered question,
+      // not a factual absence — throw so the reconciler records a fault.
+      throw new Error(
+        `ZaloPay query failed: ${json.return_code} (sub ${json.sub_return_code ?? "?"}) ${json.return_message ?? ""}`,
+      );
     },
   };
 }

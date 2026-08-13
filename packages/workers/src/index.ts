@@ -30,8 +30,11 @@ export {
 } from "./reconcile/stripe-fetcher.js";
 export {
   createSepayFetcher,
+  createSepayHttpFetcher,
+  createSepayHttpPull,
   type SepayApiTxn,
   type SepayFetcher,
+  type SepayHttpFetcherConfig,
 } from "./reconcile/sepay-fetcher.js";
 export {
   reconcile,

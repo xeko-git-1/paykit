@@ -7,17 +7,20 @@
  * Refund: POST /merchant_webapi/api/transaction with vnp_TransactionType=02 (full) or 03 (partial).
  * Returns RefundResult.state='completed' on vnp_ResponseCode='00', else 'failed' with provider code.
  */
+import { randomBytes } from "node:crypto";
 import type {
   CheckoutResult,
   CreateCheckoutInput,
   NormalizedWebhookEvent,
   PaymentProviderAdapter,
+  ProviderTxnQueryResult,
   ProviderTxnRecord,
+  QueryTransactionInput,
   RefundInput,
   RefundResult,
 } from "@xeko-git-1/paykit";
 import { paramsToWebhookEvent, parseFormUrlencoded } from "./ipn-parser.js";
-import { signParams, verifySignature } from "./signature.js";
+import { signParams, signQuerydr, verifySignature } from "./signature.js";
 import { encodeRfc3986 } from "./url-encoder.js";
 
 export interface VnpayAdapterConfig {
@@ -209,11 +212,80 @@ export function createVnpayAdapter(config: VnpayAdapterConfig): PaymentProviderA
       }
     },
 
+    // VNPay exposes no merchant-wide date-range listing; querydr answers one
+    // vnp_TxnRef at a time. Declared instead of returning a misleading [] —
+    // the reconciler verifies per row via queryTransaction below.
+    canListTransactions: false,
+
     async fetchTransactions(_window): Promise<readonly ProviderTxnRecord[]> {
-      // VNPay does not have a list-by-window API; query is per-orderRef only.
-      // Reconciler must already have orderRef from paykit's payment_transactions table
-      // and call adapter per row. V1.5 returns [] — reconciler's orchestrator handles this.
       return [];
+    },
+
+    async queryTransaction(input: QueryTransactionInput): Promise<ProviderTxnQueryResult> {
+      // querydr locates the transaction by vnp_TxnRef + vnp_TransactionDate.
+      // The date must be the ORIGINAL transaction's create date (GMT+7); the
+      // paykit row's createdAt is when checkout created that transaction, so
+      // it is the same instant the vnp_CreateDate of the pay request carried.
+      const now = new Date();
+      const requestId = randomBytes(16).toString("hex"); // unique per day, ≤32 alphanumeric
+      const fields = {
+        requestId,
+        version: "2.1.0",
+        command: "querydr",
+        tmnCode: config.tmnCode,
+        txnRef: input.providerRef,
+        transactionDate: formatVnpDate(input.createdAt ?? now),
+        createDate: formatVnpDate(now),
+        ipAddr: "0.0.0.0",
+        orderInfo: `Reconcile ${input.providerRef}`,
+      };
+      const body = {
+        vnp_RequestId: fields.requestId,
+        vnp_Version: fields.version,
+        vnp_Command: fields.command,
+        vnp_TmnCode: fields.tmnCode,
+        vnp_TxnRef: fields.txnRef,
+        vnp_OrderInfo: fields.orderInfo,
+        vnp_TransactionDate: fields.transactionDate,
+        vnp_CreateDate: fields.createDate,
+        vnp_IpAddr: fields.ipAddr,
+        vnp_SecureHash: signQuerydr(fields, primarySecret),
+      };
+
+      const res = await fetch(apiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        throw new Error(`VNPay querydr returned HTTP ${res.status}`);
+      }
+      const json = (await res.json()) as {
+        vnp_ResponseCode?: string;
+        vnp_Message?: string;
+        vnp_TransactionStatus?: string;
+        vnp_Amount?: string;
+      };
+
+      // vnp_ResponseCode is about the QUERY, vnp_TransactionStatus about the
+      // PAYMENT. Only 91 ("transaction not found") is a factual "no" — every
+      // other non-00 query code (94 duplicate, 97 bad checksum, 99) means the
+      // question was not answered, and must throw rather than read as absence.
+      if (json.vnp_ResponseCode === "91") return { status: "not_found" };
+      if (json.vnp_ResponseCode !== "00") {
+        throw new Error(
+          `VNPay querydr failed: ${json.vnp_ResponseCode ?? "?"} ${json.vnp_Message ?? ""}`,
+        );
+      }
+      if (json.vnp_TransactionStatus === "01") return { status: "pending" };
+      if (json.vnp_TransactionStatus !== "00") return { status: "not_found" };
+
+      // vnp_Amount is VND × 100 → micros = × 10_000.
+      const amountMicros = (BigInt(json.vnp_Amount ?? "0") * 10_000n).toString();
+      return {
+        status: "settled",
+        record: { providerRef: input.providerRef, amountMicros, currencyCode: "VND" },
+      };
     },
   };
 }

@@ -16,7 +16,11 @@ export {
   isKnownNowpaymentsPayCurrency,
   NOWPAYMENTS_PAY_CURRENCIES,
 } from "./crypto-chain-codes.js";
-export type { ProviderTxnRecord } from "./provider-txn-record.js";
+export type {
+  ProviderTxnQueryResult,
+  ProviderTxnRecord,
+  QueryTransactionInput,
+} from "./provider-txn-record.js";
 export type {
   RefundInput,
   RefundResult,

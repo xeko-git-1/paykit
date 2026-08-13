@@ -101,7 +101,29 @@ const t = makeTranslator("vi"); // "en" | "vi"
 
 ---
 
-## 6. Production caveat / Lưu ý production
+## 6. Reconciliation matrix / Ma trận đối soát theo provider
+
+**EN —** The reconciler (`reconcileV15` in `@xeko-git-1/paykit-workers`) verifies paykit's ledger against provider records. Not every rail exposes the same API, so coverage differs per provider — the run summary names which mode each provider ran in (`perRowProviders`, `notReconcilableProviders`).
+
+**VI —** Reconciler (`reconcileV15` trong `@xeko-git-1/paykit-workers`) đối soát ledger của paykit với dữ liệu provider. Không phải rail nào cũng có API giống nhau nên độ phủ khác nhau theo provider — summary của mỗi run ghi rõ provider chạy chế độ nào (`perRowProviders`, `notReconcilableProviders`).
+
+| Provider | Mode / Chế độ | Both directions? / Hai chiều? | Notes / Ghi chú |
+|---|---|---|---|
+| Stripe | window listing | ✅ | `fetchTransactions` pages the Checkout Sessions API |
+| SePay (VietQR) | window listing | ✅ | default HTTP fetcher against `my.sepay.vn/userapi/transactions/list` (`createSepayHttpPull`); memo prefix maps transfers back / fetcher HTTP mặc định, map theo prefix trong nội dung chuyển khoản |
+| VNPay | per-row (`querydr`) | ⚠️ one-way / một chiều | each paykit row is verified per reference; provider-side txns paykit never recorded are invisible / chỉ verify được từng row paykit, không phát hiện được giao dịch provider mà paykit không ghi |
+| Momo | per-row (query API) | ⚠️ one-way / một chiều | same one-way caveat / cùng giới hạn một chiều |
+| ZaloPay | per-row (`/v2/query`) | ⚠️ one-way / một chiều | same one-way caveat / cùng giới hạn một chiều |
+| NowPayments / Cryptomus / BitPay / Coinbase Commerce | window listing | ✅ | listing via each provider's API / list qua API từng provider |
+| Binance Pay | ❌ not reconcilable / không đối soát được | — | no list API and no per-reference query usable for settled windows — check via merchant dashboard / không có API list; kiểm tra thủ công qua dashboard |
+
+**EN —** "One-way" means: a completed paykit payment the provider does not confirm IS caught (`provider_missing` / `amount_mismatch`), but money settled at the provider with no paykit row cannot be discovered through a per-reference API.
+
+**VI —** "Một chiều" nghĩa là: payment paykit đã `completed` mà provider không xác nhận thì **bắt được** (`provider_missing` / `amount_mismatch`), nhưng tiền đã về provider mà paykit không có row thì API tra-theo-mã không thể phát hiện.
+
+---
+
+## 7. Production caveat / Lưu ý production
 
 **EN —** The crypto adapters (NowPayments, Cryptomus, BitPay, Binance Pay, Coinbase Commerce) ship with full unit + e2e coverage against fake providers, but are **not yet sandbox-verified end-to-end** with live credentials. Provider-specific unknowns (refund status enums, webhook envelope shapes, Binance USD-pricing onboarding, Coinbase charge event names and timeline contexts) are flagged inline in each adapter. Verify one live transaction per provider before treating it as production-ready.
 

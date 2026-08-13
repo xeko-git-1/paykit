@@ -67,6 +67,21 @@ export function buildRefundCanonical(opts: {
   ].join("&");
 }
 
+/** Query-status canonical: `accessKey=..&orderId=..&partnerCode=..&requestId=..` (alphabetical). */
+export function buildQueryCanonical(opts: {
+  accessKey: string;
+  orderId: string;
+  partnerCode: string;
+  requestId: string;
+}): string {
+  return [
+    `accessKey=${opts.accessKey}`,
+    `orderId=${opts.orderId}`,
+    `partnerCode=${opts.partnerCode}`,
+    `requestId=${opts.requestId}`,
+  ].join("&");
+}
+
 export function sign(canonical: string, secretKey: string): string {
   return createHmac("sha256", secretKey).update(canonical, "utf-8").digest("hex");
 }
