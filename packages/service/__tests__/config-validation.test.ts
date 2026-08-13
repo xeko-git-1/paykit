@@ -389,6 +389,46 @@ describe("BitPay config", () => {
   });
 });
 
+describe("ApiPay config", () => {
+  it("enables the provider when all four creds are present", async () => {
+    const { parseServiceConfig } = await import("../src/config.js");
+    const config = parseServiceConfig({
+      DATABASE_URL: "postgres://localhost/paykit",
+      APIPAY_ACCESS_KEY: "ak",
+      APIPAY_SECRET_KEY: "sk",
+      APIPAY_WEBHOOK_SECRET: "whsec",
+      APIPAY_BANK_PUBLIC_ID: "bnk_1",
+    });
+    expect(config.apipay).toEqual({
+      accessKey: "ak",
+      secretKey: "sk",
+      webhookSecret: "whsec",
+      bankPublicId: "bnk_1",
+    });
+  });
+
+  it("fails fast when the webhook secret is missing", async () => {
+    // Payment links would be created that no inbound event could ever
+    // authenticate, so a paid transfer would never be credited. Better to
+    // refuse at boot.
+    const { parseServiceConfig } = await import("../src/config.js");
+    expect(() =>
+      parseServiceConfig({
+        DATABASE_URL: "postgres://localhost/paykit",
+        APIPAY_ACCESS_KEY: "ak",
+        APIPAY_SECRET_KEY: "sk",
+        APIPAY_BANK_PUBLIC_ID: "bnk_1",
+      }),
+    ).toThrow(/Incomplete ApiPay/i);
+  });
+
+  it("leaves the provider disabled when no creds are set", async () => {
+    const { parseServiceConfig } = await import("../src/config.js");
+    const config = parseServiceConfig({ DATABASE_URL: "postgres://localhost/paykit" });
+    expect(config.apipay).toBeUndefined();
+  });
+});
+
 describe("Coinbase Commerce config", () => {
   it("enables the provider when the api key and webhook secret are both present", async () => {
     const { parseServiceConfig } = await import("../src/config.js");

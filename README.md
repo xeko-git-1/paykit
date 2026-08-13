@@ -6,7 +6,7 @@
 
 ## What it does
 
-- One-off top-ups via SePay (VietQR), Stripe Checkout, the VN providers (VNPay / Momo / ZaloPay), and crypto via NowPayments / Cryptomus / BitPay / Binance Pay / Coinbase Commerce
+- One-off top-ups via SePay (VietQR), ApiPay (Open Banking), Stripe Checkout, the VN providers (VNPay / Momo / ZaloPay), and crypto via NowPayments / Cryptomus / BitPay / Binance Pay / Coinbase Commerce
 - Recurring billing via Stripe Subscriptions (V2): customer lifecycle, plan sync, invoice + subscription webhooks
 - Multi-wallet ledger: each tenant can hold USD + VND balances side-by-side
 - Webhook handlers with signature verify (or fetch-back verification for unsigned-webhook providers like BitPay), transaction-wrapped writes, DB-unique-key dedup, refund support, and graceful expiry handling
@@ -24,6 +24,7 @@
 | Stripe (one-off) | `@xeko-git-1/paykit-stripe` | USD | sync |
 | Stripe Subscriptions | `@xeko-git-1/paykit-stripe-subscription` | USD | via invoice lifecycle |
 | SePay (VietQR) | `@xeko-git-1/paykit-sepay` | VND | manual (one-way bank transfer) |
+| ApiPay (Open Banking) | `@xeko-git-1/paykit-apipay` | VND | manual (one-way bank transfer) |
 | VNPay | `@xeko-git-1/paykit-vnpay` | VND | sync |
 | Momo | `@xeko-git-1/paykit-momo` | VND | sync |
 | ZaloPay | `@xeko-git-1/paykit-zalopay` | VND | 2-step async (poll) |
@@ -51,7 +52,7 @@
 ### Two ways to run
 
 - **Embedded (V1–V3):** `import { createPaykit }` into your own Hono app, supply a `TenantResolver`. Quickstart below.
-- **Standalone service (V4):** run `@xeko-git-1/paykit-service` as a container — config + API-key auth via env, no app code. Migrate-then-serve cold start, 10 wired adapters (Stripe / SePay / NowPayments / VNPay / Momo / ZaloPay / Cryptomus / Binance Pay / BitPay / Coinbase Commerce), `/v1` HTTP API, CLI bootstrap, and a thin TypeScript SDK. See [service-mode-setup.md](docs/service-mode-setup.md).
+- **Standalone service (V4):** run `@xeko-git-1/paykit-service` as a container — config + API-key auth via env, no app code. Migrate-then-serve cold start, 11 wired adapters (Stripe / SePay / ApiPay / NowPayments / VNPay / Momo / ZaloPay / Cryptomus / Binance Pay / BitPay / Coinbase Commerce), `/v1` HTTP API, CLI bootstrap, and a thin TypeScript SDK. See [service-mode-setup.md](docs/service-mode-setup.md).
 
 ## Quickstart (preview — V1 not yet published)
 

@@ -42,6 +42,18 @@ export async function buildAdaptersFromConfig(
     );
   }
 
+  if (config.apipay) {
+    const { createApipayAdapter } = await import("@xeko-git-1/paykit-apipay");
+    adapters.push(
+      createApipayAdapter({
+        accessKey: config.apipay.accessKey,
+        secretKey: config.apipay.secretKey,
+        webhookSecret: config.apipay.webhookSecret,
+        bankPublicId: config.apipay.bankPublicId,
+      }),
+    );
+  }
+
   if (config.nowpayments) {
     const { createNowpaymentsAdapter } = await import("@xeko-git-1/paykit-nowpayments");
     adapters.push(

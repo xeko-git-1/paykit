@@ -20,6 +20,7 @@ COPY packages/cli/package.json packages/cli/package.json
 COPY packages/service/package.json packages/service/package.json
 COPY packages/stripe-adapter/package.json packages/stripe-adapter/package.json
 COPY packages/sepay-adapter/package.json packages/sepay-adapter/package.json
+COPY packages/apipay-adapter/package.json packages/apipay-adapter/package.json
 COPY packages/nowpayments-adapter/package.json packages/nowpayments-adapter/package.json
 COPY packages/vnpay-adapter/package.json packages/vnpay-adapter/package.json
 COPY packages/momo-adapter/package.json packages/momo-adapter/package.json
@@ -39,6 +40,7 @@ COPY packages/cli/ packages/cli/
 COPY packages/service/ packages/service/
 COPY packages/stripe-adapter/ packages/stripe-adapter/
 COPY packages/sepay-adapter/ packages/sepay-adapter/
+COPY packages/apipay-adapter/ packages/apipay-adapter/
 COPY packages/nowpayments-adapter/ packages/nowpayments-adapter/
 COPY packages/vnpay-adapter/ packages/vnpay-adapter/
 COPY packages/momo-adapter/ packages/momo-adapter/
@@ -80,6 +82,9 @@ COPY --from=builder /app/packages/stripe-adapter/package.json packages/stripe-ad
 
 COPY --from=builder /app/packages/sepay-adapter/dist packages/sepay-adapter/dist
 COPY --from=builder /app/packages/sepay-adapter/package.json packages/sepay-adapter/package.json
+
+COPY --from=builder /app/packages/apipay-adapter/dist packages/apipay-adapter/dist
+COPY --from=builder /app/packages/apipay-adapter/package.json packages/apipay-adapter/package.json
 
 COPY --from=builder /app/packages/nowpayments-adapter/dist packages/nowpayments-adapter/dist
 COPY --from=builder /app/packages/nowpayments-adapter/package.json packages/nowpayments-adapter/package.json

@@ -62,6 +62,7 @@ fields are set; partial credentials leave that provider disabled (no crash).
 | `ADMIN_SECRET` | Enables `/v1/admin/*` via `X-Admin-Secret` (optional). |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_SUCCESS_URL`, `STRIPE_CANCEL_URL` | Stripe |
 | `SEPAY_API_KEY`, `SEPAY_SECRET_KEY`, `SEPAY_ACCOUNT_NUMBER`, `SEPAY_ACCOUNT_NAME`, `SEPAY_BANK_BIN` | SePay (VietQR) |
+| `APIPAY_ACCESS_KEY`, `APIPAY_SECRET_KEY`, `APIPAY_WEBHOOK_SECRET`, `APIPAY_BANK_PUBLIC_ID` | ApiPay (VN Open Banking bank transfer). Webhook secret is issued per webhook endpoint in the ApiPay dashboard, separate from the API secret key. |
 | `NOWPAYMENTS_API_KEY`, `NOWPAYMENTS_IPN_SECRET`, `NOWPAYMENTS_ENVIRONMENT?` | NowPayments (crypto) |
 | `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`, `VNPAY_RETURN_URL`, `VNPAY_IPN_URL`, `VNPAY_ENVIRONMENT?` | VNPay |
 | `MOMO_PARTNER_CODE`, `MOMO_ACCESS_KEY`, `MOMO_SECRET_KEY`, `MOMO_RETURN_URL`, `MOMO_IPN_URL`, `MOMO_ENVIRONMENT?` | Momo |

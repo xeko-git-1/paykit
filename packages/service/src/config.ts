@@ -32,6 +32,15 @@ const envSchema = z.object({
   SEPAY_ACCOUNT_NAME: z.string().optional(),
   SEPAY_BANK_BIN: z.string().optional(),
 
+  // ApiPay (VN Open Banking bank transfer) — enabled when all required creds
+  // present. The webhook secret is issued per webhook endpoint and is separate
+  // from the API secret key; without it no inbound event can be verified, so a
+  // deploy with only API keys could create payment links it could never credit.
+  APIPAY_ACCESS_KEY: z.string().optional(),
+  APIPAY_SECRET_KEY: z.string().optional(),
+  APIPAY_WEBHOOK_SECRET: z.string().optional(),
+  APIPAY_BANK_PUBLIC_ID: z.string().optional(),
+
   NOWPAYMENTS_API_KEY: z.string().optional(),
   NOWPAYMENTS_IPN_SECRET: z.string().optional(),
   NOWPAYMENTS_ENVIRONMENT: z.enum(["sandbox", "production"]).optional(),
@@ -155,6 +164,14 @@ export interface ServiceConfig {
         accountNumber: string;
         accountName: string;
         bankBin: string;
+      }
+    | undefined;
+  readonly apipay:
+    | {
+        accessKey: string;
+        secretKey: string;
+        webhookSecret: string;
+        bankPublicId: string;
       }
     | undefined;
   readonly nowpayments:
@@ -338,6 +355,22 @@ export function parseServiceConfig(env: Record<string, string | undefined>): Ser
     }),
   );
 
+  const apipay = resolveProviderCreds(
+    "ApiPay",
+    {
+      APIPAY_ACCESS_KEY: parsed.APIPAY_ACCESS_KEY,
+      APIPAY_SECRET_KEY: parsed.APIPAY_SECRET_KEY,
+      APIPAY_WEBHOOK_SECRET: parsed.APIPAY_WEBHOOK_SECRET,
+      APIPAY_BANK_PUBLIC_ID: parsed.APIPAY_BANK_PUBLIC_ID,
+    },
+    (creds) => ({
+      accessKey: creds.APIPAY_ACCESS_KEY,
+      secretKey: creds.APIPAY_SECRET_KEY,
+      webhookSecret: creds.APIPAY_WEBHOOK_SECRET,
+      bankPublicId: creds.APIPAY_BANK_PUBLIC_ID,
+    }),
+  );
+
   const nowpayments = resolveProviderCreds(
     "NOWPayments",
     {
@@ -512,6 +545,7 @@ export function parseServiceConfig(env: Record<string, string | undefined>): Ser
     port: parsed.PORT,
     stripe,
     sepay,
+    apipay,
     nowpayments,
     vnpay,
     momo,

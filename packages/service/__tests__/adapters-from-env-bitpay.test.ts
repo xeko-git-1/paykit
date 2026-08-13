@@ -14,6 +14,7 @@ const base: ServiceConfig = {
   port: 3000,
   stripe: undefined,
   sepay: undefined,
+  apipay: undefined,
   nowpayments: undefined,
   cryptomus: undefined,
   binance: undefined,

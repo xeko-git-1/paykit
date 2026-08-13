@@ -104,6 +104,12 @@ importers:
         specifier: ^4.19.2
         version: 4.22.3
 
+  packages/apipay-adapter:
+    devDependencies:
+      '@xeko-git-1/paykit':
+        specifier: workspace:*
+        version: link:../core
+
   packages/auth-core:
     dependencies:
       pg:
@@ -277,6 +283,9 @@ importers:
       '@xeko-git-1/paykit':
         specifier: workspace:*
         version: link:../core
+      '@xeko-git-1/paykit-apipay':
+        specifier: workspace:*
+        version: link:../apipay-adapter
       '@xeko-git-1/paykit-binance':
         specifier: workspace:*
         version: link:../binance-adapter

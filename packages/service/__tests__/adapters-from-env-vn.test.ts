@@ -19,6 +19,7 @@ const base: ServiceConfig = {
   port: 3000,
   stripe: undefined,
   sepay: undefined,
+  apipay: undefined,
   nowpayments: undefined,
   cryptomus: undefined,
   binance: undefined,
@@ -110,6 +111,50 @@ describe("buildAdaptersFromConfig — VN providers", () => {
     const ids = adapters.map((a) => a.id);
     expect(ids).toEqual(expect.arrayContaining(["vnpay", "momo", "zalopay"]));
     expect(ids).toHaveLength(3);
+  });
+});
+
+describe("buildAdaptersFromConfig — ApiPay", () => {
+  it("wires the adapter when access/secret/webhook/bank creds are present", async () => {
+    const adapters = await buildAdaptersFromConfig({
+      ...base,
+      apipay: {
+        accessKey: "ak",
+        secretKey: "sk",
+        webhookSecret: "whsec",
+        bankPublicId: "bnk_1",
+      },
+    });
+    // Asserted by id because a provider can be resolved in config and still never
+    // reach the registry if the wiring block is missing.
+    expect(adapters.map((a) => a.id)).toContain("apipay");
+  });
+
+  it("prices in VND and reports refunds as unsupported by the provider", async () => {
+    const [adapter] = await buildAdaptersFromConfig({
+      ...base,
+      apipay: {
+        accessKey: "ak",
+        secretKey: "sk",
+        webhookSecret: "whsec",
+        bankPublicId: "bnk_1",
+      },
+    });
+    expect(adapter?.supportedCurrencies).toEqual(["VND"]);
+    expect(adapter?.settlesExactAmount).toBe(false);
+    const refund = await adapter?.refund({
+      transactionId: "tx-1",
+      amountMicros: 1_000_000n,
+      idempotencyKey: "idem-1",
+      reason: "test",
+      providerRef: "tx-1",
+    });
+    expect(refund?.state).toBe("unsupported");
+  });
+
+  it("skips the adapter when no apipay creds are present", async () => {
+    const adapters = await buildAdaptersFromConfig(base);
+    expect(adapters.map((a) => a.id)).not.toContain("apipay");
   });
 });
 
