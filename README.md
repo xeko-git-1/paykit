@@ -8,7 +8,7 @@
 
 - One-off top-ups via SePay (VietQR), ApiPay (Open Banking), Stripe Checkout, the VN providers (VNPay / Momo / ZaloPay), and crypto via NowPayments / Cryptomus / BitPay / Binance Pay / Coinbase Commerce
 - Recurring billing via Stripe Subscriptions (V2): customer lifecycle, plan sync, invoice + subscription webhooks
-- Multi-wallet ledger: each tenant can hold USD + VND balances side-by-side
+- Multi-wallet ledger: each tenant holds per-currency balances side-by-side. Currency registry covers USD, EUR, VND, JPY, KRW (zero-decimal aware); checkout accepts generic `amount` + `currency` alongside the legacy `amountUsd`/`amountVnd`, with an optional per-tenant default currency
 - Webhook handlers with signature verify (or fetch-back verification for unsigned-webhook providers like BitPay), transaction-wrapped writes, DB-unique-key dedup, refund support, and graceful expiry handling
 - Async refunds: synchronous (Stripe/VNPay/Momo), 2-step polling (ZaloPay), and `pending_webhook` resolution for crypto providers
 - Plug-in `discountResolver` for promo codes (race-safe via paykit-invoked `consume(tx)` callback)
@@ -37,7 +37,7 @@
 ## What it doesn't do (yet)
 
 - No Polar / Paddle / Creem adapters (planned)
-- No multi-currency beyond USD + VND
+- Currency registry stops at USD / EUR / VND / JPY / KRW — widening it is deliberate (settled minor-unit convention + an adapter that declares the code)
 - Usage-based / metered billing (planned V3+)
 
 ## Architecture (locked)

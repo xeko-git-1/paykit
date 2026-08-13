@@ -205,6 +205,13 @@
       "up": "029_rate_limit_windows.up.sql",
       "down": "029_rate_limit_windows.down.sql",
       "description": "One durable fixed-window counter per credential so the v1 rate limit holds across every instance and every restart — the in-memory bucket multiplied the configured budget by the replica count and forgot it on deploy, which makes it a suggestion rather than a limit; the table stays one row per credential because each new window overwrites the last in place"
+    },
+    {
+      "id": "030",
+      "slug": "tenant_currency_preferences",
+      "up": "030_tenant_currency_preferences.up.sql",
+      "down": "030_tenant_currency_preferences.down.sql",
+      "description": "paykit.tenant_currency_preferences — the default currency a tenant's generic checkout requests (amount without currency) resolve to, keyed by tenant_id TEXT so embedded-mode tenants without a merchants row can hold one; a request default only, wallets stay keyed (tenant_id, currency_code) and any currency can still be named explicitly"
     }
   ]
 }

@@ -33,14 +33,15 @@ import {
   type ProviderRegistry,
   TenantResolutionError,
   type TenantResolver,
-  usdToMicros,
-  vndToMicros,
+  isSupportedCurrencyCode,
+  resolveCheckoutAmount,
 } from "@xeko-git-1/paykit";
 import type { DbClient } from "@xeko-git-1/paykit-auth-core/db/client.js";
 import {
   claimCheckout,
   finalizeCheckout,
 } from "@xeko-git-1/paykit-auth-core/db/repos/payment.repo.js";
+import * as tenantCurrencyRepo from "@xeko-git-1/paykit-auth-core/db/repos/tenant-currency.repo.js";
 import type { PaymentTransaction } from "@xeko-git-1/paykit-auth-core/db/schema/payment-transactions.js";
 import type { Context } from "hono";
 import { Hono } from "hono";
@@ -51,6 +52,15 @@ import { applyDiscountInTx, resolveDiscount } from "./apply-discount.js";
 import { decideReplay, storableCheckoutResult } from "./checkout-replay.js";
 
 const checkoutBodySchema = z.object({
+  // Generic multi-currency pair: the amount is in major units of `currency`,
+  // which falls back to the tenant's stored preference, then the adapter's
+  // first supported currency. Registry + adapter support are checked after
+  // parse, where the adapter is known.
+  amount: z.number().positive().optional(),
+  currency: z
+    .string()
+    .regex(/^[A-Z]{3}$/)
+    .optional(),
   amountUsd: z.number().positive().min(1).max(500).multipleOf(0.01).optional(),
   amountVnd: z.number().int().positive().min(10_000).optional(),
   discountCode: z.string().min(1).max(64).optional(),
@@ -108,27 +118,27 @@ async function handleCheckout(
     return errorJson(c, 401, "AUTH_REQUIRED", "authentication required");
   }
 
-  // Currency dispatch: USD→Stripe-style, VND→SePay-style
-  const currency: CurrencyCode = adapter.supportedCurrencies[0] ?? "USD";
-  let amountMicros: bigint;
-  if (currency === "USD") {
-    if (parsed.amountUsd === undefined) {
-      return errorJson(c, 400, "VALIDATION_ERROR", "amountUsd required for USD provider");
+  // Currency dispatch — legacy amountUsd/amountVnd or the generic
+  // amount+currency pair, resolved by the decision table both routers share.
+  // The tenant's stored default is fetched only when it can matter: a generic
+  // amount with no explicit currency.
+  let preferredCurrency: CurrencyCode | undefined;
+  if (parsed.amount !== undefined && parsed.currency === undefined) {
+    const pref = await tenantCurrencyRepo.findByTenantId(db, tenant.tenantId);
+    if (pref !== null && isSupportedCurrencyCode(pref.currencyCode)) {
+      preferredCurrency = pref.currencyCode;
     }
-    amountMicros = usdToMicros(parsed.amountUsd);
-  } else if (currency === "VND") {
-    if (parsed.amountVnd === undefined) {
-      return errorJson(c, 400, "VALIDATION_ERROR", "amountVnd required for VND provider");
-    }
-    amountMicros = vndToMicros(parsed.amountVnd);
-  } else {
-    return errorJson(
-      c,
-      400,
-      "UNSUPPORTED_CURRENCY",
-      `Provider supports: ${adapter.supportedCurrencies.join(", ")}`,
-    );
   }
+  const resolution = resolveCheckoutAmount({
+    input: parsed,
+    adapterCurrencies: adapter.supportedCurrencies,
+    ...(preferredCurrency !== undefined ? { preferredCurrency } : {}),
+  });
+  if (!resolution.ok) {
+    return errorJson(c, 400, resolution.code, resolution.message);
+  }
+  const currency: CurrencyCode = resolution.currency;
+  const amountMicros: bigint = resolution.amountMicros;
 
   const idempotencyKey = c.req.header("Idempotency-Key") ?? undefined;
 

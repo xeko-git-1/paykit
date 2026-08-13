@@ -4,6 +4,7 @@
  */
 import type { PaymentProviderAdapter, ProviderRegistry } from "@xeko-git-1/paykit";
 import type { PaykitAuthContext } from "@xeko-git-1/paykit-server";
+import { getTableName } from "drizzle-orm";
 import { Hono } from "hono";
 import { getOpenAPIDocument } from "../../src/v1/openapi.js";
 import { resetAllBuckets } from "../../src/v1/rate-limit.js";
@@ -82,6 +83,13 @@ export interface MockDbState {
   }>;
   /** Fixed-window counters, mirroring paykit.rate_limit_windows semantics. */
   rateLimits: Map<string, { windowStartMs: number; count: number }>;
+  /** Rows of paykit.tenant_currency_preferences (030). */
+  currencyPreferences: Array<{
+    tenantId: string;
+    currencyCode: string;
+    createdAt: Date;
+    updatedAt: Date;
+  }>;
 }
 
 export function createMockDbState(): MockDbState {
@@ -91,6 +99,7 @@ export function createMockDbState(): MockDbState {
     apiKeys: [],
     ledgerEntries: [],
     rateLimits: new Map(),
+    currencyPreferences: [],
   };
 }
 
@@ -144,6 +153,12 @@ export function createMockDb(state: MockDbState): unknown {
                   Promise.resolve(data).then(resolve as never, reject as never);
                 return chain;
               };
+              if (
+                getTableName(table as Parameters<typeof getTableName>[0]) ===
+                "tenant_currency_preferences"
+              ) {
+                return makeChainable(s.currencyPreferences);
+              }
               return makeChainable(s.transactions);
             };
             return { where: whereResult };

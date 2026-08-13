@@ -36,6 +36,14 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "amount": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "currency": {
+                    "type": "string",
+                    "pattern": "^[A-Z]{3}$"
+                  },
                   "amountUsd": {
                     "type": "number",
                     "exclusiveMinimum": 0,

@@ -80,6 +80,7 @@ export async function runDoctor(
       "screening_jobs",
       "subscription_events",
       "subscriptions",
+      "tenant_currency_preferences",
       "webhook_events",
       "webhook_inbox",
     ];

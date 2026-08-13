@@ -24,6 +24,8 @@ export interface paths {
       requestBody?: {
         content: {
           "application/json": {
+            amount?: number;
+            currency?: string;
             amountUsd?: number;
             amountVnd?: number;
             provider: string;

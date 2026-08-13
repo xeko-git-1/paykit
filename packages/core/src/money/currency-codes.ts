@@ -12,7 +12,13 @@
 import { InvalidCurrencyCodeError } from "../errors/index.js";
 import type { CurrencyCode } from "../types/money.js";
 
-export const SUPPORTED_CURRENCY_CODES = ["USD", "VND"] as const satisfies readonly CurrencyCode[];
+export const SUPPORTED_CURRENCY_CODES = [
+  "USD",
+  "VND",
+  "EUR",
+  "JPY",
+  "KRW",
+] as const satisfies readonly CurrencyCode[];
 
 const SUPPORTED = new Set<string>(SUPPORTED_CURRENCY_CODES);
 

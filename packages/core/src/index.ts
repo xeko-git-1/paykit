@@ -37,14 +37,22 @@ export {
 
 // Money helpers
 export {
+  amountToMicros,
   assertPositiveMicros,
   assertSameCurrency,
   assertSupportedCurrencyCode,
+  type CheckoutAmountInput,
+  type CheckoutAmountResolution,
+  CURRENCY_REGISTRY,
+  currencyExponent,
+  type CurrencyInfo,
   formatMicros,
   isSupportedCurrencyCode,
   microsStringToBigInt,
   microsStringToNumber,
+  minorUnitsToMicros,
   parseMicros,
+  resolveCheckoutAmount,
   stripeUsdAmountToMicros,
   SUPPORTED_CURRENCY_CODES,
   usdToMicros,

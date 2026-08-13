@@ -9,12 +9,8 @@
  * with currency_code='VND'. Reconciliation compares per-currency without FX.
  */
 
+import { amountToMicros } from "./currency-registry.js";
+
 export function vndToMicros(amountVnd: number): bigint {
-  if (!Number.isInteger(amountVnd)) {
-    throw new Error(`VND amount must be integer (no fractional dong): ${amountVnd}`);
-  }
-  if (amountVnd < 0) {
-    throw new Error(`VND amount must be non-negative: ${amountVnd}`);
-  }
-  return BigInt(amountVnd) * 1_000_000n;
+  return amountToMicros("VND", amountVnd);
 }

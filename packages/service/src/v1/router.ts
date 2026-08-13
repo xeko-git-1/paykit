@@ -8,8 +8,8 @@
  *   POST /v1/refunds     [api_key, refund:write] + ownership check
  *   POST /v1/api-keys    [jwt plane ONLY, key:manage] + scope-subset + DB cap
  */
-import type { AppliedDiscount, ProviderRegistry } from "@xeko-git-1/paykit";
-import { usdToMicros, vndToMicros } from "@xeko-git-1/paykit";
+import type { AppliedDiscount, CurrencyCode, ProviderRegistry } from "@xeko-git-1/paykit";
+import { isSupportedCurrencyCode, resolveCheckoutAmount } from "@xeko-git-1/paykit";
 import {
   type DbClient,
   MAX_ACTIVE_KEYS_PER_MERCHANT,
@@ -31,6 +31,7 @@ import {
   requirePlane,
   requireScope,
   storableCheckoutResult,
+  tenantCurrencyRepo,
 } from "@xeko-git-1/paykit-server";
 import { eq } from "drizzle-orm";
 import type { Context } from "hono";
@@ -87,25 +88,27 @@ export function buildV1Router(deps: V1RouterDeps): Hono {
       return errorJson(c, 400, "INVALID_PROVIDER", `unknown provider: ${parsed.provider}`);
     }
 
-    // Delegate to existing checkout logic (simplified — version+scope wrap only)
-    const currency = adapter.supportedCurrencies[0] ?? "USD";
-    let amountMicros: bigint;
-    if (currency === "USD") {
-      if (parsed.amountUsd === undefined) {
-        return errorJson(c, 400, "VALIDATION_ERROR", "amountUsd required for USD provider");
+    // Currency dispatch — legacy amountUsd/amountVnd or the generic
+    // amount+currency pair, resolved by the decision table both routers share.
+    // The tenant's stored default is fetched only when it can matter: a
+    // generic amount with no explicit currency.
+    let preferredCurrency: CurrencyCode | undefined;
+    if (parsed.amount !== undefined && parsed.currency === undefined) {
+      const pref = await tenantCurrencyRepo.findByTenantId(db, auth.tenant.tenantId);
+      if (pref !== null && isSupportedCurrencyCode(pref.currencyCode)) {
+        preferredCurrency = pref.currencyCode;
       }
-      amountMicros = usdToMicros(parsed.amountUsd);
-    } else if (currency === "VND") {
-      if (parsed.amountVnd === undefined) {
-        return errorJson(c, 400, "VALIDATION_ERROR", "amountVnd required for VND provider");
-      }
-      // Was `BigInt(parsed.amountVnd) * 1_000_000n`, which skipped the integer
-      // check `vndToMicros` performs: a fractional dong reached BigInt() and threw
-      // a RangeError, surfacing as a 500 instead of a validation error.
-      amountMicros = vndToMicros(parsed.amountVnd);
-    } else {
-      return errorJson(c, 400, "UNSUPPORTED_CURRENCY", `unsupported: ${currency}`);
     }
+    const resolution = resolveCheckoutAmount({
+      input: parsed,
+      adapterCurrencies: adapter.supportedCurrencies,
+      ...(preferredCurrency !== undefined ? { preferredCurrency } : {}),
+    });
+    if (!resolution.ok) {
+      return errorJson(c, 400, resolution.code, resolution.message);
+    }
+    const currency = resolution.currency;
+    const amountMicros = resolution.amountMicros;
 
     // Resolve a promo code (if supplied) to a race-safe AppliedDiscount whose
     // consume() RESERVES one unit inside the checkout transaction. The cap

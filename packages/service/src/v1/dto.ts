@@ -16,6 +16,16 @@ export const API_VERSION = "2026-05-31" as const;
 
 export const CreateCheckoutBody = z
   .object({
+    // Generic multi-currency pair: `amount` is in major units of `currency`.
+    // When `currency` is omitted the router falls back to the tenant's stored
+    // preference, then the provider's native currency. Whether the amount is
+    // expressible in that currency (whole cents, integer yen) is checked by
+    // the currency registry after parse, where the currency is known.
+    amount: z.number().positive().optional(),
+    currency: z
+      .string()
+      .regex(/^[A-Z]{3}$/)
+      .optional(),
     // `multipleOf` keeps a fractional cent a validation error: `usdToMicros`
     // refuses an amount it cannot express in whole cents, and without this guard
     // that refusal would reach the client as a 500 rather than naming the field.

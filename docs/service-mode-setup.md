@@ -126,9 +126,23 @@ curl -X POST localhost:3000/v1/checkouts \
   -H "Content-Type: application/json" \
   -d '{"provider":"sepay","amountVnd":50000}'
 
+# Generic multi-currency style: amount in major units + ISO-4217 currency.
+# The currency must be in paykit's registry (USD, EUR, VND, JPY, KRW) AND
+# declared by the provider's adapter. Zero-decimal currencies (JPY/KRW/VND)
+# must be whole numbers; a fractional yen is a 400, not a rounding.
+curl -X POST localhost:3000/v1/checkouts \
+  -H "Authorization: Bearer pk_live_..." \
+  -H "Content-Type: application/json" \
+  -d '{"provider":"stripe","amount":19.99,"currency":"USD"}'
+
 curl localhost:3000/v1/balances  -H "Authorization: Bearer pk_live_..."
 curl localhost:3000/v1/payments  -H "Authorization: Bearer pk_live_..."
 ```
+
+When `currency` is omitted from a generic-style request, the router falls back
+to the tenant's stored default (`paykit.tenant_currency_preferences`, set via
+`tenantCurrencyRepo.upsertPreference`), then to the provider's native currency.
+Naming both styles (`amount` and `amountUsd`/`amountVnd`) in one body is a 400.
 
 `POST /v1/refunds` additionally requires an `Idempotency-Key` header (≥ 8 chars).
 The OpenAPI spec is public at `GET /v1/openapi.json`.

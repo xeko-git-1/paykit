@@ -1,6 +1,6 @@
 /**
  * doctor table-count test (F6) — the schema check must expect the full set of
- * business tables (19 as of migration 029) and flag any missing one (e.g.
+ * business tables (20 as of migration 030) and flag any missing one (e.g.
  * reconciliation_runs), not a stale shorter list. Uses a minimal mock
  * pg.Client that returns scripted query results by SQL shape.
  */
@@ -33,6 +33,7 @@ const ALL_TABLES = [
   "screening_jobs",
   "subscription_events",
   "subscriptions",
+  "tenant_currency_preferences",
   "webhook_events",
   "webhook_inbox",
 ];
@@ -60,11 +61,19 @@ function mockClient(tables: string[]): Client {
 }
 
 describe("runDoctor — table coverage (F6)", () => {
-  it("reports all 19 tables present when the schema is complete", async () => {
+  it("reports all 20 tables present when the schema is complete", async () => {
     const result = await runDoctor(mockClient(ALL_TABLES), manifest);
     const tablesCheck = result.checks.find((c) => c.name === "paykit_tables");
     expect(tablesCheck?.level).toBe("ok");
-    expect(tablesCheck?.message).toMatch(/all 19 paykit tables present/);
+    expect(tablesCheck?.message).toMatch(/all 20 paykit tables present/);
+  });
+
+  it("flags the tenant currency preference table when absent (030)", async () => {
+    const without = ALL_TABLES.filter((t) => t !== "tenant_currency_preferences");
+    const result = await runDoctor(mockClient(without), manifest);
+    const tablesCheck = result.checks.find((c) => c.name === "paykit_tables");
+    expect(tablesCheck?.level).toBe("warn");
+    expect(tablesCheck?.message).toMatch(/tenant_currency_preferences/);
   });
 
   it("flags reconciliation_runs as missing when absent (was hidden by the old 5-table list)", async () => {

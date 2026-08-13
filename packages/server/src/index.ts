@@ -137,6 +137,7 @@ export * as reconciliationCursorRepo from "@xeko-git-1/paykit-auth-core/db/repos
 export * as refundRepo from "@xeko-git-1/paykit-auth-core/db/repos/refund.repo.js";
 export * as runtimeConfigRepo from "@xeko-git-1/paykit-auth-core/db/repos/runtime-config.repo.js";
 export * as screeningJobRepo from "@xeko-git-1/paykit-auth-core/db/repos/screening-job.repo.js";
+export * as tenantCurrencyRepo from "@xeko-git-1/paykit-auth-core/db/repos/tenant-currency.repo.js";
 export * as subscriptionRepo from "@xeko-git-1/paykit-auth-core/db/repos/subscription.repo.js";
 export * as subscriptionEventRepo from "@xeko-git-1/paykit-auth-core/db/repos/subscription-event.repo.js";
 export * as webhookEventRepo from "@xeko-git-1/paykit-auth-core/db/repos/webhook-event.repo.js";

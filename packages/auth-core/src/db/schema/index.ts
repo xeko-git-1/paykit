@@ -68,6 +68,11 @@ export {
   subscriptions,
 } from "./subscriptions.js";
 export {
+  type NewTenantCurrencyPreference,
+  type TenantCurrencyPreference,
+  tenantCurrencyPreferences,
+} from "./tenant-currency-preferences.js";
+export {
   type NewSubscriptionEvent,
   type SubscriptionEvent,
   subscriptionEvents,

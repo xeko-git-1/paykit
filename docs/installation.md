@@ -54,7 +54,7 @@ DATABASE_URL_PAYKIT="postgres://user:pass@host:5432/paykit_prod"
 npx paykit migrate up
 ```
 
-This creates the `paykit` schema and its tables (19 business tables as of migration 029)
+This creates the `paykit` schema and its tables (20 business tables as of migration 030)
 inside the paykit DB.
 
 > **Running Paykit as a standalone service (Docker)?** See
@@ -137,7 +137,7 @@ Expected output:
 ```
 ✓ db_reachable           Postgres connection OK
 ✓ paykit_schema          paykit schema exists
-✓ paykit_tables          all 19 paykit tables present
+✓ paykit_tables          all 20 paykit tables present
 ✓ db_isolation           DB appears dedicated to paykit
 ✓ provider_env           all provider env vars set
 ```
