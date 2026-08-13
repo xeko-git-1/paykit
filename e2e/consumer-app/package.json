@@ -15,6 +15,12 @@
     "hono": "^4.6.0"
   },
   "devDependencies": {
+    "@xeko-git-1/paykit-auth-core": "workspace:*",
+    "@xeko-git-1/paykit-binance": "workspace:*",
+    "@xeko-git-1/paykit-bitpay": "workspace:*",
+    "@xeko-git-1/paykit-coinbase-commerce": "workspace:*",
+    "@xeko-git-1/paykit-cryptomus": "workspace:*",
+    "@xeko-git-1/paykit-nowpayments": "workspace:*",
     "vitest": "^2.0.0"
   },
   "engines": {

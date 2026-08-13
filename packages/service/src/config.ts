@@ -85,6 +85,17 @@ const envSchema = z.object({
   BINANCE_CANCEL_URL: z.string().optional(),
   BINANCE_WEBHOOK_URL: z.string().optional(),
 
+  // BitPay (crypto invoices, unsigned webhooks resolved by fetch-back) — enabled
+  // when the POS-facade token is present. The merchant private key is optional:
+  // without it checkout + webhook credit still work, but refunds and
+  // reconciliation (merchant facade, ECDSA-signed) are disabled.
+  BITPAY_API_TOKEN: z.string().optional(),
+  BITPAY_ENVIRONMENT: z.enum(["sandbox", "production"]).optional(),
+  // 64-hex-char private key (BitPay SDK format) or a secp256k1 PEM.
+  BITPAY_MERCHANT_PRIVATE_KEY: z.string().optional(),
+  BITPAY_NOTIFICATION_URL: z.string().optional(),
+  BITPAY_REDIRECT_URL: z.string().optional(),
+
   // Coinbase Commerce (USD-priced crypto charges) — enabled when the API key and
   // the webhook shared secret are both present. The secret is separate from the
   // API key and is what every inbound event is verified against, so a deploy with
@@ -182,6 +193,15 @@ export interface ServiceConfig {
         returnUrl?: string;
         cancelUrl?: string;
         webhookUrl?: string;
+      }
+    | undefined;
+  readonly bitpay:
+    | {
+        apiToken: string;
+        environment: "sandbox" | "production";
+        merchantPrivateKey?: string;
+        notificationUrl?: string;
+        redirectUrl?: string;
       }
     | undefined;
   readonly coinbaseCommerce:
@@ -420,6 +440,28 @@ export function parseServiceConfig(env: Record<string, string | undefined>): Ser
     }),
   );
 
+  const bitpay = resolveProviderCreds(
+    "BitPay",
+    {
+      BITPAY_API_TOKEN: parsed.BITPAY_API_TOKEN,
+    },
+    (creds) => ({
+      apiToken: creds.BITPAY_API_TOKEN,
+      environment: parsed.BITPAY_ENVIRONMENT ?? ("sandbox" as const),
+      // Optional: enables the merchant facade (refunds + reconciliation).
+      ...(parsed.BITPAY_MERCHANT_PRIVATE_KEY !== undefined &&
+      parsed.BITPAY_MERCHANT_PRIVATE_KEY !== ""
+        ? { merchantPrivateKey: parsed.BITPAY_MERCHANT_PRIVATE_KEY }
+        : {}),
+      ...(parsed.BITPAY_NOTIFICATION_URL !== undefined && parsed.BITPAY_NOTIFICATION_URL !== ""
+        ? { notificationUrl: parsed.BITPAY_NOTIFICATION_URL }
+        : {}),
+      ...(parsed.BITPAY_REDIRECT_URL !== undefined && parsed.BITPAY_REDIRECT_URL !== ""
+        ? { redirectUrl: parsed.BITPAY_REDIRECT_URL }
+        : {}),
+    }),
+  );
+
   const coinbaseCommerce = resolveProviderCreds(
     "Coinbase Commerce",
     {
@@ -428,9 +470,9 @@ export function parseServiceConfig(env: Record<string, string | undefined>): Ser
       // secret, so without it a paid charge could never be credited.
       COINBASE_COMMERCE_WEBHOOK_SECRET: parsed.COINBASE_COMMERCE_WEBHOOK_SECRET,
     },
-    () => ({
-      apiKey: parsed.COINBASE_COMMERCE_API_KEY!,
-      webhookSecret: parsed.COINBASE_COMMERCE_WEBHOOK_SECRET!,
+    (creds) => ({
+      apiKey: creds.COINBASE_COMMERCE_API_KEY,
+      webhookSecret: creds.COINBASE_COMMERCE_WEBHOOK_SECRET,
       ...(parsed.COINBASE_COMMERCE_REDIRECT_URL !== undefined &&
       parsed.COINBASE_COMMERCE_REDIRECT_URL !== ""
         ? { redirectUrl: parsed.COINBASE_COMMERCE_REDIRECT_URL }
@@ -453,6 +495,7 @@ export function parseServiceConfig(env: Record<string, string | undefined>): Ser
     zalopay,
     cryptomus,
     binance,
+    bitpay,
     coinbaseCommerce,
     adminSecret: parsed.ADMIN_SECRET,
   };

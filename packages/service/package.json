@@ -32,6 +32,7 @@
     "@hono/zod-openapi": "^1.4.0",
     "@xeko-git-1/paykit": "workspace:*",
     "@xeko-git-1/paykit-binance": "workspace:*",
+    "@xeko-git-1/paykit-bitpay": "workspace:*",
     "@xeko-git-1/paykit-cli": "workspace:*",
     "@xeko-git-1/paykit-coinbase-commerce": "workspace:*",
     "@xeko-git-1/paykit-cryptomus": "workspace:*",

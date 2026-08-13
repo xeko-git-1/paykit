@@ -133,6 +133,36 @@ export async function buildAdaptersFromConfig(
     );
   }
 
+  if (config.bitpay) {
+    const { createBitpayAdapter, createNodeMerchantSigner } = await import(
+      "@xeko-git-1/paykit-bitpay"
+    );
+    // A malformed private key throws here — at boot, before any refund is
+    // attempted — matching the fail-fast posture of the rest of the config.
+    const merchantSigner = config.bitpay.merchantPrivateKey
+      ? createNodeMerchantSigner(config.bitpay.merchantPrivateKey)
+      : undefined;
+    if (!merchantSigner) {
+      console.warn(
+        "paykit-service: BitPay configured without BITPAY_MERCHANT_PRIVATE_KEY — " +
+          "checkout and webhook credit work, but refunds and reconciliation are disabled.",
+      );
+    }
+    adapters.push(
+      createBitpayAdapter({
+        apiToken: config.bitpay.apiToken,
+        environment: config.bitpay.environment,
+        ...(merchantSigner !== undefined ? { merchantSigner } : {}),
+        ...(config.bitpay.notificationUrl !== undefined
+          ? { notificationUrl: config.bitpay.notificationUrl }
+          : {}),
+        ...(config.bitpay.redirectUrl !== undefined
+          ? { redirectUrl: config.bitpay.redirectUrl }
+          : {}),
+      }),
+    );
+  }
+
   if (config.coinbaseCommerce) {
     const { createCoinbaseCommerceAdapter } = await import("@xeko-git-1/paykit-coinbase-commerce");
     adapters.push(

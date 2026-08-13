@@ -39,9 +39,70 @@ importers:
         specifier: ^4.6.0
         version: 4.12.22
     devDependencies:
+      '@xeko-git-1/paykit-auth-core':
+        specifier: workspace:*
+        version: link:../../packages/auth-core
+      '@xeko-git-1/paykit-binance':
+        specifier: workspace:*
+        version: link:../../packages/binance-adapter
+      '@xeko-git-1/paykit-bitpay':
+        specifier: workspace:*
+        version: link:../../packages/bitpay-adapter
+      '@xeko-git-1/paykit-coinbase-commerce':
+        specifier: workspace:*
+        version: link:../../packages/coinbase-commerce-adapter
+      '@xeko-git-1/paykit-cryptomus':
+        specifier: workspace:*
+        version: link:../../packages/cryptomus-adapter
+      '@xeko-git-1/paykit-nowpayments':
+        specifier: workspace:*
+        version: link:../../packages/nowpayments-adapter
       vitest:
         specifier: ^2.0.0
         version: 2.1.9(@types/node@22.19.19)(jsdom@25.0.1)
+
+  e2e/live-verify:
+    dependencies:
+      '@hono/node-server':
+        specifier: ^1.13.8
+        version: 1.19.14(hono@4.12.22)
+      '@xeko-git-1/paykit':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@xeko-git-1/paykit-binance':
+        specifier: workspace:*
+        version: link:../../packages/binance-adapter
+      '@xeko-git-1/paykit-bitpay':
+        specifier: workspace:*
+        version: link:../../packages/bitpay-adapter
+      '@xeko-git-1/paykit-coinbase-commerce':
+        specifier: workspace:*
+        version: link:../../packages/coinbase-commerce-adapter
+      '@xeko-git-1/paykit-cryptomus':
+        specifier: workspace:*
+        version: link:../../packages/cryptomus-adapter
+      '@xeko-git-1/paykit-nowpayments':
+        specifier: workspace:*
+        version: link:../../packages/nowpayments-adapter
+      '@xeko-git-1/paykit-server':
+        specifier: workspace:*
+        version: link:../../packages/server
+      drizzle-orm:
+        specifier: ^0.36.4
+        version: 0.36.4(@types/pg@8.20.0)(@types/react@18.3.29)(pg@8.21.0)(react@19.2.6)
+      hono:
+        specifier: ^4.6.0
+        version: 4.12.22
+      pg:
+        specifier: ^8.13.0
+        version: 8.21.0
+    devDependencies:
+      '@types/pg':
+        specifier: ^8.20.0
+        version: 8.20.0
+      tsx:
+        specifier: ^4.19.2
+        version: 4.22.3
 
   packages/auth-core:
     dependencies:
@@ -219,6 +280,9 @@ importers:
       '@xeko-git-1/paykit-binance':
         specifier: workspace:*
         version: link:../binance-adapter
+      '@xeko-git-1/paykit-bitpay':
+        specifier: workspace:*
+        version: link:../bitpay-adapter
       '@xeko-git-1/paykit-cli':
         specifier: workspace:*
         version: link:../cli

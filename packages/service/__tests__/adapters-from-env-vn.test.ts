@@ -22,6 +22,7 @@ const base: ServiceConfig = {
   nowpayments: undefined,
   cryptomus: undefined,
   binance: undefined,
+  bitpay: undefined,
   coinbaseCommerce: undefined,
   vnpay: undefined,
   momo: undefined,

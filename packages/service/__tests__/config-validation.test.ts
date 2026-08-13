@@ -236,12 +236,12 @@ describe("coin/chain code guard", () => {
       CRYPTOMUS_MERCHANT_ID: "merchant-uuid",
       CRYPTOMUS_PAYMENT_API_KEY: "cm-key",
     };
-    expect(() =>
-      parseServiceConfig({ ...cryptomusBase, CRYPTOMUS_NETWORK: "bep20" }),
-    ).toThrow(/CRYPTOMUS_NETWORK/);
-    expect(() =>
-      parseServiceConfig({ ...cryptomusBase, CRYPTOMUS_TO_CURRENCY: "TETHER" }),
-    ).toThrow(/CRYPTOMUS_TO_CURRENCY/);
+    expect(() => parseServiceConfig({ ...cryptomusBase, CRYPTOMUS_NETWORK: "bep20" })).toThrow(
+      /CRYPTOMUS_NETWORK/,
+    );
+    expect(() => parseServiceConfig({ ...cryptomusBase, CRYPTOMUS_TO_CURRENCY: "TETHER" })).toThrow(
+      /CRYPTOMUS_TO_CURRENCY/,
+    );
   });
 
   it("accepts every documented chain pin", async () => {
@@ -351,6 +351,41 @@ describe("createJwtSecretLoader (race-safe seed)", () => {
     const secret = await loader();
     // Must use the winner's value, not the locally generated one
     expect(secret).toBe(winnerSecret);
+  });
+});
+
+describe("BitPay config", () => {
+  it("enables the provider with just the POS token (signer optional)", async () => {
+    const { parseServiceConfig } = await import("../src/config.js");
+    const config = parseServiceConfig({
+      DATABASE_URL: "postgres://localhost/paykit",
+      BITPAY_API_TOKEN: "pos-token",
+    });
+    expect(config.bitpay?.apiToken).toBe("pos-token");
+    expect(config.bitpay?.environment).toBe("sandbox");
+    expect(config.bitpay?.merchantPrivateKey).toBeUndefined();
+  });
+
+  it("carries the merchant private key and env override when set", async () => {
+    const { parseServiceConfig } = await import("../src/config.js");
+    const config = parseServiceConfig({
+      DATABASE_URL: "postgres://localhost/paykit",
+      BITPAY_API_TOKEN: "pos-token",
+      BITPAY_ENVIRONMENT: "production",
+      BITPAY_MERCHANT_PRIVATE_KEY: "a".repeat(64),
+      BITPAY_NOTIFICATION_URL: "https://app/webhooks/bitpay",
+      BITPAY_REDIRECT_URL: "https://app/return",
+    });
+    expect(config.bitpay?.environment).toBe("production");
+    expect(config.bitpay?.merchantPrivateKey).toBe("a".repeat(64));
+    expect(config.bitpay?.notificationUrl).toBe("https://app/webhooks/bitpay");
+    expect(config.bitpay?.redirectUrl).toBe("https://app/return");
+  });
+
+  it("leaves the provider disabled when no creds are set", async () => {
+    const { parseServiceConfig } = await import("../src/config.js");
+    const config = parseServiceConfig({ DATABASE_URL: "postgres://localhost/paykit" });
+    expect(config.bitpay).toBeUndefined();
   });
 });
 

@@ -1,0 +1,34 @@
+{
+  "name": "@paykit-e2e/live-verify",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Live-verification harness for the crypto adapters — boots an embedded paykit app from env creds and drives checkout → webhook → ledger → refund against real provider APIs.",
+  "type": "module",
+  "scripts": {
+    "serve": "tsx src/server.ts",
+    "verify": "tsx src/verify.ts",
+    "clock-check": "tsx src/clock-check.ts",
+    "binance-cert": "tsx src/binance-cert.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.8",
+    "@xeko-git-1/paykit": "workspace:*",
+    "@xeko-git-1/paykit-binance": "workspace:*",
+    "@xeko-git-1/paykit-bitpay": "workspace:*",
+    "@xeko-git-1/paykit-coinbase-commerce": "workspace:*",
+    "@xeko-git-1/paykit-cryptomus": "workspace:*",
+    "@xeko-git-1/paykit-nowpayments": "workspace:*",
+    "@xeko-git-1/paykit-server": "workspace:*",
+    "drizzle-orm": "^0.36.4",
+    "hono": "^4.6.0",
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.20.0",
+    "tsx": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
