@@ -147,6 +147,17 @@ const envSchema = z.object({
   CREEM_ENVIRONMENT: z.enum(["test", "production"]).optional(),
   CREEM_SUCCESS_URL: z.string().optional(),
 
+  // PayPal (Orders v2, USD/EUR/JPY) — enabled when the REST app's client id and
+  // secret are both present. No webhook secret exists to configure: every
+  // delivery is authenticated by fetching the resource back from PayPal's API
+  // with these same credentials, and the adapter captures on approval.
+  PAYPAL_CLIENT_ID: z.string().optional(),
+  PAYPAL_CLIENT_SECRET: z.string().optional(),
+  PAYPAL_ENVIRONMENT: z.enum(["sandbox", "production"]).optional(),
+  PAYPAL_RETURN_URL: z.string().optional(),
+  PAYPAL_CANCEL_URL: z.string().optional(),
+  PAYPAL_BRAND_NAME: z.string().optional(),
+
   // Accept a coin/chain code paykit does not recognise. The crypto gateways add
   // combinations faster than paykit can enumerate them, so this is the escape
   // hatch for a genuinely newer code — the value is then passed through to the
@@ -305,6 +316,16 @@ export interface ServiceConfig {
         webhookSecret: string;
         environment: "test" | "production";
         successUrl?: string;
+      }
+    | undefined;
+  readonly paypal:
+    | {
+        clientId: string;
+        clientSecret: string;
+        environment: "sandbox" | "production";
+        returnUrl?: string;
+        cancelUrl?: string;
+        brandName?: string;
       }
     | undefined;
   readonly adminSecret: string | undefined;
@@ -661,6 +682,30 @@ export function parseServiceConfig(env: Record<string, string | undefined>): Ser
     }),
   );
 
+  const paypal = resolveProviderCreds(
+    "PayPal",
+    {
+      PAYPAL_CLIENT_ID: parsed.PAYPAL_CLIENT_ID,
+      // Required, not optional: the secret mints the OAuth token every call —
+      // including the fetch-back that authenticates webhooks — depends on.
+      PAYPAL_CLIENT_SECRET: parsed.PAYPAL_CLIENT_SECRET,
+    },
+    (creds) => ({
+      clientId: creds.PAYPAL_CLIENT_ID,
+      clientSecret: creds.PAYPAL_CLIENT_SECRET,
+      environment: parsed.PAYPAL_ENVIRONMENT ?? ("sandbox" as const),
+      ...(parsed.PAYPAL_RETURN_URL !== undefined && parsed.PAYPAL_RETURN_URL !== ""
+        ? { returnUrl: parsed.PAYPAL_RETURN_URL }
+        : {}),
+      ...(parsed.PAYPAL_CANCEL_URL !== undefined && parsed.PAYPAL_CANCEL_URL !== ""
+        ? { cancelUrl: parsed.PAYPAL_CANCEL_URL }
+        : {}),
+      ...(parsed.PAYPAL_BRAND_NAME !== undefined && parsed.PAYPAL_BRAND_NAME !== ""
+        ? { brandName: parsed.PAYPAL_BRAND_NAME }
+        : {}),
+    }),
+  );
+
   return {
     databaseUrl: parsed.DATABASE_URL,
     port: parsed.PORT,
@@ -678,6 +723,7 @@ export function parseServiceConfig(env: Record<string, string | undefined>): Ser
     polar,
     paddle,
     creem,
+    paypal,
     adminSecret: parsed.ADMIN_SECRET,
     refundWebhookTimeoutHours: parsed.PAYKIT_REFUND_WEBHOOK_TIMEOUT_HOURS,
     checkoutStaleTtlHours: parsed.PAYKIT_CHECKOUT_STALE_TTL_HOURS,

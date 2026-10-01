@@ -38,6 +38,7 @@
 | Polar | USD, EUR | `POLAR_ACCESS_TOKEN`, `POLAR_PRODUCT_ID`, `POLAR_WEBHOOK_SECRET` | `POLAR_ENVIRONMENT`, `POLAR_SUCCESS_URL` |
 | Paddle Billing | USD, EUR, JPY | `PADDLE_API_KEY`, `PADDLE_WEBHOOK_SECRET` | `PADDLE_ENVIRONMENT`, `PADDLE_CHECKOUT_URL` |
 | Creem | USD, EUR | `CREEM_API_KEY`, `CREEM_PRODUCT_ID`, `CREEM_WEBHOOK_SECRET` | `CREEM_ENVIRONMENT`, `CREEM_SUCCESS_URL` |
+| PayPal | USD, EUR, JPY | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` | `PAYPAL_ENVIRONMENT`, `PAYPAL_RETURN_URL`, `PAYPAL_CANCEL_URL`, `PAYPAL_BRAND_NAME` |
 
 **EN — merchant-of-record providers (Polar / Paddle / Creem).** These three sell as the merchant of record: they add sales tax on top of your price, collect it, and remit it. The ledger therefore credits the **pre-tax** amount, not what the customer's card was charged — the tax slice is never your revenue. The gap between the two is expected and is recorded as an overage rather than credited. Two setup consequences: Polar and Creem need one pre-created product (`POLAR_PRODUCT_ID` / `CREEM_PRODUCT_ID`) that every charge is priced over, and Paddle needs an **approved default payment link** on the account — Paddle does not host the checkout page, it opens an overlay on a page of yours that embeds Paddle.js. Without that link, creating a transaction is rejected outright. Set `PADDLE_CHECKOUT_URL` to override the account default per deploy.
 

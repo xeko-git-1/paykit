@@ -1,0 +1,36 @@
+{
+  "name": "@xeko-git-1/paykit-paypal",
+  "version": "0.3.0-rc.0",
+  "description": "Paykit adapter for PayPal Orders v2 — redirect checkout, capture-on-approval, fetch-back webhook authentication, capture refunds, Transaction Search reconciliation",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xeko-git-1/paykit.git",
+    "directory": "packages/paypal-adapter"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {},
+  "peerDependencies": {
+    "@xeko-git-1/paykit": ">=0.3.0-rc.0 <0.4.0"
+  },
+  "devDependencies": {
+    "@xeko-git-1/paykit": "workspace:*"
+  },
+  "engines": { "node": ">=20" }
+}

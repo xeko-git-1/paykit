@@ -28,6 +28,7 @@ const base: ServiceConfig = {
   polar: undefined,
   paddle: undefined,
   creem: undefined,
+  paypal: undefined,
   vnpay: undefined,
   momo: undefined,
   zalopay: undefined,
@@ -272,5 +273,33 @@ describe("buildAdaptersFromConfig — merchant-of-record providers", () => {
     expect(ids).not.toContain("polar");
     expect(ids).not.toContain("paddle");
     expect(ids).not.toContain("creem");
+  });
+});
+
+describe("buildAdaptersFromConfig — PayPal", () => {
+  const paypal = {
+    clientId: "paypal-client",
+    clientSecret: "paypal-secret",
+    environment: "sandbox" as const,
+  };
+
+  it("wires the adapter when the client id and secret are present", async () => {
+    const adapters = await buildAdaptersFromConfig({ ...base, paypal });
+    // Asserted by id because a provider can be resolved in config and still never
+    // reach the registry if the wiring block is missing.
+    expect(adapters.map((a) => a.id)).toContain("paypal");
+  });
+
+  it("authenticates webhooks by fetch-back, never by the sync signature path", async () => {
+    const [adapter] = await buildAdaptersFromConfig({ ...base, paypal });
+    expect(typeof adapter?.resolveWebhook).toBe("function");
+    // Fail-closed: a body that reaches the sync pair must never credit.
+    expect(adapter?.verifyWebhookSignature("{}", {})).toBe(false);
+    expect(adapter?.supportedCurrencies).toEqual(["USD", "EUR", "JPY"]);
+  });
+
+  it("skips the adapter when no paypal creds are present", async () => {
+    const adapters = await buildAdaptersFromConfig(base);
+    expect(adapters.map((a) => a.id)).not.toContain("paypal");
   });
 });

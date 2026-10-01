@@ -231,6 +231,20 @@ export async function buildAdaptersFromConfig(
     );
   }
 
+  if (config.paypal) {
+    const { createPaypalAdapter } = await import("@xeko-git-1/paykit-paypal");
+    adapters.push(
+      createPaypalAdapter({
+        clientId: config.paypal.clientId,
+        clientSecret: config.paypal.clientSecret,
+        sandbox: config.paypal.environment === "sandbox",
+        ...(config.paypal.returnUrl !== undefined ? { returnUrl: config.paypal.returnUrl } : {}),
+        ...(config.paypal.cancelUrl !== undefined ? { cancelUrl: config.paypal.cancelUrl } : {}),
+        ...(config.paypal.brandName !== undefined ? { brandName: config.paypal.brandName } : {}),
+      }),
+    );
+  }
+
   if (adapters.length === 0) {
     // Not fatal — the service can still serve health probes and the OpenAPI
     // spec — but a deploy with no providers almost certainly forgot its creds.

@@ -32,6 +32,7 @@ COPY packages/coinbase-commerce-adapter/package.json packages/coinbase-commerce-
 COPY packages/polar-adapter/package.json packages/polar-adapter/package.json
 COPY packages/paddle-adapter/package.json packages/paddle-adapter/package.json
 COPY packages/creem-adapter/package.json packages/creem-adapter/package.json
+COPY packages/paypal-adapter/package.json packages/paypal-adapter/package.json
 
 # Install all workspace deps (frozen lockfile for reproducibility)
 RUN pnpm install --frozen-lockfile
@@ -56,6 +57,7 @@ COPY packages/coinbase-commerce-adapter/ packages/coinbase-commerce-adapter/
 COPY packages/polar-adapter/ packages/polar-adapter/
 COPY packages/paddle-adapter/ packages/paddle-adapter/
 COPY packages/creem-adapter/ packages/creem-adapter/
+COPY packages/paypal-adapter/ packages/paypal-adapter/
 COPY migrations/ migrations/
 
 # Build all packages (service depends on server, core, adapters)
@@ -126,6 +128,9 @@ COPY --from=builder /app/packages/paddle-adapter/package.json packages/paddle-ad
 
 COPY --from=builder /app/packages/creem-adapter/dist packages/creem-adapter/dist
 COPY --from=builder /app/packages/creem-adapter/package.json packages/creem-adapter/package.json
+
+COPY --from=builder /app/packages/paypal-adapter/dist packages/paypal-adapter/dist
+COPY --from=builder /app/packages/paypal-adapter/package.json packages/paypal-adapter/package.json
 
 COPY --from=builder /app/packages/service/dist packages/service/dist
 COPY --from=builder /app/packages/service/package.json packages/service/package.json

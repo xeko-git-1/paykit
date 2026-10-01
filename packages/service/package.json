@@ -41,6 +41,7 @@
     "@xeko-git-1/paykit-momo": "workspace:*",
     "@xeko-git-1/paykit-nowpayments": "workspace:*",
     "@xeko-git-1/paykit-paddle": "workspace:*",
+    "@xeko-git-1/paykit-paypal": "workspace:*",
     "@xeko-git-1/paykit-polar": "workspace:*",
     "@xeko-git-1/paykit-sepay": "workspace:*",
     "@xeko-git-1/paykit-server": "workspace:*",

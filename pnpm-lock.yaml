@@ -201,6 +201,12 @@ importers:
         specifier: workspace:*
         version: link:../core
 
+  packages/paypal-adapter:
+    devDependencies:
+      '@xeko-git-1/paykit':
+        specifier: workspace:*
+        version: link:../core
+
   packages/polar-adapter:
     devDependencies:
       '@xeko-git-1/paykit':
@@ -331,6 +337,9 @@ importers:
       '@xeko-git-1/paykit-paddle':
         specifier: workspace:*
         version: link:../paddle-adapter
+      '@xeko-git-1/paykit-paypal':
+        specifier: workspace:*
+        version: link:../paypal-adapter
       '@xeko-git-1/paykit-polar':
         specifier: workspace:*
         version: link:../polar-adapter

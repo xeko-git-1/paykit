@@ -121,6 +121,7 @@ import {
   PAYKIT_REFERENCE_CUSTOM_DATA_KEY as PADDLE_REF_KEY,
   createPaddleAdapter,
 } from "../../paddle-adapter/src/adapter.js";
+import { createPaypalAdapter } from "../../paypal-adapter/src/adapter.js";
 import {
   PAYKIT_REFERENCE_METADATA_KEY as POLAR_REF_KEY,
   createPolarAdapter,
@@ -761,6 +762,79 @@ const ADAPTER_CASES: readonly AdapterCase[] = [
       };
     },
   },
+  {
+    label: "paypal",
+    currencyCode: "USD",
+    amountMicros: USD_50_MICROS,
+    // Fetch-back authentication: the delivery body only names the order.
+    unsigned: true,
+    async run(txId) {
+      const orderId = "5O190127TN364715T";
+      const captureId = "3C679366HH908993F";
+      let sentCustomId = "";
+      const capturedOrder = () => ({
+        id: orderId,
+        status: "COMPLETED",
+        purchase_units: [
+          {
+            custom_id: sentCustomId,
+            payments: {
+              captures: [
+                {
+                  id: captureId,
+                  status: "COMPLETED",
+                  custom_id: sentCustomId,
+                  amount: { currency_code: "USD", value: "50.00" },
+                },
+              ],
+            },
+          },
+        ],
+      });
+      const fetcher = fakeFetch(({ url, method, body }) => {
+        if (url.endsWith("/v1/oauth2/token")) {
+          return { body: { access_token: "A21-rt", expires_in: 3600 } };
+        }
+        if (method === "POST" && url.endsWith("/v2/checkout/orders")) {
+          const parsed = JSON.parse(body) as { purchase_units: { custom_id: string }[] };
+          sentCustomId = parsed.purchase_units[0]?.custom_id ?? "";
+          return {
+            body: {
+              id: orderId,
+              status: "PAYER_ACTION_REQUIRED",
+              links: [
+                {
+                  rel: "payer-action",
+                  href: `https://www.sandbox.paypal.com/checkoutnow?token=${orderId}`,
+                },
+              ],
+            },
+          };
+        }
+        if (method === "POST" && url.endsWith(`/v2/checkout/orders/${orderId}/capture`)) {
+          return { status: 201, body: capturedOrder() };
+        }
+        return null;
+      });
+      const adapter = createPaypalAdapter({
+        clientId: "client-rt",
+        clientSecret: "secret-rt",
+        sandbox: true,
+        fetcher,
+      });
+      const checkout = await adapter.createCheckout(checkoutInput(txId, USD_50_MICROS, "USD"));
+      const rawBody = JSON.stringify({
+        id: "WH-RT",
+        event_type: "CHECKOUT.ORDER.APPROVED",
+        resource: { id: orderId },
+      });
+      return {
+        adapter,
+        storedProviderRef: checkout.providerSessionId ?? txId,
+        webhook: { rawBody, headers: {} },
+      };
+    },
+  },
 ];
 
 /** Normalize a webhook the way the router does: resolveWebhook, else parse. */
@@ -807,6 +881,7 @@ describe("checkout → webhook provider_ref round-trip (every shipped adapter)",
       "momo",
       "nowpayments",
       "paddle",
+      "paypal",
       "polar",
       "sepay",
       "stripe",

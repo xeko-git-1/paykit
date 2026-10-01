@@ -36,6 +36,7 @@
 | Polar | `@xeko-git-1/paykit-polar` | USD, EUR | async (`pending_webhook`) — merchant of record, so the ledger credits the pre-tax amount; priced over one pre-created product. Built from the published OpenAPI spec, not yet verified end-to-end |
 | Paddle Billing | `@xeko-git-1/paykit-paddle` | USD, EUR, JPY | async (`pending_webhook`) — merchant of record; refunds need Paddle's approval. Needs an approved default payment link (Paddle does not host the page). Built from published docs, not yet verified end-to-end |
 | Creem | `@xeko-git-1/paykit-creem` | USD, EUR | none — refunds are dashboard-only; the `refund.created` webhook settles the row. Merchant of record, so the ledger credits the pre-tax amount. Built from published docs, not yet verified end-to-end |
+| PayPal | `@xeko-git-1/paykit-paypal` | USD, EUR, JPY | sync or async (`pending_webhook`) — capture refund API with `PayPal-Request-Id` idempotency. Webhooks are authenticated by fetch-back, and the adapter captures on `CHECKOUT.ORDER.APPROVED`. Built from published OpenAPI specs, not yet verified end-to-end |
 
 ## What it doesn't do (yet)
 
@@ -55,7 +56,7 @@
 ### Two ways to run
 
 - **Embedded (V1–V3):** `import { createPaykit }` into your own Hono app, supply a `TenantResolver`. Quickstart below.
-- **Standalone service (V4):** run `@xeko-git-1/paykit-service` as a container — config + API-key auth via env, no app code. Migrate-then-serve cold start, 14 wired adapters (Stripe / SePay / ApiPay / NowPayments / VNPay / Momo / ZaloPay / Cryptomus / Binance Pay / BitPay / Coinbase Commerce / Polar / Paddle / Creem), `/v1` HTTP API, CLI bootstrap, and a thin TypeScript SDK. See [service-mode-setup.md](docs/service-mode-setup.md).
+- **Standalone service (V4):** run `@xeko-git-1/paykit-service` as a container — config + API-key auth via env, no app code. Migrate-then-serve cold start, 15 wired adapters (Stripe / SePay / ApiPay / NowPayments / VNPay / Momo / ZaloPay / Cryptomus / Binance Pay / BitPay / Coinbase Commerce / Polar / Paddle / Creem / PayPal), `/v1` HTTP API, CLI bootstrap, and a thin TypeScript SDK. See [service-mode-setup.md](docs/service-mode-setup.md).
 
 ## Quickstart (preview — V1 not yet published)
 
