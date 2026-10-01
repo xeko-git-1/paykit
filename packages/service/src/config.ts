@@ -114,6 +114,39 @@ const envSchema = z.object({
   COINBASE_COMMERCE_REDIRECT_URL: z.string().optional(),
   COINBASE_COMMERCE_CANCEL_URL: z.string().optional(),
 
+  // Polar (polar.sh, USD/EUR merchant of record) — enabled when the access
+  // token, product id, and webhook secret are all present. Polar has no
+  // amount-only checkout, so a pre-created product is required: every paykit
+  // charge is priced over it with a per-session fixed price override. The
+  // webhook secret is separate from the token and is what every inbound event
+  // is verified against (Standard Webhooks).
+  POLAR_ACCESS_TOKEN: z.string().optional(),
+  POLAR_PRODUCT_ID: z.string().optional(),
+  POLAR_WEBHOOK_SECRET: z.string().optional(),
+  POLAR_ENVIRONMENT: z.enum(["sandbox", "production"]).optional(),
+  POLAR_SUCCESS_URL: z.string().optional(),
+
+  // Paddle Billing (USD/EUR/JPY merchant of record) — enabled when the API key
+  // and the webhook endpoint secret are both present. Prices are inline
+  // (non-catalog) so no product needs pre-creating, BUT the Paddle account
+  // must have an approved default payment link (a page embedding Paddle.js) or
+  // transaction creation is rejected. PADDLE_CHECKOUT_URL overrides that
+  // default per deploy.
+  PADDLE_API_KEY: z.string().optional(),
+  PADDLE_WEBHOOK_SECRET: z.string().optional(),
+  PADDLE_ENVIRONMENT: z.enum(["sandbox", "production"]).optional(),
+  PADDLE_CHECKOUT_URL: z.string().optional(),
+
+  // Creem.io (USD/EUR, licensing-capable) — enabled when the API key, product
+  // id, and webhook secret are all present. Like Polar, every charge is priced
+  // over one pre-created product (custom_price override). Refunds are
+  // dashboard-only on Creem's side; the refund webhook settles the paykit row.
+  CREEM_API_KEY: z.string().optional(),
+  CREEM_PRODUCT_ID: z.string().optional(),
+  CREEM_WEBHOOK_SECRET: z.string().optional(),
+  CREEM_ENVIRONMENT: z.enum(["test", "production"]).optional(),
+  CREEM_SUCCESS_URL: z.string().optional(),
+
   // Accept a coin/chain code paykit does not recognise. The crypto gateways add
   // combinations faster than paykit can enumerate them, so this is the escape
   // hatch for a genuinely newer code — the value is then passed through to the
@@ -246,6 +279,32 @@ export interface ServiceConfig {
         webhookSecret: string;
         redirectUrl?: string;
         cancelUrl?: string;
+      }
+    | undefined;
+  readonly polar:
+    | {
+        accessToken: string;
+        productId: string;
+        webhookSecret: string;
+        environment: "sandbox" | "production";
+        successUrl?: string;
+      }
+    | undefined;
+  readonly paddle:
+    | {
+        apiKey: string;
+        webhookSecret: string;
+        environment: "sandbox" | "production";
+        checkoutUrl?: string;
+      }
+    | undefined;
+  readonly creem:
+    | {
+        apiKey: string;
+        productId: string;
+        webhookSecret: string;
+        environment: "test" | "production";
+        successUrl?: string;
       }
     | undefined;
   readonly adminSecret: string | undefined;
@@ -540,6 +599,68 @@ export function parseServiceConfig(env: Record<string, string | undefined>): Ser
     }),
   );
 
+  const polar = resolveProviderCreds(
+    "Polar",
+    {
+      POLAR_ACCESS_TOKEN: parsed.POLAR_ACCESS_TOKEN,
+      // Required, not optional: Polar has no amount-only checkout, so without
+      // a product to price over no session can be created.
+      POLAR_PRODUCT_ID: parsed.POLAR_PRODUCT_ID,
+      // Required, not optional: every inbound event is authenticated against
+      // this secret, so without it a paid order could never be credited.
+      POLAR_WEBHOOK_SECRET: parsed.POLAR_WEBHOOK_SECRET,
+    },
+    (creds) => ({
+      accessToken: creds.POLAR_ACCESS_TOKEN,
+      productId: creds.POLAR_PRODUCT_ID,
+      webhookSecret: creds.POLAR_WEBHOOK_SECRET,
+      environment: parsed.POLAR_ENVIRONMENT ?? ("sandbox" as const),
+      ...(parsed.POLAR_SUCCESS_URL !== undefined && parsed.POLAR_SUCCESS_URL !== ""
+        ? { successUrl: parsed.POLAR_SUCCESS_URL }
+        : {}),
+    }),
+  );
+
+  const paddle = resolveProviderCreds(
+    "Paddle",
+    {
+      PADDLE_API_KEY: parsed.PADDLE_API_KEY,
+      // Required, not optional: every inbound event is authenticated against
+      // this secret, so without it a completed transaction could never credit.
+      PADDLE_WEBHOOK_SECRET: parsed.PADDLE_WEBHOOK_SECRET,
+    },
+    (creds) => ({
+      apiKey: creds.PADDLE_API_KEY,
+      webhookSecret: creds.PADDLE_WEBHOOK_SECRET,
+      environment: parsed.PADDLE_ENVIRONMENT ?? ("sandbox" as const),
+      ...(parsed.PADDLE_CHECKOUT_URL !== undefined && parsed.PADDLE_CHECKOUT_URL !== ""
+        ? { checkoutUrl: parsed.PADDLE_CHECKOUT_URL }
+        : {}),
+    }),
+  );
+
+  const creem = resolveProviderCreds(
+    "Creem",
+    {
+      CREEM_API_KEY: parsed.CREEM_API_KEY,
+      // Required, not optional: Creem checkouts are priced over a product, so
+      // without one no session can be created.
+      CREEM_PRODUCT_ID: parsed.CREEM_PRODUCT_ID,
+      // Required, not optional: every inbound event is authenticated against
+      // this secret, so without it a completed checkout could never credit.
+      CREEM_WEBHOOK_SECRET: parsed.CREEM_WEBHOOK_SECRET,
+    },
+    (creds) => ({
+      apiKey: creds.CREEM_API_KEY,
+      productId: creds.CREEM_PRODUCT_ID,
+      webhookSecret: creds.CREEM_WEBHOOK_SECRET,
+      environment: parsed.CREEM_ENVIRONMENT ?? ("test" as const),
+      ...(parsed.CREEM_SUCCESS_URL !== undefined && parsed.CREEM_SUCCESS_URL !== ""
+        ? { successUrl: parsed.CREEM_SUCCESS_URL }
+        : {}),
+    }),
+  );
+
   return {
     databaseUrl: parsed.DATABASE_URL,
     port: parsed.PORT,
@@ -554,6 +675,9 @@ export function parseServiceConfig(env: Record<string, string | undefined>): Ser
     binance,
     bitpay,
     coinbaseCommerce,
+    polar,
+    paddle,
+    creem,
     adminSecret: parsed.ADMIN_SECRET,
     refundWebhookTimeoutHours: parsed.PAYKIT_REFUND_WEBHOOK_TIMEOUT_HOURS,
     checkoutStaleTtlHours: parsed.PAYKIT_CHECKOUT_STALE_TTL_HOURS,

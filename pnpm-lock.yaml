@@ -171,6 +171,12 @@ importers:
 
   packages/core: {}
 
+  packages/creem-adapter:
+    devDependencies:
+      '@xeko-git-1/paykit':
+        specifier: workspace:*
+        version: link:../core
+
   packages/cryptomus-adapter:
     devDependencies:
       '@xeko-git-1/paykit':
@@ -184,6 +190,18 @@ importers:
         version: link:../core
 
   packages/nowpayments-adapter:
+    devDependencies:
+      '@xeko-git-1/paykit':
+        specifier: workspace:*
+        version: link:../core
+
+  packages/paddle-adapter:
+    devDependencies:
+      '@xeko-git-1/paykit':
+        specifier: workspace:*
+        version: link:../core
+
+  packages/polar-adapter:
     devDependencies:
       '@xeko-git-1/paykit':
         specifier: workspace:*
@@ -298,6 +316,9 @@ importers:
       '@xeko-git-1/paykit-coinbase-commerce':
         specifier: workspace:*
         version: link:../coinbase-commerce-adapter
+      '@xeko-git-1/paykit-creem':
+        specifier: workspace:*
+        version: link:../creem-adapter
       '@xeko-git-1/paykit-cryptomus':
         specifier: workspace:*
         version: link:../cryptomus-adapter
@@ -307,6 +328,12 @@ importers:
       '@xeko-git-1/paykit-nowpayments':
         specifier: workspace:*
         version: link:../nowpayments-adapter
+      '@xeko-git-1/paykit-paddle':
+        specifier: workspace:*
+        version: link:../paddle-adapter
+      '@xeko-git-1/paykit-polar':
+        specifier: workspace:*
+        version: link:../polar-adapter
       '@xeko-git-1/paykit-sepay':
         specifier: workspace:*
         version: link:../sepay-adapter

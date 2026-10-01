@@ -191,6 +191,46 @@ export async function buildAdaptersFromConfig(
     );
   }
 
+  if (config.polar) {
+    const { createPolarAdapter } = await import("@xeko-git-1/paykit-polar");
+    adapters.push(
+      createPolarAdapter({
+        accessToken: config.polar.accessToken,
+        productId: config.polar.productId,
+        webhookSecret: config.polar.webhookSecret,
+        sandbox: config.polar.environment === "sandbox",
+        ...(config.polar.successUrl !== undefined ? { successUrl: config.polar.successUrl } : {}),
+      }),
+    );
+  }
+
+  if (config.paddle) {
+    const { createPaddleAdapter } = await import("@xeko-git-1/paykit-paddle");
+    adapters.push(
+      createPaddleAdapter({
+        apiKey: config.paddle.apiKey,
+        webhookSecret: config.paddle.webhookSecret,
+        sandbox: config.paddle.environment === "sandbox",
+        ...(config.paddle.checkoutUrl !== undefined
+          ? { checkoutUrl: config.paddle.checkoutUrl }
+          : {}),
+      }),
+    );
+  }
+
+  if (config.creem) {
+    const { createCreemAdapter } = await import("@xeko-git-1/paykit-creem");
+    adapters.push(
+      createCreemAdapter({
+        apiKey: config.creem.apiKey,
+        productId: config.creem.productId,
+        webhookSecret: config.creem.webhookSecret,
+        testMode: config.creem.environment === "test",
+        ...(config.creem.successUrl !== undefined ? { successUrl: config.creem.successUrl } : {}),
+      }),
+    );
+  }
+
   if (adapters.length === 0) {
     // Not fatal — the service can still serve health probes and the OpenAPI
     // spec — but a deploy with no providers almost certainly forgot its creds.
