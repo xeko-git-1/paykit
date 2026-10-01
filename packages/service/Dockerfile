@@ -27,7 +27,11 @@ COPY packages/momo-adapter/package.json packages/momo-adapter/package.json
 COPY packages/zalopay-adapter/package.json packages/zalopay-adapter/package.json
 COPY packages/cryptomus-adapter/package.json packages/cryptomus-adapter/package.json
 COPY packages/binance-adapter/package.json packages/binance-adapter/package.json
+COPY packages/bitpay-adapter/package.json packages/bitpay-adapter/package.json
 COPY packages/coinbase-commerce-adapter/package.json packages/coinbase-commerce-adapter/package.json
+COPY packages/polar-adapter/package.json packages/polar-adapter/package.json
+COPY packages/paddle-adapter/package.json packages/paddle-adapter/package.json
+COPY packages/creem-adapter/package.json packages/creem-adapter/package.json
 
 # Install all workspace deps (frozen lockfile for reproducibility)
 RUN pnpm install --frozen-lockfile
@@ -47,7 +51,11 @@ COPY packages/momo-adapter/ packages/momo-adapter/
 COPY packages/zalopay-adapter/ packages/zalopay-adapter/
 COPY packages/cryptomus-adapter/ packages/cryptomus-adapter/
 COPY packages/binance-adapter/ packages/binance-adapter/
+COPY packages/bitpay-adapter/ packages/bitpay-adapter/
 COPY packages/coinbase-commerce-adapter/ packages/coinbase-commerce-adapter/
+COPY packages/polar-adapter/ packages/polar-adapter/
+COPY packages/paddle-adapter/ packages/paddle-adapter/
+COPY packages/creem-adapter/ packages/creem-adapter/
 COPY migrations/ migrations/
 
 # Build all packages (service depends on server, core, adapters)
@@ -106,6 +114,18 @@ COPY --from=builder /app/packages/binance-adapter/package.json packages/binance-
 
 COPY --from=builder /app/packages/coinbase-commerce-adapter/dist packages/coinbase-commerce-adapter/dist
 COPY --from=builder /app/packages/coinbase-commerce-adapter/package.json packages/coinbase-commerce-adapter/package.json
+
+COPY --from=builder /app/packages/bitpay-adapter/dist packages/bitpay-adapter/dist
+COPY --from=builder /app/packages/bitpay-adapter/package.json packages/bitpay-adapter/package.json
+
+COPY --from=builder /app/packages/polar-adapter/dist packages/polar-adapter/dist
+COPY --from=builder /app/packages/polar-adapter/package.json packages/polar-adapter/package.json
+
+COPY --from=builder /app/packages/paddle-adapter/dist packages/paddle-adapter/dist
+COPY --from=builder /app/packages/paddle-adapter/package.json packages/paddle-adapter/package.json
+
+COPY --from=builder /app/packages/creem-adapter/dist packages/creem-adapter/dist
+COPY --from=builder /app/packages/creem-adapter/package.json packages/creem-adapter/package.json
 
 COPY --from=builder /app/packages/service/dist packages/service/dist
 COPY --from=builder /app/packages/service/package.json packages/service/package.json

@@ -378,3 +378,36 @@ describe("fetchTransactions", () => {
     await expect(adapter.fetchTransactions(window)).rejects.toThrow(/HTTP 500/);
   });
 });
+
+describe("merchant-of-record tax handling", () => {
+  const adapter = makeAdapter(mockFetch(() => ({ status: 200, body: "{}" })).fetcher);
+
+  it("normalizes checkout.completed to the pre-tax sub_total, not the tax-inclusive amount", () => {
+    const evt = adapter.parseWebhookPayload(
+      JSON.stringify({
+        id: "evt_tax",
+        eventType: "checkout.completed",
+        object: {
+          id: "ch_tax",
+          order: {
+            id: "ord_tax",
+            amount: 2199,
+            sub_total: 1999,
+            tax_amount: 200,
+            currency: "USD",
+            status: "paid",
+          },
+          metadata: { [PAYKIT_REFERENCE_METADATA_KEY]: "tx-tax" },
+        },
+      }),
+      {},
+    );
+    // The tax slice belongs to Creem as merchant of record; crediting it into
+    // the paykit ledger would hand the customer balance they did not buy.
+    expect(evt?.amountMicros).toBe("19990000");
+  });
+
+  it("reports settlesExactAmount false so the server compares requested vs received", () => {
+    expect(adapter.settlesExactAmount).toBe(false);
+  });
+});

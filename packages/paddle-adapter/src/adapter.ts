@@ -102,8 +102,11 @@ const MAX_LIST_PAGES = 200;
 const SUPPORTED: readonly CurrencyCode[] = ["USD", "EUR", "JPY"];
 
 interface PaddleTotals {
+  /** Subtotal before discount, tax, and deductions — the requested figure. */
+  readonly subtotal?: string;
   readonly total?: string;
   readonly grand_total?: string;
+  readonly tax?: string;
   readonly currency_code?: string;
 }
 
@@ -125,7 +128,11 @@ interface PaddleAdjustment {
   readonly action?: string;
   readonly status?: string;
   readonly transaction_id?: string;
-  readonly totals?: { readonly total?: string; readonly currency_code?: string };
+  readonly totals?: {
+    readonly total?: string;
+    readonly tax?: string;
+    readonly currency_code?: string;
+  };
 }
 
 interface PaddleEnvelope<T> {
@@ -140,6 +147,21 @@ interface PaddleEnvelope<T> {
 function microsToMinorUnitString(currencyCode: CurrencyCode, micros: bigint): string {
   const divisor = currencyExponent(currencyCode) === 0 ? 1_000_000n : 10_000n;
   return (micros / divisor).toString();
+}
+
+/**
+ * The transaction figure comparable to a paykit charge. Paddle is merchant of
+ * record, so the customer-facing grand total carries a tax slice Paddle keeps
+ * — crediting it into the paykit ledger would inflate the balance with money
+ * that is not theirs. `subtotal` is before discount, tax, and deductions
+ * (documented); the price this adapter sends is exclusive of tax, so
+ * subtotal equals the requested amount. grand_total is the fallback for
+ * payloads that lack the field.
+ */
+function comparableAmountMicros(currency: string, totals: PaddleTotals | undefined): string | null {
+  const amount = totals?.subtotal ?? totals?.grand_total;
+  if (typeof amount !== "string") return null;
+  return minorUnitStringToMicros(currency, amount);
 }
 
 /** Paddle minor-unit amount string → micros string. */
@@ -196,6 +218,12 @@ export function createPaddleAdapter(config: PaddleAdapterConfig): PaymentProvide
     displayName: "Paddle",
     supportedCurrencies: SUPPORTED,
     checkoutMode: "redirect",
+    // Merchant-of-record: the settled grand total can carry a tax slice on top
+    // of the requested price. Non-exact tells the server to compare requested
+    // vs received before crediting (an overage is the tax slice, credited at
+    // the requested amount and logged for reconciliation) instead of crediting
+    // whatever the webhook says.
+    settlesExactAmount: false,
 
     async createCheckout(input: CreateCheckoutInput): Promise<CheckoutResult> {
       if (!SUPPORTED.includes(input.currencyCode)) {
@@ -217,6 +245,11 @@ export function createPaddleAdapter(config: PaddleAdapterConfig): PaymentProvide
                 amount: microsToMinorUnitString(input.currencyCode, input.amountMicros),
                 currency_code: input.currencyCode,
               },
+              // Exclusive of tax: the customer is charged the requested price
+              // plus tax on top, so the pre-tax figure always equals what
+              // paykit asked for. Inclusive mode would bury the tax slice
+              // inside the price and make the requested figure unreadable.
+              tax_mode: "external",
               product: {
                 name: config.productName ?? "Account top-up",
                 tax_category: config.taxCategory ?? "standard",
@@ -289,11 +322,12 @@ export function createPaddleAdapter(config: PaddleAdapterConfig): PaymentProvide
       if (eventType === "transaction.completed") {
         const txn = data as PaddleTransaction;
         if (typeof txn.id !== "string" || txn.status !== "completed") return null;
-        const totals = txn.details?.totals;
-        const amount = totals?.grand_total ?? totals?.total;
-        const currency = (txn.currency_code ?? totals?.currency_code ?? "USD").toUpperCase();
-        if (typeof amount !== "string") return null;
-        const amountMicros = minorUnitStringToMicros(currency, amount);
+        const currency = (
+          txn.currency_code ??
+          txn.details?.totals?.currency_code ??
+          "USD"
+        ).toUpperCase();
+        const amountMicros = comparableAmountMicros(currency, txn.details?.totals);
         if (amountMicros === null) return null;
         return {
           eventId,
@@ -337,11 +371,20 @@ export function createPaddleAdapter(config: PaddleAdapterConfig): PaymentProvide
         if (typeof total !== "string") return null;
         const refundMicros = minorUnitStringToMicros(currency, total);
         if (refundMicros === null) return null;
+        // Paddle pays the customer back the gross (refund + its tax reversal),
+        // but the paykit ledger deals in the same pre-tax figures it credited,
+        // so the tax slice comes back out.
+        const taxMicrosString = minorUnitStringToMicros(currency, adj.totals?.tax ?? "");
+        const taxMicros = taxMicrosString === null ? 0n : BigInt(taxMicrosString);
+        const refundNetMicros =
+          taxMicros <= BigInt(refundMicros)
+            ? (BigInt(refundMicros) - taxMicros).toString()
+            : refundMicros;
         return {
           eventId,
           type: "payment.refunded",
           providerRef: adj.transaction_id,
-          refundAmountMicros: refundMicros,
+          refundAmountMicros: refundNetMicros,
           currencyCode: currency,
           providerRefundId: adj.id,
           metadata: {},
@@ -362,17 +405,14 @@ export function createPaddleAdapter(config: PaddleAdapterConfig): PaymentProvide
         };
       }
 
-      // Full vs partial is decided against the transaction's own grand total,
-      // fetched fresh: a full refund needs no item breakdown, a partial one
-      // must name the line item it draws from.
+      // Full vs partial is decided against the transaction's own pre-tax
+      // total, fetched fresh: a full refund needs no item breakdown, a partial
+      // one must name the line item it draws from.
       let body: Record<string, unknown>;
       try {
         const txn = await getTransaction(input.providerRef);
-        const totals = txn.details?.totals;
-        const grandTotal = totals?.grand_total ?? totals?.total;
         const currency = (txn.currency_code ?? "USD").toUpperCase();
-        const grandTotalMicros =
-          typeof grandTotal === "string" ? minorUnitStringToMicros(currency, grandTotal) : null;
+        const grandTotalMicros = comparableAmountMicros(currency, txn.details?.totals);
 
         if (grandTotalMicros !== null && BigInt(grandTotalMicros) === input.amountMicros) {
           body = {
@@ -482,11 +522,12 @@ export function createPaddleAdapter(config: PaddleAdapterConfig): PaymentProvide
 
         for (const txn of page) {
           if (typeof txn.id !== "string") continue;
-          const totals = txn.details?.totals;
-          const amount = totals?.grand_total ?? totals?.total;
-          if (typeof amount !== "string") continue;
-          const currency = (txn.currency_code ?? totals?.currency_code ?? "USD").toUpperCase();
-          const amountMicros = minorUnitStringToMicros(currency, amount);
+          const currency = (
+            txn.currency_code ??
+            txn.details?.totals?.currency_code ??
+            "USD"
+          ).toUpperCase();
+          const amountMicros = comparableAmountMicros(currency, txn.details?.totals);
           if (amountMicros === null) continue;
           records.push({ providerRef: txn.id, amountMicros, currencyCode: currency });
         }

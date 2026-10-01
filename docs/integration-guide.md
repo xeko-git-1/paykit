@@ -35,6 +35,13 @@
 | BitPay | USD (crypto) | `BITPAY_API_TOKEN` | `BITPAY_ENVIRONMENT`, `BITPAY_MERCHANT_PRIVATE_KEY` (64-hex or secp256k1 PEM — enables refund/reconcile; without it checkout + credit still work / bật refund/reconcile; thiếu nó thì checkout + credit vẫn chạy), `BITPAY_NOTIFICATION_URL`, `BITPAY_REDIRECT_URL` |
 | Binance Pay | USD (crypto) | `BINANCE_API_KEY`, `BINANCE_API_SECRET`, `BINANCE_WEBHOOK_PUBLIC_KEY` | `BINANCE_RETURN_URL`, `BINANCE_CANCEL_URL`, `BINANCE_WEBHOOK_URL` |
 | Coinbase Commerce | USD (crypto) | `COINBASE_COMMERCE_API_KEY`, `COINBASE_COMMERCE_WEBHOOK_SECRET` | `COINBASE_COMMERCE_REDIRECT_URL`, `COINBASE_COMMERCE_CANCEL_URL` |
+| Polar | USD, EUR | `POLAR_ACCESS_TOKEN`, `POLAR_PRODUCT_ID`, `POLAR_WEBHOOK_SECRET` | `POLAR_ENVIRONMENT`, `POLAR_SUCCESS_URL` |
+| Paddle Billing | USD, EUR, JPY | `PADDLE_API_KEY`, `PADDLE_WEBHOOK_SECRET` | `PADDLE_ENVIRONMENT`, `PADDLE_CHECKOUT_URL` |
+| Creem | USD, EUR | `CREEM_API_KEY`, `CREEM_PRODUCT_ID`, `CREEM_WEBHOOK_SECRET` | `CREEM_ENVIRONMENT`, `CREEM_SUCCESS_URL` |
+
+**EN — merchant-of-record providers (Polar / Paddle / Creem).** These three sell as the merchant of record: they add sales tax on top of your price, collect it, and remit it. The ledger therefore credits the **pre-tax** amount, not what the customer's card was charged — the tax slice is never your revenue. The gap between the two is expected and is recorded as an overage rather than credited. Two setup consequences: Polar and Creem need one pre-created product (`POLAR_PRODUCT_ID` / `CREEM_PRODUCT_ID`) that every charge is priced over, and Paddle needs an **approved default payment link** on the account — Paddle does not host the checkout page, it opens an overlay on a page of yours that embeds Paddle.js. Without that link, creating a transaction is rejected outright. Set `PADDLE_CHECKOUT_URL` to override the account default per deploy.
+
+**VI — các cổng merchant-of-record (Polar / Paddle / Creem).** Ba cổng này bán với vai trò merchant of record: họ cộng thuế lên trên giá của bạn, thu và nộp thuế. Vì vậy ledger chỉ ghi nhận số **trước thuế**, không phải số thẻ khách bị trừ — phần thuế không phải doanh thu của bạn. Chênh lệch giữa hai số là bình thường và được ghi nhận như phần vượt chứ không cộng vào sổ. Hai lưu ý khi thiết lập: Polar và Creem cần một product tạo sẵn (`POLAR_PRODUCT_ID` / `CREEM_PRODUCT_ID`) để mọi khoản thu được định giá lên trên nó, còn Paddle cần một **default payment link đã được duyệt** trên account — Paddle không host trang checkout, nó mở overlay trên một trang của bạn có nhúng Paddle.js. Thiếu link đó, lệnh tạo transaction bị từ chối ngay. Đặt `PADDLE_CHECKOUT_URL` để ghi đè mặc định của account theo từng deploy.
 
 ---
 

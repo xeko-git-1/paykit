@@ -85,7 +85,11 @@ const SUPPORTED = ["USD", "EUR"] as const;
 
 interface CreemOrder {
   readonly id?: string;
+  /** Total charged, tax included (documented: sub_total + tax_amount). */
   readonly amount?: number;
+  /** Charge before tax — the figure comparable to a paykit charge. */
+  readonly sub_total?: number;
+  readonly tax_amount?: number;
   readonly currency?: string;
   readonly status?: string;
 }
@@ -113,11 +117,30 @@ interface CreemRefundObject {
 interface CreemTransaction {
   readonly id?: string;
   readonly amount?: number;
+  readonly sub_total?: number;
+  readonly tax_amount?: number;
   readonly currency?: string;
   readonly status?: string;
   readonly created_at?: number | string;
   readonly checkout_id?: string | null;
   readonly order?: CreemOrder | string | null;
+}
+
+/**
+ * The Creem figure comparable to a paykit charge: before tax. Creem is
+ * merchant of record, so the charged total carries a tax slice Creem keeps —
+ * crediting it into the paykit ledger would inflate the balance with money
+ * that is not theirs. `sub_total` is the pre-tax figure; `amount` is the
+ * fallback for payloads that lack it.
+ */
+function comparableAmountMicros(
+  currency: string,
+  gross: number | undefined,
+  preTax: number | undefined,
+): string | null {
+  const minorUnits = typeof preTax === "number" ? preTax : gross;
+  if (typeof minorUnits !== "number") return null;
+  return minorUnitsToMicrosString(currency, minorUnits);
 }
 
 /** Minor units (integer) → micros string, per the currency's exponent. */
@@ -168,6 +191,15 @@ export function createCreemAdapter(config: CreemAdapterConfig): PaymentProviderA
     displayName: "Creem",
     supportedCurrencies: [...SUPPORTED],
     checkoutMode: "redirect",
+
+    /**
+     * Merchant of record: Creem computes and keeps tax, so the settled total
+     * can exceed the charge even though the payer never chose an amount. The
+     * webhook amounts below are normalized back to pre-tax, and this flag puts
+     * the server's requested-vs-received comparison in the path so a residual
+     * drift is surfaced rather than credited.
+     */
+    settlesExactAmount: false,
 
     async createCheckout(input: CreateCheckoutInput): Promise<CheckoutResult> {
       if (!(SUPPORTED as readonly string[]).includes(input.currencyCode)) {
@@ -256,11 +288,13 @@ export function createCreemAdapter(config: CreemAdapterConfig): PaymentProviderA
         // A completed checkout whose order is not paid credits nothing.
         if (order.status !== undefined && order.status !== "paid") return null;
         const currency = (order.currency ?? "USD").toUpperCase();
+        const amountMicros = comparableAmountMicros(currency, order.amount, order.sub_total);
+        if (amountMicros === null) return null;
         return {
           eventId: envelope.id ?? `creem:checkout.completed:${checkout.id}`,
           type: "payment.completed",
           providerRef: checkout.id,
-          amountMicros: minorUnitsToMicrosString(currency, order.amount),
+          amountMicros,
           currencyCode: currency,
           ...(typeof order.id === "string" ? { providerPaymentId: order.id } : {}),
           metadata: {
@@ -373,9 +407,11 @@ export function createCreemAdapter(config: CreemAdapterConfig): PaymentProviderA
           if (Number.isNaN(createdAt) || createdAt < since || createdAt >= until) continue;
           if (typeof txn.amount !== "number") continue;
           const currency = (txn.currency ?? "USD").toUpperCase();
+          const amountMicros = comparableAmountMicros(currency, txn.amount, txn.sub_total);
+          if (amountMicros === null) continue;
           records.push({
             providerRef: checkoutId,
-            amountMicros: minorUnitsToMicrosString(currency, txn.amount),
+            amountMicros,
             currencyCode: currency,
           });
         }

@@ -25,6 +25,9 @@ const base: ServiceConfig = {
   binance: undefined,
   bitpay: undefined,
   coinbaseCommerce: undefined,
+  polar: undefined,
+  paddle: undefined,
+  creem: undefined,
   vnpay: undefined,
   momo: undefined,
   zalopay: undefined,
@@ -188,5 +191,86 @@ describe("buildAdaptersFromConfig — Coinbase Commerce", () => {
   it("skips the adapter when no coinbase creds are present", async () => {
     const adapters = await buildAdaptersFromConfig(base);
     expect(adapters.map((a) => a.id)).not.toContain("coinbase-commerce");
+  });
+});
+
+describe("buildAdaptersFromConfig — merchant-of-record providers", () => {
+  it("wires the polar adapter when its token, product, and webhook secret are present", async () => {
+    const adapters = await buildAdaptersFromConfig({
+      ...base,
+      polar: {
+        accessToken: "polar_oat_test",
+        productId: "prod_1",
+        webhookSecret: "polar-whsec",
+        environment: "sandbox",
+      },
+    });
+    // Asserted by id because a provider can be resolved in config and still never
+    // reach the registry if the wiring block is missing.
+    expect(adapters.map((a) => a.id)).toContain("polar");
+  });
+
+  it("wires the paddle adapter when its api key and webhook secret are present", async () => {
+    const adapters = await buildAdaptersFromConfig({
+      ...base,
+      paddle: {
+        apiKey: "pdl_sdbx_apikey_test",
+        webhookSecret: "pdl_ntfset_test",
+        environment: "sandbox",
+      },
+    });
+    expect(adapters.map((a) => a.id)).toContain("paddle");
+  });
+
+  it("wires the creem adapter when its api key, product, and webhook secret are present", async () => {
+    const adapters = await buildAdaptersFromConfig({
+      ...base,
+      creem: {
+        apiKey: "creem_test",
+        productId: "prod_1",
+        webhookSecret: "creem-whsec",
+        environment: "test",
+      },
+    });
+    expect(adapters.map((a) => a.id)).toContain("creem");
+  });
+
+  it("declares every merchant-of-record rail as non-exact-settling", async () => {
+    // These providers collect tax on top of the charge, so the webhook's
+    // customer-facing total exceeds what paykit asked for. The flag is what
+    // routes that surplus through the requested-vs-received comparison instead
+    // of crediting a tax slice the merchant never earned.
+    const adapters = await buildAdaptersFromConfig({
+      ...base,
+      polar: {
+        accessToken: "polar_oat_test",
+        productId: "prod_1",
+        webhookSecret: "polar-whsec",
+        environment: "sandbox",
+      },
+      paddle: {
+        apiKey: "pdl_sdbx_apikey_test",
+        webhookSecret: "pdl_ntfset_test",
+        environment: "sandbox",
+      },
+      creem: {
+        apiKey: "creem_test",
+        productId: "prod_1",
+        webhookSecret: "creem-whsec",
+        environment: "test",
+      },
+    });
+    expect(adapters).toHaveLength(3);
+    for (const adapter of adapters) {
+      expect(adapter.settlesExactAmount).toBe(false);
+    }
+  });
+
+  it("skips all three when no merchant-of-record creds are present", async () => {
+    const adapters = await buildAdaptersFromConfig(base);
+    const ids = adapters.map((a) => a.id);
+    expect(ids).not.toContain("polar");
+    expect(ids).not.toContain("paddle");
+    expect(ids).not.toContain("creem");
   });
 });

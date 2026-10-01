@@ -434,3 +434,75 @@ describe("fetchTransactions", () => {
     await expect(adapter.fetchTransactions(window)).rejects.toThrow(/HTTP 500/);
   });
 });
+
+describe("merchant-of-record tax handling", () => {
+  it("pins the inline price to tax_mode external so the pre-tax figure stays readable", async () => {
+    const { fetcher, calls } = mockFetch(() => ({
+      status: 200,
+      body: JSON.stringify({
+        data: { id: "txn_tax", checkout: { url: "https://pay/txn_tax" } },
+      }),
+    }));
+    const adapter = makeAdapter(fetcher);
+    await adapter.createCheckout({
+      transactionId: "tx-tax",
+      tenantId: "t",
+      ownerId: "o",
+      amountMicros: 19_990_000n,
+      currencyCode: "USD",
+    });
+    const parsed = JSON.parse(calls[0]?.body ?? "{}") as {
+      items: { price: { tax_mode?: string } }[];
+    };
+    // Without an explicit mode Paddle falls back to the account setting, which
+    // may be tax-inclusive — and then `subtotal` is no longer the charge paykit
+    // asked for.
+    expect(parsed.items[0]?.price.tax_mode).toBe("external");
+  });
+
+  it("normalizes transaction.completed to the pre-tax subtotal", () => {
+    const adapter = makeAdapter(mockFetch(() => ({ status: 200, body: "{}" })).fetcher);
+    const evt = adapter.parseWebhookPayload(
+      JSON.stringify({
+        event_id: "evt_tax",
+        event_type: "transaction.completed",
+        data: {
+          id: "txn_tax",
+          status: "completed",
+          currency_code: "USD",
+          details: {
+            totals: { subtotal: "1999", tax: "200", total: "2199", grand_total: "2199" },
+          },
+        },
+      }),
+      {},
+    );
+    expect(evt?.amountMicros).toBe("19990000");
+  });
+
+  it("strips the tax reversal out of an approved refund adjustment", () => {
+    const adapter = makeAdapter(mockFetch(() => ({ status: 200, body: "{}" })).fetcher);
+    const evt = adapter.parseWebhookPayload(
+      JSON.stringify({
+        event_id: "evt_ref",
+        event_type: "adjustment.updated",
+        data: {
+          id: "adj_1",
+          action: "refund",
+          status: "approved",
+          transaction_id: "txn_tax",
+          totals: { total: "2199", tax: "200", currency_code: "USD" },
+        },
+      }),
+      {},
+    );
+    // Paddle pays back the gross; the ledger refunds the pre-tax figure it
+    // originally credited.
+    expect(evt?.refundAmountMicros).toBe("19990000");
+  });
+
+  it("reports settlesExactAmount false so the server compares requested vs received", () => {
+    const adapter = makeAdapter(mockFetch(() => ({ status: 200, body: "{}" })).fetcher);
+    expect(adapter.settlesExactAmount).toBe(false);
+  });
+});

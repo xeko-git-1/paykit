@@ -35,9 +35,9 @@
  * Standard Webhooks secret encoding, and the orders listing shape are taken
  * from Polar's published OpenAPI spec (version 2026-04) and official SDK and
  * are exercised here only against a local mock. Items to confirm on first live
- * use: that checkout metadata is copied onto orders verbatim, the `order.paid`
- * payload's `total_amount` semantics under discounts/tax, and the absence of a
- * created-at range filter on GET /orders/.
+ * use: that checkout metadata is copied onto orders verbatim, the
+ * net/total_amount split on order payloads under discounts and tax, and the
+ * absence of a created-at range filter on GET /orders/.
  */
 import {
   type CheckoutResult,
@@ -83,12 +83,29 @@ interface PolarOrder {
   readonly id?: string;
   readonly status?: string;
   readonly paid?: boolean;
+  /** Post-discount, pre-tax — the figure comparable to a paykit charge. */
+  readonly net_amount?: number;
+  readonly tax_amount?: number;
   readonly total_amount?: number;
   readonly refunded_amount?: number;
   readonly currency?: string;
   readonly created_at?: string;
   readonly checkout_id?: string;
   readonly metadata?: Record<string, unknown>;
+}
+
+/**
+ * The order amount comparable to a paykit charge: after discounts, BEFORE tax.
+ * Polar adds tax on top (documented: net_amount + tax_amount = total_amount),
+ * and the tax slice is remitted by Polar as merchant of record — crediting it
+ * into the paykit ledger would inflate the customer's balance with money that
+ * is not theirs. total_amount is the fallback for payloads that predate the
+ * net_amount field.
+ */
+function comparableAmountMicros(currency: string, order: PolarOrder): string | null {
+  const minorUnits = typeof order.net_amount === "number" ? order.net_amount : order.total_amount;
+  if (typeof minorUnits !== "number") return null;
+  return minorUnitsToMicrosString(currency, minorUnits);
 }
 
 interface PolarRefund {
@@ -154,6 +171,12 @@ export function createPolarAdapter(config: PolarAdapterConfig): PaymentProviderA
     displayName: "Polar",
     supportedCurrencies: ["USD", "EUR"],
     checkoutMode: "redirect",
+    // Merchant-of-record: Polar may add tax on top of the requested price, so
+    // the settled figure can exceed it. Non-exact tells the server to compare
+    // requested vs received before crediting (an overage is the tax slice,
+    // credited at the requested amount and logged for reconciliation) instead
+    // of crediting whatever the webhook says.
+    settlesExactAmount: false,
 
     async createCheckout(input: CreateCheckoutInput): Promise<CheckoutResult> {
       if (input.currencyCode !== "USD" && input.currencyCode !== "EUR") {
@@ -239,11 +262,13 @@ export function createPolarAdapter(config: PolarAdapterConfig): PaymentProviderA
         if (typeof reference !== "string" || reference === "") return null;
         if (typeof order.total_amount !== "number" || typeof order.id !== "string") return null;
         const currency = (order.currency ?? "usd").toUpperCase();
+        const amountMicros = comparableAmountMicros(currency, order);
+        if (amountMicros === null) return null;
         return {
           eventId: `polar:order.paid:${order.id}`,
           type: "payment.completed",
           providerRef: reference,
-          amountMicros: minorUnitsToMicrosString(currency, order.total_amount),
+          amountMicros,
           currencyCode: currency,
           // The refund API keys on the ORDER id, which only exists once paid.
           providerPaymentId: order.id,
@@ -397,9 +422,11 @@ export function createPolarAdapter(config: PolarAdapterConfig): PaymentProviderA
           if (Number.isNaN(createdAt) || createdAt < since || createdAt >= until) continue;
           if (typeof order.total_amount !== "number") continue;
           const currency = (order.currency ?? "usd").toUpperCase();
+          const amountMicros = comparableAmountMicros(currency, order);
+          if (amountMicros === null) continue;
           records.push({
             providerRef: reference,
-            amountMicros: minorUnitsToMicrosString(currency, order.total_amount),
+            amountMicros,
             currencyCode: currency,
             ...(typeof order.refunded_amount === "number" && order.refunded_amount > 0
               ? { refundedAmountMicros: minorUnitsToMicrosString(currency, order.refunded_amount) }

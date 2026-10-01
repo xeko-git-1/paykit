@@ -11,9 +11,9 @@ the embedded mode in [installation.md](./installation.md).
 
 - **Cold-start Docker**: `docker compose up` on a fresh volume migrates the
   schema, then serves — in that order, automatically.
-- **10 wired adapters**: Stripe, SePay, NowPayments, Cryptomus, Binance Pay,
-  BitPay, Coinbase Commerce, VNPay, Momo, ZaloPay — each enabled only when its
-  credentials are present.
+- **14 wired adapters**: Stripe, SePay, ApiPay, NowPayments, Cryptomus,
+  Binance Pay, BitPay, Coinbase Commerce, Polar, Paddle, Creem, VNPay, Momo,
+  ZaloPay — each enabled only when its credentials are present.
 - **`/v1` HTTP API**: scope-gated, rate-limited, OpenAPI-described.
 - **CLI bootstrap**: create the first merchant + API key without the service running.
 - **Thin TypeScript SDK** (`@xeko-git-1/paykit-sdk`): type-safe client over `/v1`.
@@ -71,6 +71,9 @@ fields are set; partial credentials leave that provider disabled (no crash).
 | `BINANCE_API_KEY`, `BINANCE_API_SECRET`, `BINANCE_WEBHOOK_PUBLIC_KEY` | Binance Pay (crypto) |
 | `BITPAY_API_TOKEN`, `BITPAY_ENVIRONMENT?`, `BITPAY_MERCHANT_PRIVATE_KEY?`, `BITPAY_NOTIFICATION_URL?`, `BITPAY_REDIRECT_URL?` | BitPay (crypto). Private key (64-hex or secp256k1 PEM) is optional: without it checkout + credit work but refunds/reconciliation are disabled. |
 | `COINBASE_COMMERCE_API_KEY`, `COINBASE_COMMERCE_WEBHOOK_SECRET`, `COINBASE_COMMERCE_REDIRECT_URL?` | Coinbase Commerce (crypto) |
+| `POLAR_ACCESS_TOKEN`, `POLAR_PRODUCT_ID`, `POLAR_WEBHOOK_SECRET`, `POLAR_ENVIRONMENT?`, `POLAR_SUCCESS_URL?` | Polar (USD/EUR). Product must exist first — every charge is priced over it. |
+| `PADDLE_API_KEY`, `PADDLE_WEBHOOK_SECRET`, `PADDLE_ENVIRONMENT?`, `PADDLE_CHECKOUT_URL?` | Paddle Billing (USD/EUR/JPY). The account needs an approved default payment link, or `PADDLE_CHECKOUT_URL` pointing at a page that embeds Paddle.js. |
+| `CREEM_API_KEY`, `CREEM_PRODUCT_ID`, `CREEM_WEBHOOK_SECRET`, `CREEM_ENVIRONMENT?`, `CREEM_SUCCESS_URL?` | Creem (USD/EUR). Product must exist first; refunds are dashboard-only. |
 | `PAYKIT_ALLOW_UNKNOWN_CHAIN_CODES?` | Accept a coin/chain code paykit does not recognise |
 | `PAYKIT_REFUND_WEBHOOK_TIMEOUT_HOURS?` | Hours before a `pending_webhook` refund is reported overdue (default 24) |
 | `PAYKIT_CHECKOUT_STALE_TTL_HOURS?` | Hours before an unpaid checkout is expired and its discount reservation freed (default 48). Must exceed the longest provider checkout validity. |

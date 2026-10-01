@@ -33,10 +33,13 @@
 | BitPay | `@xeko-git-1/paykit-bitpay` | USD | async (`pending_webhook`) — refund needs a merchant ECDSA signer (packaged `createNodeMerchantSigner` or inject your own); not yet sandbox-verified end-to-end |
 | Binance Pay | `@xeko-git-1/paykit-binance` | USD | async (`pending_webhook`) — off-chain merchant account; no public sandbox, not yet verified end-to-end |
 | Coinbase Commerce | `@xeko-git-1/paykit-coinbase-commerce` | USD | none — the provider exposes no refund API; refund from the Coinbase account and record a ledger adjustment. Built from published SDKs, not yet verified end-to-end |
+| Polar | `@xeko-git-1/paykit-polar` | USD, EUR | async (`pending_webhook`) — merchant of record, so the ledger credits the pre-tax amount; priced over one pre-created product. Built from the published OpenAPI spec, not yet verified end-to-end |
+| Paddle Billing | `@xeko-git-1/paykit-paddle` | USD, EUR, JPY | async (`pending_webhook`) — merchant of record; refunds need Paddle's approval. Needs an approved default payment link (Paddle does not host the page). Built from published docs, not yet verified end-to-end |
+| Creem | `@xeko-git-1/paykit-creem` | USD, EUR | none — refunds are dashboard-only; the `refund.created` webhook settles the row. Merchant of record, so the ledger credits the pre-tax amount. Built from published docs, not yet verified end-to-end |
 
 ## What it doesn't do (yet)
 
-- No Polar / Paddle / Creem adapters (planned)
+- No live-verified MoR checkout: the Polar / Paddle / Creem adapters are built from published specs and exercised against mocks only
 - Currency registry stops at USD / EUR / VND / JPY / KRW — widening it is deliberate (settled minor-unit convention + an adapter that declares the code)
 - Usage-based / metered billing (planned V3+)
 
@@ -52,7 +55,7 @@
 ### Two ways to run
 
 - **Embedded (V1–V3):** `import { createPaykit }` into your own Hono app, supply a `TenantResolver`. Quickstart below.
-- **Standalone service (V4):** run `@xeko-git-1/paykit-service` as a container — config + API-key auth via env, no app code. Migrate-then-serve cold start, 11 wired adapters (Stripe / SePay / ApiPay / NowPayments / VNPay / Momo / ZaloPay / Cryptomus / Binance Pay / BitPay / Coinbase Commerce), `/v1` HTTP API, CLI bootstrap, and a thin TypeScript SDK. See [service-mode-setup.md](docs/service-mode-setup.md).
+- **Standalone service (V4):** run `@xeko-git-1/paykit-service` as a container — config + API-key auth via env, no app code. Migrate-then-serve cold start, 14 wired adapters (Stripe / SePay / ApiPay / NowPayments / VNPay / Momo / ZaloPay / Cryptomus / Binance Pay / BitPay / Coinbase Commerce / Polar / Paddle / Creem), `/v1` HTTP API, CLI bootstrap, and a thin TypeScript SDK. See [service-mode-setup.md](docs/service-mode-setup.md).
 
 ## Quickstart (preview — V1 not yet published)
 

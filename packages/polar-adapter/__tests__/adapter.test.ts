@@ -450,3 +450,32 @@ describe("fetchTransactions", () => {
     await expect(adapter.fetchTransactions(window)).rejects.toThrow(/HTTP 500/);
   });
 });
+
+describe("merchant-of-record tax handling", () => {
+  const adapter = makeAdapter(mockFetch(() => ({ status: 200, body: "{}" })).fetcher);
+
+  it("normalizes order.paid to the pre-tax net_amount, not the tax-inclusive total", () => {
+    const evt = adapter.parseWebhookPayload(
+      JSON.stringify({
+        type: "order.paid",
+        data: {
+          id: "order_tax",
+          paid: true,
+          net_amount: 1999,
+          tax_amount: 200,
+          total_amount: 2199,
+          currency: "usd",
+          metadata: { [PAYKIT_REFERENCE_METADATA_KEY]: "tx-tax" },
+        },
+      }),
+      {},
+    );
+    // The tax slice belongs to Polar as merchant of record; crediting it into
+    // the paykit ledger would hand the customer balance they did not buy.
+    expect(evt?.amountMicros).toBe("19990000");
+  });
+
+  it("reports settlesExactAmount false so the server compares requested vs received", () => {
+    expect(adapter.settlesExactAmount).toBe(false);
+  });
+});

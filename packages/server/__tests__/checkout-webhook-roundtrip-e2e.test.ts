@@ -103,6 +103,10 @@ import {
   createCoinbaseCommerceAdapter,
 } from "@xeko-git-1/paykit-coinbase-commerce";
 import { createBitpayAdapter } from "../../bitpay-adapter/src/adapter.js";
+import {
+  PAYKIT_REFERENCE_METADATA_KEY as CREEM_REF_KEY,
+  createCreemAdapter,
+} from "../../creem-adapter/src/adapter.js";
 import { createCryptomusAdapter } from "../../cryptomus-adapter/src/adapter.js";
 import { computeCryptomusSign } from "../../cryptomus-adapter/src/webhook-verifier.js";
 import { createMomoAdapter } from "../../momo-adapter/src/adapter.js";
@@ -113,6 +117,14 @@ import {
   NP_SIGNATURE_HEADER,
   computeNpSignature,
 } from "../../nowpayments-adapter/src/webhook-verifier.js";
+import {
+  PAYKIT_REFERENCE_CUSTOM_DATA_KEY as PADDLE_REF_KEY,
+  createPaddleAdapter,
+} from "../../paddle-adapter/src/adapter.js";
+import {
+  PAYKIT_REFERENCE_METADATA_KEY as POLAR_REF_KEY,
+  createPolarAdapter,
+} from "../../polar-adapter/src/adapter.js";
 import { createSepayAdapter } from "../../sepay-adapter/src/adapter.js";
 import { createStripeAdapter } from "../../stripe-adapter/src/adapter.js";
 import { createVnpayAdapter } from "../../vnpay-adapter/src/adapter.js";
@@ -143,6 +155,9 @@ const NP_SECRET = "np_ipn_secret_rt";
 const CRYPTOMUS_KEY = "cryptomus_key_rt";
 const COINBASE_COMMERCE_SECRET = "cc-whsec-roundtrip";
 const STRIPE_WEBHOOK_SECRET = "whsec_rt";
+const POLAR_SECRET = "polar_whsec_rt";
+const PADDLE_SECRET = "pdl_ntfset_rt";
+const CREEM_SECRET = "creem_whsec_rt";
 
 // --- fake provider HTTP -----------------------------------------------------
 
@@ -596,6 +611,156 @@ const ADAPTER_CASES: readonly AdapterCase[] = [
       };
     },
   },
+  {
+    label: "polar",
+    currencyCode: "USD",
+    amountMicros: USD_50_MICROS,
+    async run(txId) {
+      let sentReference = "";
+      const fetcher = fakeFetch(({ url, body }) => {
+        if (!url.includes("/checkouts")) return null;
+        sentReference = (JSON.parse(body) as { metadata: Record<string, string> }).metadata[
+          POLAR_REF_KEY
+        ];
+        return { body: { url: "https://polar.store/checkout/rt", expires_at: null } };
+      });
+      const adapter = createPolarAdapter({
+        accessToken: "polar_oat_rt",
+        productId: "prod_rt",
+        webhookSecret: POLAR_SECRET,
+        fetcher,
+      });
+      const checkout = await adapter.createCheckout(checkoutInput(txId, USD_50_MICROS, "USD"));
+      // Polar copies checkout metadata onto the order and echoes it here — the
+      // only key that ties the event back to the paykit row.
+      const rawBody = JSON.stringify({
+        type: "order.paid",
+        data: {
+          id: "order_rt",
+          paid: true,
+          net_amount: 5000,
+          tax_amount: 0,
+          total_amount: 5000,
+          currency: "usd",
+          metadata: { [POLAR_REF_KEY]: sentReference },
+        },
+      });
+      const ts = Math.floor(Date.now() / 1000);
+      const id = "msg_rt";
+      const sig = createHmac("sha256", Buffer.from(POLAR_SECRET, "utf-8"))
+        .update(`${id}.${ts}.${rawBody}`)
+        .digest("base64");
+      return {
+        adapter,
+        storedProviderRef: checkout.providerSessionId ?? txId,
+        webhook: {
+          rawBody,
+          headers: {
+            "webhook-id": id,
+            "webhook-timestamp": String(ts),
+            "webhook-signature": `v1,${sig}`,
+          },
+        },
+      };
+    },
+  },
+  {
+    label: "paddle",
+    currencyCode: "USD",
+    amountMicros: USD_50_MICROS,
+    async run(txId) {
+      let sentCustomData = "";
+      let providerTxnId = "";
+      const fetcher = fakeFetch(({ url, body }) => {
+        if (!url.includes("/transactions")) return null;
+        sentCustomData = (JSON.parse(body) as { custom_data: Record<string, string> }).custom_data[
+          PADDLE_REF_KEY
+        ];
+        providerTxnId = "txn_rt";
+        return {
+          body: {
+            data: { id: providerTxnId, checkout: { url: "https://pay.example/rt" } },
+          },
+        };
+      });
+      const adapter = createPaddleAdapter({
+        apiKey: "pdl_sdbx_apikey_rt",
+        webhookSecret: PADDLE_SECRET,
+        fetcher,
+      });
+      const checkout = await adapter.createCheckout(checkoutInput(txId, USD_50_MICROS, "USD"));
+      // provider_ref is the Paddle transaction id itself: data.id on every
+      // transaction webhook, and the key the adjustments API uses.
+      const rawBody = JSON.stringify({
+        event_id: "evt_rt",
+        event_type: "transaction.completed",
+        data: {
+          id: providerTxnId,
+          status: "completed",
+          currency_code: "USD",
+          custom_data: { [PADDLE_REF_KEY]: sentCustomData },
+          details: {
+            totals: { subtotal: "5000", tax: "0", total: "5000", grand_total: "5000" },
+          },
+        },
+      });
+      const ts = Math.floor(Date.now() / 1000);
+      const sig = createHmac("sha256", PADDLE_SECRET).update(`${ts}:${rawBody}`).digest("hex");
+      return {
+        adapter,
+        storedProviderRef: checkout.providerSessionId ?? txId,
+        webhook: { rawBody, headers: { "paddle-signature": `ts=${ts};h1=${sig}` } },
+      };
+    },
+  },
+  {
+    label: "creem",
+    currencyCode: "USD",
+    amountMicros: USD_50_MICROS,
+    async run(txId) {
+      let sentRequestId = "";
+      let providerCheckoutId = "";
+      const fetcher = fakeFetch(({ url, body }) => {
+        if (!url.includes("/v1/checkouts")) return null;
+        sentRequestId = (JSON.parse(body) as { request_id: string }).request_id;
+        providerCheckoutId = "ch_rt";
+        return { body: { id: providerCheckoutId, checkout_url: "https://creem.store/rt" } };
+      });
+      const adapter = createCreemAdapter({
+        apiKey: "creem_rt",
+        productId: "prod_rt",
+        webhookSecret: CREEM_SECRET,
+        fetcher,
+      });
+      const checkout = await adapter.createCheckout(checkoutInput(txId, USD_50_MICROS, "USD"));
+      // provider_ref is the checkout id: object.id on checkout.completed and
+      // what a dashboard refund's webhook points back at. request_id is the
+      // audit key back to the paykit transaction.
+      const rawBody = JSON.stringify({
+        id: "evt_rt",
+        eventType: "checkout.completed",
+        object: {
+          id: providerCheckoutId,
+          request_id: sentRequestId,
+          order: {
+            id: "ord_rt",
+            amount: 5000,
+            sub_total: 5000,
+            tax_amount: 0,
+            currency: "USD",
+            status: "paid",
+          },
+          metadata: { [CREEM_REF_KEY]: sentRequestId },
+        },
+      });
+      const sig = createHmac("sha256", CREEM_SECRET).update(rawBody).digest("hex");
+      return {
+        adapter,
+        storedProviderRef: checkout.providerSessionId ?? txId,
+        webhook: { rawBody, headers: { "creem-signature": sig } },
+      };
+    },
+  },
 ];
 
 /** Normalize a webhook the way the router does: resolveWebhook, else parse. */
@@ -637,9 +802,12 @@ describe("checkout → webhook provider_ref round-trip (every shipped adapter)",
     expect(ADAPTER_CASES.map((c) => c.label).sort()).toEqual([
       "bitpay",
       "coinbase-commerce",
+      "creem",
       "cryptomus",
       "momo",
       "nowpayments",
+      "paddle",
+      "polar",
       "sepay",
       "stripe",
       "vnpay",
